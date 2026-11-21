@@ -59,7 +59,10 @@ export function parseAttendance(
     for (const row of rows.slice(source.headerRows)) {
       const rowCode = codeOf(row[codeIndex]);
       if (!codes.has(rowCode)) continue;
-      const day = parseDate(row[dateIndex] ?? "", window);
+      const day = parseDate(row[dateIndex] ?? "", {
+        window,
+        dateOrder: config.dateOrder,
+      });
       if (!day) continue;
       matchedRows++;
       dates.add(day);
@@ -87,7 +90,11 @@ export function parseAttendance(
     if (!header.slice(start).some((value) => value.trim()))
       throw new Error("MISSING_REQUIRED_COLUMN:attendance dates");
     const days = header.slice(start).map((value, offset) => ({
-      date: parseDate(value, window, true),
+      date: parseDate(value, {
+        window,
+        ignoreYear: true,
+        dateOrder: config.dateOrder,
+      }),
       index: start + offset,
     }));
     for (const { date } of days) if (date) dates.add(date);

@@ -1,9 +1,11 @@
 import bcrypt from "bcrypt";
+import { existsSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { readEnv } from "./env.js";
 import { openDb } from "./db/db.js";
 import { fetchCsv } from "./fetch/fetchCsv.js";
 import { parseLink, exportUrl } from "./fetch/urls.js";
+import { sampleSourceDate } from "./fetch/sampleDate.js";
 import { createSync } from "./sync/service.js";
 import { createInterface } from "node:readline/promises";
 
@@ -25,6 +27,27 @@ try {
     const link = process.argv[3];
     if (!link) throw new Error("Pass a Google Sheets view link");
     const { sheetId, gid } = parseLink(link);
+    const config = loadConfig(
+      existsSync("config/sources.local.json")
+        ? "config/sources.local.json"
+        : undefined,
+    );
+    const keys = ["master", "schedule", "attendance"] as const;
+    const selected = process.argv
+      .find((arg) => arg.startsWith("--source="))
+      ?.slice("--source=".length);
+    const source =
+      selected === undefined
+        ? keys.find(
+            (key) =>
+              config.sources[key].sheetId === sheetId &&
+              config.sources[key].gid === gid,
+          )
+        : keys.find((key) => key === selected);
+    if (selected !== undefined && !source)
+      throw new Error(
+        "Pass --source=master, --source=schedule or --source=attendance",
+      );
     const result = await fetchCsv(exportUrl(sheetId, gid));
     const reveal = process.argv.includes("--show-rows");
     console.log({
@@ -34,6 +57,8 @@ try {
       contentType: result.contentType,
       bytes: result.bytes,
       rowCount: result.rows.length,
+      dateOrder: config.dateOrder,
+      sampleDate: sampleSourceDate(result.rows, config, source),
     });
     console.log(
       result.rows

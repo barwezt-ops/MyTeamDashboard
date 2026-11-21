@@ -93,6 +93,7 @@ export const configSchema = z
       alsoCover: z.array(z.string().trim().min(1)),
       defaultScope: z.enum(["mine", "covered", "all"]),
     }),
+    dateOrder: z.enum(["MDY", "DMY"]).default("MDY"),
     timezone: z.string().refine((zone) => {
       try {
         new Intl.DateTimeFormat("en", { timeZone: zone });

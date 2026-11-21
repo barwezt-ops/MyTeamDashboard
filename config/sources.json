@@ -4,6 +4,7 @@
     "alsoCover": ["Cover Lead"],
     "defaultScope": "covered"
   },
+  "dateOrder": "MDY",
   "timezone": "Africa/Cairo",
   "jobs": {
     "daily": "0 16 * * *",

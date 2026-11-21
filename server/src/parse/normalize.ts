@@ -16,10 +16,18 @@ export function isoDate(year: number, month: number, day: number) {
     ? date.toISOString().slice(0, 10)
     : null;
 }
+export type DateOrder = "MDY" | "DMY";
 export function parseDate(
   value: string,
-  window?: { from: string; to: string },
-  ignoreYear = false,
+  {
+    window,
+    ignoreYear = false,
+    dateOrder = "MDY",
+  }: {
+    window?: { from: string; to: string };
+    ignoreYear?: boolean;
+    dateOrder?: DateOrder;
+  } = {},
 ) {
   const raw = clean(value).toLowerCase();
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
@@ -30,9 +38,13 @@ export function parseDate(
   const month = iso
     ? +iso[2]
     : slash
-      ? +slash[1]
+      ? +slash[dateOrder === "DMY" ? 2 : 1]
       : months.indexOf(named![2] || named![3]) + 1;
-  const day = iso ? +iso[3] : slash ? +slash[2] : +(named![1] || named![4]);
+  const day = iso
+    ? +iso[3]
+    : slash
+      ? +slash[dateOrder === "DMY" ? 1 : 2]
+      : +(named![1] || named![4]);
   if (year !== null && !ignoreYear) return isoDate(year, month, day);
   if (!window) return null;
   const matches = [];

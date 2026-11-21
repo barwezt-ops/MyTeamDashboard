@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { configSchema, loadConfig } from "../src/config.js";
+import { sampleSourceDate } from "../src/fetch/sampleDate.js";
 import { checkColumns, indexOf } from "../src/parse/columns.js";
 import { clean, codeOf, localDate, parseDate } from "../src/parse/normalize.js";
 import { parseMaster } from "../src/parse/master.js";
@@ -32,16 +33,16 @@ describe("normalization and column selection", () => {
   });
   it.each(["2026-11-21", "11/21/2026", "21-Nov", "Nov-21"])(
     "reads %s",
-    (value) => expect(parseDate(value, window)).toBe(today),
+    (value) => expect(parseDate(value, { window })).toBe(today),
   );
   it("rejects bad and ambiguous dates and can ignore the source year", () => {
     expect(parseDate("2/29/2026")).toBeNull();
     expect(parseDate("n/a")).toBeNull();
     expect(parseDate("Nov-21")).toBeNull();
     expect(
-      parseDate("21-Nov", { from: "2025-11-21", to: "2026-11-21" }),
+      parseDate("21-Nov", { window: { from: "2025-11-21", to: "2026-11-21" } }),
     ).toBeNull();
-    expect(parseDate("11/21/1990", window, true)).toBe(today);
+    expect(parseDate("11/21/1990", { window, ignoreYear: true })).toBe(today);
     expect(localDate("Africa/Cairo", new Date("2026-11-20T23:00:00Z"))).toBe(
       today,
     );
@@ -281,3 +282,49 @@ it.each([
     );
   },
 );
+
+it("uses configured slash date order for master and both attendance layouts", () => {
+  expect(parseDate("11/12/2026")).toBe("2026-11-12");
+  expect(parseDate("11/12/2026", { dateOrder: "DMY" })).toBe("2026-12-11");
+  expect(parseDate("31/02/2026", { dateOrder: "DMY" })).toBeNull();
+  expect(parseDate("2026-12-11", { dateOrder: "DMY" })).toBe("2026-12-11");
+  const config = loadConfig();
+  config.dateOrder = "DMY";
+  const roster = sample("master");
+  roster[1][0] = "21/11/2025";
+  expect(parseMaster(roster, config, today).agents[0].hireDate).toBe(
+    "2025-11-21",
+  );
+
+  const rows = sample("attendance").slice(0, 2);
+  rows[1][4] = "21/11/2026";
+  const agents = sampleMaster().agents;
+  expect(parseAttendance(rows, config, agents, window).records[0].date).toBe(
+    today,
+  );
+  config.sources.attendance.layout = "wide";
+  const wide = sample("attendance-wide");
+  wide[0][3] = "20/11/2024";
+  expect(parseAttendance(wide, config, agents, window).records[0].date).toBe(
+    "2026-11-20",
+  );
+});
+
+it("provides one date sample per configured sheet mapping", () => {
+  const config = loadConfig();
+  config.dateOrder = "DMY";
+  const now = new Date("2026-11-21T12:00:00Z");
+  const roster = sample("master");
+  roster[1][0] = "21/11/2025";
+  const attendance = sample("attendance");
+  attendance[1][4] = "21/11/2026";
+  expect(sampleSourceDate(roster, config, "master", now)).toBe("2025-11-21");
+  expect(sampleSourceDate(sample("schedule"), config, "schedule", now)).toBe(
+    "2026-10-21",
+  );
+  expect(sampleSourceDate(attendance, config, "attendance", now)).toBe(today);
+  config.sources.attendance.layout = "wide";
+  expect(
+    sampleSourceDate(sample("attendance-wide"), config, "attendance", now),
+  ).toBe(today);
+});

@@ -48,7 +48,9 @@ export function parseMaster(rows: string[][], config: Config, today: string) {
         ? "covered"
         : null;
     if (!ownerGroup) continue;
-    const lastWorkingDay = parseDate(raw.lastWorkingDay);
+    const lastWorkingDay = parseDate(raw.lastWorkingDay, {
+      dateOrder: config.dateOrder,
+    });
     agents.push({
       code,
       ownerGroup,
@@ -60,7 +62,7 @@ export function parseMaster(rows: string[][], config: Config, today: string) {
       tl: raw.tl,
       stl: raw.stl,
       title: raw.title,
-      hireDate: parseDate(raw.hireDate),
+      hireDate: parseDate(raw.hireDate, { dateOrder: config.dateOrder }),
       lastWorkingDay,
       active: !lastWorkingDay || lastWorkingDay > today,
     });

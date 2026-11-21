@@ -26,8 +26,8 @@ Environment keys live in `.env.example`. The optional `DASHBOARD_SOURCE_CONFIG` 
 
 ## Connect or replace a sheet
 
-1. Open the intended tab and copy its view link. Check the export with `npm run test-link -- '<link>'`. It reports the HTTP status, content type and five masked rows. Use `--show-rows` only when inspecting locally.
-2. Copy `config/sources.json` to the gitignored `config/sources.local.json` for a local live run. For Railway, set `DASHBOARD_SOURCE_CONFIG` to the full JSON. Set the configured identity, IDs, GIDs and mappings. Sheet access must be read-only and work without signing in.
+1. Open the intended tab and copy its view link. Check the export with `npm run test-link -- '<link>'`. It reports the HTTP status, content type, one interpreted sample date and five masked rows. Add `--source=master`, `--source=schedule` or `--source=attendance` to use the configured mapping for a new link. The schedule sample uses its configured anchor. Use `--show-rows` only when inspecting locally.
+2. Copy `config/sources.json` to the gitignored `config/sources.local.json` for a local live run. For Railway, set `DASHBOARD_SOURCE_CONFIG` to the full JSON. Set the configured identity, IDs, GIDs and mappings. Set `dateOrder` to `DMY` for slash dates in day/month/year order. The default is `MDY`. Sheet access must be read-only and work without signing in.
 3. Keep schedule on CSV export. Set `sources.schedule.anchor.column` and `sources.schedule.anchor.date` to the first date column and its Cairo date, and retain a matching `stopAtHeader`. Check the latest sync for `ANCHOR_MISMATCH`.
 4. Confirm attendance column meanings and verify its CSV export before enabling it. A nonempty value from the long layout’s configured `missing` column creates a D4 finding. The parser also supports a wide layout with date columns and no separate Missing field.
 5. Restart or redeploy and run **Sync now → All** in Settings. Check that the job results remain healthy and spot-check the dates against the sheet.
