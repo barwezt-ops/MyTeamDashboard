@@ -21,6 +21,7 @@ export function parseAttendance(
   const records = new Map<string, AttendanceDay>();
   const missingByDay = new Map<string, Set<string>>();
   const unmatched = new Set<string>();
+  const dates = new Set<string>();
   const warnings: string[] = [];
   let matchedRows = 0;
   const add = (
@@ -61,14 +62,15 @@ export function parseAttendance(
       const day = parseDate(row[dateIndex] ?? "", window);
       if (!day) continue;
       matchedRows++;
+      dates.add(day);
+      if (day < window.from || day > window.to) continue;
       const missingValue = row[missingIndex];
-      if (day >= window.from && day <= window.to)
-        add(
-          rowCode,
-          day,
-          row[statusIndex]?.trim() ?? "",
-          clean(missingValue) ? missingValue : null,
-        );
+      add(
+        rowCode,
+        day,
+        row[statusIndex]?.trim() ?? "",
+        clean(missingValue) ? missingValue : null,
+      );
     }
   } else {
     const { keyColumn, keyType, firstDateColumn, dateHeaderRow } = source.wide;
@@ -83,6 +85,7 @@ export function parseAttendance(
       date: parseDate(value, window, true),
       index: start + offset,
     }));
+    for (const { date } of days) if (date) dates.add(date);
     for (const row of rows.slice(dataStart)) {
       const rawKey = clean(row[keyIndex]);
       if (!rawKey) continue;
@@ -108,5 +111,10 @@ export function parseAttendance(
   for (const [key, values] of missingByDay) {
     records.get(key)!.missing = [...values].join("\n");
   }
-  return { records: [...records.values()], matchedRows, warnings };
+  return {
+    records: [...records.values()],
+    matchedRows,
+    warnings,
+    dates: [...dates].sort(),
+  };
 }

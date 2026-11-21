@@ -4,6 +4,7 @@ import {
   lastRun,
   attendanceOf,
   discrepanciesOf,
+  scheduleOf,
 } from "../src/db/repo.js";
 import { openDb } from "../src/db/db.js";
 import { loadConfig } from "../src/config.js";
@@ -11,7 +12,8 @@ import { createSync } from "../src/sync/service.js";
 import { rosterChanges } from "../src/sync/syncRoster.js";
 import { fetchCsv, SourceAccessError } from "../src/fetch/fetchCsv.js";
 import { exportUrl, parseLink, sourceUrl } from "../src/fetch/urls.js";
-import { sampleMaster, window } from "./sample.js";
+import { sample, sampleMaster, window } from "./sample.js";
+import * as fixtureFiles from "../src/fetch/fixtures.js";
 
 it("reports roster lifecycle changes and applies the suspicious-drop guard", () => {
   const { agents } = sampleMaster();
@@ -100,4 +102,107 @@ it("builds public links, retries temporary responses and rejects HTML", async ()
       vi.fn(),
     ),
   ).rejects.toThrow(SourceAccessError);
+});
+
+it("retains December history when the January source coverage starts inside the sync window", async () => {
+  const config = loadConfig();
+  config.sources.attendance.enabled = true;
+  const fixtures = vi
+    .spyOn(fixtureFiles, "readFixture")
+    .mockImplementation((source) => ({
+      bytes: 0,
+      rows:
+        source === "master"
+          ? sample("master")
+          : source === "schedule"
+            ? [
+                ["Code", "", "", "", "", "Tuesday", "Wednesday", "removed"],
+                ["99001", "", "", "", "", "15:45", "Off"],
+              ]
+            : [
+                ["Code", "", "", "", "Date", "Status"],
+                [
+                  "99001",
+                  "",
+                  "",
+                  "",
+                  config.sources.schedule.anchor.date,
+                  "Present",
+                ],
+              ],
+    }));
+  const db = openDb(":memory:");
+  try {
+    const sync = createSync(
+      db,
+      config,
+      "fixture",
+      () => new Date("2027-01-02T11:00:00Z"),
+    );
+    config.sources.schedule.anchor.date = "2026-12-29";
+    expect(await sync.start("all")).toBe(true);
+    config.sources.schedule.anchor.date = "2027-01-01";
+    expect(await sync.start("daily")).toBe(true);
+    const range = sync.window();
+    expect(scheduleOf(db, range).map(({ date }) => date)).toEqual([
+      "2026-12-29",
+      "2026-12-30",
+      "2027-01-01",
+      "2027-01-02",
+    ]);
+    expect(attendanceOf(db, range).map(({ date }) => date)).toEqual([
+      "2026-12-29",
+      "2027-01-01",
+    ]);
+  } finally {
+    db.close();
+    fixtures.mockRestore();
+  }
+});
+
+it("intersects attendance coverage with the sync window before replacing history", async () => {
+  const config = loadConfig();
+  config.sources.attendance.enabled = true;
+  const fixtures = vi
+    .spyOn(fixtureFiles, "readFixture")
+    .mockImplementation((source) => ({
+      bytes: 0,
+      rows:
+        source !== "attendance"
+          ? sample(source)
+          : [
+              ["Code", "", "", "", "Date", "Status"],
+              ...["2026-10-01", "2026-11-20", "2026-12-20"].map((date) => [
+                "99001",
+                "",
+                "",
+                "",
+                date,
+                "Present",
+              ]),
+            ],
+    }));
+  const db = openDb(":memory:");
+  try {
+    const insert = db.prepare(
+      "INSERT INTO attendance_days (code, date, raw, status) VALUES ('99001', ?, 'Present', 'Present')",
+    );
+    for (const date of ["2026-10-01", window.from, window.to, "2026-12-20"])
+      insert.run(date);
+    const sync = createSync(
+      db,
+      config,
+      "fixture",
+      () => new Date("2026-11-21T11:00:00Z"),
+    );
+    expect(await sync.start("all")).toBe(true);
+    expect(
+      attendanceOf(db, { from: "2026-10-01", to: "2026-12-20" }).map(
+        ({ date }) => date,
+      ),
+    ).toEqual(["2026-10-01", "2026-11-20", "2026-12-20"]);
+  } finally {
+    db.close();
+    fixtures.mockRestore();
+  }
 });

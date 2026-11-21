@@ -5,12 +5,12 @@ export function replaceSchedule(
   db: Db,
   records: ScheduleDay[],
   members: Set<string>,
-  window: Window,
+  covered: Window,
   now: string,
 ) {
   db.prepare("DELETE FROM schedule_days WHERE date BETWEEN ? AND ?").run(
-    window.from,
-    window.to,
+    covered.from,
+    covered.to,
   );
   db.prepare("DELETE FROM schedule_members").run();
   const member = db.prepare("INSERT INTO schedule_members (code) VALUES (?)");

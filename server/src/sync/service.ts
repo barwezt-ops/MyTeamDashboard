@@ -14,13 +14,22 @@ import { readFixture } from "../fetch/fixtures.js";
 import { sourceUrl } from "../fetch/urls.js";
 import { parseMaster } from "../parse/master.js";
 import { localDate, plusDays, weekday } from "../parse/normalize.js";
-import { parseSchedule } from "../parse/schedule.js";
+import { parseSchedule, type Window } from "../parse/schedule.js";
 import { parseAttendance } from "../parse/attendance.js";
 import { runRules } from "../rules/index.js";
 import { jobRunner } from "./runJob.js";
 import { rosterChanges } from "./syncRoster.js";
 import { replaceSchedule } from "./syncSchedule.js";
 import { replaceAttendance } from "./syncAttendance.js";
+
+function coveredRange(dates: string[], window: Window): Window {
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  return {
+    from: first > window.from ? first : window.from,
+    to: last < window.to ? last : window.to,
+  };
+}
 
 export function createSync(
   db: Db,
@@ -78,17 +87,14 @@ export function createSync(
         range,
       );
       if (!scheduledCodes.size) throw new Error("NO_TEAM_ROWS");
-      if (
-        !records.length ||
-        !dates.some((date) => date >= range.from && date <= range.to)
-      )
-        throw new Error("NO_SCHEDULE_DATES_IN_WINDOW");
+      if (!records.length) throw new Error("NO_SCHEDULE_DATES_IN_WINDOW");
+      const covered = coveredRange(dates, range);
       db.transaction(() =>
         replaceSchedule(
           db,
           records,
           scheduledCodes,
-          range,
+          covered,
           now().toISOString(),
         ),
       )();
@@ -98,7 +104,7 @@ export function createSync(
     runner.runStep("attendance", async () => {
       const rows = await load("attendance");
       const range = window();
-      const { records, matchedRows, warnings } = parseAttendance(
+      const { records, matchedRows, warnings, dates } = parseAttendance(
         rows,
         config,
         agentsOf(db),
@@ -106,8 +112,9 @@ export function createSync(
       );
       if (!matchedRows) throw new Error("NO_TEAM_ROWS");
       if (!records.length) throw new Error("NO_ATTENDANCE_DATES_IN_WINDOW");
+      const covered = coveredRange(dates, range);
       db.transaction(() =>
-        replaceAttendance(db, records, range, now().toISOString()),
+        replaceAttendance(db, records, covered, now().toISOString()),
       )();
       return { rowsRead: rows.length, rowsKept: records.length, warnings };
     });

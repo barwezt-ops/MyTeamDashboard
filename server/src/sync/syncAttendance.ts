@@ -4,12 +4,12 @@ import type { Window } from "../parse/schedule.js";
 export function replaceAttendance(
   db: Db,
   records: AttendanceDay[],
-  window: Window,
+  covered: Window,
   now: string,
 ) {
   db.prepare("DELETE FROM attendance_days WHERE date BETWEEN ? AND ?").run(
-    window.from,
-    window.to,
+    covered.from,
+    covered.to,
   );
   const insert = db.prepare(
     "INSERT INTO attendance_days VALUES (@code,@date,@raw,@status,@missing,@now)",
