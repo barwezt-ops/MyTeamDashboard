@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "../src/config.js";
+import { configSchema, loadConfig } from "../src/config.js";
 import { checkColumns, indexOf } from "../src/parse/columns.js";
 import { clean, codeOf, localDate, parseDate } from "../src/parse/normalize.js";
 import { parseMaster } from "../src/parse/master.js";
@@ -233,3 +233,51 @@ it("reports unmatched wide attendance names only for configured team leads", () 
   ]);
   expect(parsed.records).toEqual([]);
 });
+
+it("accepts a relocated master field and verifies the expected header", () => {
+  const config = loadConfig();
+  const rows = sample("master");
+  const master = config.sources.master;
+  const parsed = configSchema.parse({
+    ...config,
+    sources: {
+      ...config.sources,
+      master: {
+        ...master,
+        columns: { ...master.columns, name: "aa" },
+        expectHeaders: { name: " Employee  Name " },
+      },
+    },
+  });
+  rows[0][26] = "employee name";
+  rows[1][26] = "Relocated Sample";
+  expect(parseMaster(rows, parsed, today).agents[0].fullName).toBe(
+    "Relocated Sample",
+  );
+  rows[0][26] = "Different header";
+  expect(() => parseMaster(rows, parsed, today)).toThrow(
+    "COLUMN_HEADER_MISMATCH:name",
+  );
+  parsed.sources.master.headerRows = 0;
+  expect(parseMaster(rows.slice(1), parsed, today).agents[0].fullName).toBe(
+    "Relocated Sample",
+  );
+});
+
+it.each([
+  ["N", "Phone number"],
+  ["O", "IWS Email"],
+  ["Q", "Laptop Number"],
+  ["L", "American Name"],
+])(
+  "rejects sensitive master header %s even when explicitly expected",
+  (column, header) => {
+    const config = loadConfig();
+    const master = config.sources.master;
+    master.columns.name = column;
+    master.expectHeaders = { name: header };
+    expect(() => parseMaster(sample("master"), config, today)).toThrow(
+      "COLUMN_HEADER_MISMATCH:name",
+    );
+  },
+);

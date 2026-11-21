@@ -17,28 +17,29 @@ const source = z.object({
   headerRows: z.number().int().min(0),
   query: z.string().optional(),
 });
-const rosterColumn = z.enum(["A", "B", "C", "D", "E", "G", "H", "I", "K", "M"]);
+const rosterColumn = z.string().trim().toUpperCase().pipe(column);
+const rosterColumns = z.strictObject({
+  hireDate: rosterColumn,
+  code: rosterColumn,
+  name: rosterColumn,
+  account: rosterColumn,
+  account2: rosterColumn,
+  dtl: rosterColumn,
+  tl: rosterColumn,
+  stl: rosterColumn,
+  title: rosterColumn,
+  lastWorkingDay: rosterColumn,
+});
 const master = source.extend({
   headerRows: z.union([z.literal(0), z.literal(1)]),
-  columns: z
-    .object({
-      hireDate: rosterColumn,
-      code: rosterColumn,
-      name: rosterColumn,
-      account: rosterColumn,
-      account2: rosterColumn,
-      dtl: rosterColumn,
-      tl: rosterColumn,
-      stl: rosterColumn,
-      title: rosterColumn,
-      lastWorkingDay: rosterColumn,
-    })
-    .strict()
-    .refine(
-      (columns) =>
-        new Set(Object.values(columns)).size === Object.keys(columns).length,
-      "Roster columns must be unique",
-    ),
+  columns: rosterColumns.refine(
+    (columns) =>
+      new Set(Object.values(columns)).size === Object.keys(columns).length,
+    "Roster columns must be unique",
+  ),
+  expectHeaders: z
+    .partialRecord(rosterColumns.keyof(), z.string().trim().min(1))
+    .optional(),
 });
 const schedule = source.extend({
   mode: z.literal("export"),

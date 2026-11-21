@@ -1,10 +1,22 @@
 import type { Agent } from "../api/dto.js";
 import type { Config } from "../config.js";
-import { checkColumns, pick } from "./columns.js";
+import { checkColumns, indexOf, pick } from "./columns.js";
 import { codeOf, labelOf, parseDate } from "./normalize.js";
 
 export function parseMaster(rows: string[][], config: Config, today: string) {
-  const { columns, headerRows } = config.sources.master;
+  const { columns, headerRows, expectHeaders } = config.sources.master;
+  if (headerRows === 1) {
+    for (const field of Object.keys(columns) as (keyof typeof columns)[]) {
+      const header = labelOf(rows[0]?.[indexOf(columns[field])]);
+      const expected = expectHeaders?.[field];
+      if (
+        /phone|email|laptop|american/i.test(header) ||
+        (expected !== undefined && header !== labelOf(expected))
+      ) {
+        throw new Error("COLUMN_HEADER_MISMATCH:" + field);
+      }
+    }
+  }
   const warnings = checkColumns(
     rows,
     {
