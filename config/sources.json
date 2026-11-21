@@ -72,6 +72,7 @@
       },
       "wide": {
         "keyColumn": "C",
+        "dtlColumn": "B",
         "keyType": "name",
         "firstDateColumn": "D",
         "dateHeaderRow": 1

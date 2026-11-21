@@ -79,6 +79,7 @@ const attendance = source.extend({
   }),
   wide: z.object({
     keyColumn: column,
+    dtlColumn: column.default("B"),
     keyType: z.enum(["name", "code"]),
     firstDateColumn: column,
     dateHeaderRow: z.number().int().positive(),

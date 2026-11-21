@@ -1,7 +1,7 @@
 import type { Agent, AttendanceDay } from "../api/dto.js";
 import type { Config } from "../config.js";
 import { checkColumns, indexOf } from "./columns.js";
-import { clean, codeOf, nameOf, parseDate } from "./normalize.js";
+import { clean, codeOf, labelOf, nameOf, parseDate } from "./normalize.js";
 import type { Window } from "./schedule.js";
 import { parseStatus } from "./status.js";
 
@@ -73,9 +73,14 @@ export function parseAttendance(
       );
     }
   } else {
-    const { keyColumn, keyType, firstDateColumn, dateHeaderRow } = source.wide;
+    const { keyColumn, dtlColumn, keyType, firstDateColumn, dateHeaderRow } =
+      source.wide;
     const header = rows[dateHeaderRow - 1] ?? [];
     const keyIndex = indexOf(keyColumn);
+    const leadIndex = indexOf(dtlColumn);
+    const teamLeads = new Set(
+      [config.me.rosterName, ...config.me.alsoCover].map(labelOf),
+    );
     const start = indexOf(firstDateColumn);
     const dataStart = Math.max(source.headerRows, dateHeaderRow);
     warnings.push(...checkColumns(rows, { key: keyColumn }, dataStart));
@@ -92,7 +97,8 @@ export function parseAttendance(
       const code =
         keyType === "name" ? names.get(nameOf(rawKey)) : codeOf(rawKey);
       if (!code || !codes.has(code)) {
-        if (keyType === "name") unmatched.add(rawKey);
+        if (keyType === "name" && teamLeads.has(labelOf(row[leadIndex])))
+          unmatched.add(rawKey);
         continue;
       }
       matchedRows++;

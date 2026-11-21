@@ -174,9 +174,7 @@ describe("attendance", () => {
       date: "2026-11-20",
       status: "Present",
     });
-    expect(result.warnings).toEqual([
-      "UNMATCHED_ATTENDANCE_NAME:Unmatched Sample",
-    ]);
+    expect(result.warnings).toEqual([]);
     const ambiguous = parseAttendance(
       rows,
       config,
@@ -216,3 +214,22 @@ it.each(["24:00", "12:61", "18:00:60", "0:30 AM", "18:00 PM"])(
       shiftStart: null,
     }),
 );
+
+it("reports unmatched wide attendance names only for configured team leads", () => {
+  const config = loadConfig();
+  config.sources.attendance.layout = "wide";
+  config.sources.attendance.wide.dtlColumn = "A";
+  const rows = [
+    ["DTL", "Department", "Name", "21-Nov"],
+    ["  DEMO   LEAD  ", "", "Own Missing", "Present"],
+    ["cover lead", "", "Covered Missing", "Present"],
+    ["Other Lead", "Demo Lead", "Outside Missing", "Present"],
+    ["", "", "No Lead", "Present"],
+  ];
+  const parsed = parseAttendance(rows, config, sampleMaster().agents, window);
+  expect(parsed.warnings).toEqual([
+    "UNMATCHED_ATTENDANCE_NAME:Covered Missing",
+    "UNMATCHED_ATTENDANCE_NAME:Own Missing",
+  ]);
+  expect(parsed.records).toEqual([]);
+});
