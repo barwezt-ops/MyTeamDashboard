@@ -35,12 +35,7 @@ export function openDb(directory: string): Db {
     const version = db.pragma("user_version", { simple: true });
     if (version === 0)
       db.transaction(() => {
-        db.exec(
-          readFileSync(
-            new URL("../../src/db/schema.sql", import.meta.url),
-            "utf8",
-          ),
-        );
+        db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
         db.pragma("user_version = 2");
       })();
     else if (version === 1)

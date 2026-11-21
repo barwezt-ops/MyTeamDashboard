@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import { startServer } from "../../server/src/index.js";
+import { startServer } from "../../server/dist/index.js";
 
 process.env.PORT = "3210";
 process.env.DATA_DIR = ":memory:";

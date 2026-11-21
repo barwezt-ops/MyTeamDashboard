@@ -2,6 +2,9 @@
   "name": "server",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('node:fs').copyFileSync('src/db/schema.sql', 'dist/db/schema.sql')\""
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.11.1",
