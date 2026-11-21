@@ -35,7 +35,7 @@ export function finding(
   severity: Finding["severity"] = "action",
 ): Finding {
   return {
-    id: dayKey(code, date) + "|" + ruleId,
+    id: (ruleId === "D5" ? code : dayKey(code, date)) + "|" + ruleId,
     code,
     date,
     ruleId,

@@ -206,3 +206,61 @@ it("intersects attendance coverage with the sync window before replacing history
     fixtures.mockRestore();
   }
 });
+
+it("keeps one open D5 and its comment across daily syncs until the agent is scheduled", async () => {
+  const fixtures = vi.spyOn(fixtureFiles, "readFixture");
+  const db = openDb(":memory:");
+  try {
+    let date = "2026-11-21";
+    const sync = createSync(
+      db,
+      loadConfig(),
+      "fixture",
+      () => new Date(date + "T11:00:00Z"),
+    );
+    const findings = () =>
+      discrepanciesOf(db, "d.rule_id='D5' AND d.code=?", ["99004"]);
+    expect(await sync.start("all")).toBe(true);
+    db.prepare("UPDATE discrepancies SET tl_comment=? WHERE id=?").run(
+      "Followed up with WFM",
+      "99004|D5",
+    );
+    for (const day of ["2026-11-22", "2026-11-23"]) {
+      date = day;
+      expect(await sync.start("daily")).toBe(true);
+      expect(findings()).toMatchObject([
+        {
+          id: "99004|D5",
+          date: "2026-11-21",
+          state: "open",
+          tlComment: "Followed up with WFM",
+        },
+      ]);
+    }
+
+    const schedule = sample("schedule");
+    schedule.push(["99004", ...schedule[1].slice(1)]);
+    fixtures.mockImplementation((source) => ({
+      bytes: 0,
+      rows: source === "schedule" ? schedule : sample(source),
+    }));
+    date = "2026-11-24";
+    expect(await sync.start("daily")).toBe(true);
+    expect(findings()).toMatchObject([
+      {
+        id: "99004|D5",
+        date: "2026-11-21",
+        state: "resolved",
+        tlComment: "Followed up with WFM",
+      },
+    ]);
+    expect(
+      db
+        .prepare("SELECT auto_cleared FROM discrepancies WHERE id=?")
+        .get("99004|D5"),
+    ).toEqual({ auto_cleared: 1 });
+  } finally {
+    db.close();
+    fixtures.mockRestore();
+  }
+});

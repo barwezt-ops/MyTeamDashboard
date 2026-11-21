@@ -171,9 +171,11 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
       }
       return { agent: summary(agent), schedule: plan, attendance: actual };
     });
-    const discrepancies = discrepanciesOf(db, "d.date=? AND d.state='open'", [
-      date,
-    ]).filter(
+    const discrepancies = discrepanciesOf(
+      db,
+      "d.state='open' AND (d.date=? OR (d.rule_id='D5' AND d.date<=?))",
+      [date, date],
+    ).filter(
       (row) =>
         codeSet.has(row.code) ||
         (row.ruleId === "D5" &&
