@@ -73,6 +73,11 @@ export function Today({
       tone: statusColors["On Hold"],
     },
     { label: "Unknown", count: counts.unknown, tone: statusColors.Unknown },
+    {
+      label: "Not on schedule",
+      count: counts.notOnSchedule,
+      tone: statusColors["Off Day"],
+    },
   ];
   const actions = [...openActions, ...confirmReturn];
   const affected = new Set(actions.map((row) => row.code));
@@ -241,10 +246,14 @@ export function Today({
                   <td className="mono">{agent.code}</td>
                   <td>{agent.account || "—"}</td>
                   <td>
-                    <Pill
-                      status={schedule?.status ?? "Unknown"}
-                      shift={schedule?.shiftStart}
-                    />
+                    {schedule ? (
+                      <Pill
+                        status={schedule.status}
+                        shift={schedule.shiftStart}
+                      />
+                    ) : (
+                      <span className="group-tag">Not on schedule</span>
+                    )}
                   </td>
                   {attendanceEnabled && (
                     <td>

@@ -86,7 +86,8 @@ export interface TodayData {
     | "leave"
     | "unplanned"
     | "excluded"
-    | "unknown",
+    | "unknown"
+    | "notOnSchedule",
     number
   >;
   agents: {

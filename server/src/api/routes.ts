@@ -136,15 +136,18 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
       unplanned: 0,
       excluded: 0,
       unknown: 0,
+      notOnSchedule: 0,
     };
     const coverage = new Map<string, number>();
     const rows = agents.map((agent) => {
       const plan = schedule.get(agent.code) ?? null;
       const actual = attendance.get(agent.code) ?? null;
-      if (excluded(plan?.status) || excluded(actual?.status)) counts.excluded++;
+      const isExcluded = excluded(plan?.status) || excluded(actual?.status);
+      if (!isExcluded && actual?.status === "Present") counts.present++;
+      if (!plan) counts.notOnSchedule++;
+      else if (isExcluded) counts.excluded++;
       else {
-        if (actual?.status === "Present") counts.present++;
-        switch (plan?.status) {
+        switch (plan.status) {
           case "Scheduled":
             counts.scheduled++;
             if (plan.shiftStart)

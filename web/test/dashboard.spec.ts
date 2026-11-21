@@ -35,6 +35,25 @@ test("sign in, review views, add an agent note, and copy the email table", async
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
+  await expect(
+    page
+      .locator(".stat")
+      .filter({ hasText: "Not on schedule" })
+      .locator("strong"),
+  ).toHaveText("1");
+  await expect(
+    page.locator(".stat").filter({ hasText: "Unknown" }).locator("strong"),
+  ).toHaveText("1");
+  await expect(
+    page
+      .getByRole("row", { name: /Morgan/ })
+      .getByText("Not on schedule", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("row", { name: /Riley/ })
+      .getByText("Unknown", { exact: true }),
+  ).toBeVisible();
   await screenshot("today-light");
   await theme(false);
   await screenshot("today-dark");
