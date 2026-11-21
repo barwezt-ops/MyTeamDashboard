@@ -192,3 +192,27 @@ describe("attendance", () => {
     expect(parseAttendance(rows, config, agents, window).records).toEqual([]);
   });
 });
+
+it.each([
+  ["6:00 PM", "18:00"],
+  ["6:00 pm", "18:00"],
+  ["18:00:00", "18:00"],
+  ["6:15 AM", "06:15"],
+  ["12:00 PM", "12:00"],
+  ["12:00 AM", "00:00"],
+  ["6:00:45pm", "18:00"],
+])("normalizes shift %s to %s", (raw, shiftStart) => {
+  expect(parseStatus(raw, loadConfig().statusMap)).toEqual({
+    status: "Scheduled",
+    shiftStart,
+  });
+});
+
+it.each(["24:00", "12:61", "18:00:60", "0:30 AM", "18:00 PM"])(
+  "rejects invalid shift %s",
+  (raw) =>
+    expect(parseStatus(raw, loadConfig().statusMap)).toEqual({
+      status: "Unknown",
+      shiftStart: null,
+    }),
+);
