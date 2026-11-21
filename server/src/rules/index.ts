@@ -1,0 +1,47 @@
+import type { Db } from "../db/db.js";
+import { plusDays } from "../parse/normalize.js";
+import type { RuleContext } from "./context.js";
+import { d1 } from "./d1.js";
+import { d2 } from "./d2.js";
+import { d3 } from "./d3.js";
+import { d4 } from "./d4.js";
+import { d5 } from "./d5.js";
+import { d6 } from "./d6.js";
+import { d7 } from "./d7.js";
+
+export function runRules(db: Db, ctx: RuleContext, now: string) {
+  const attendance = ctx.attendanceEnabled ? ctx.attendance : [];
+  const context = { ...ctx, attendance };
+  const rules = [
+    ...(ctx.attendanceEnabled ? [d1, d2, d3, d4] : []),
+    d5,
+    d6,
+    d7,
+  ];
+  const findings = rules.flatMap((rule) => rule(context));
+  const insert =
+    db.prepare(`INSERT INTO discrepancies (id,code,date,rule_id,severity,missing,source,created_at,updated_at)
+    VALUES (@id,@code,@date,@ruleId,@severity,@missing,@source,@now,@now)
+    ON CONFLICT(id) DO UPDATE SET severity=excluded.severity,missing=excluded.missing,source=excluded.source,updated_at=excluded.updated_at`);
+  const clear = db.prepare(
+    "UPDATE discrepancies SET auto_cleared=1,state='resolved',updated_at=? WHERE id=? AND state='open'",
+  );
+  const existing = db
+    .prepare(
+      "SELECT id,date,rule_id AS ruleId FROM discrepancies WHERE state='open' AND date BETWEEN ? AND ?",
+    )
+    .all(ctx.from, plusDays(ctx.today, 7)) as {
+    id: string;
+    date: string;
+    ruleId: string;
+  }[];
+  const ids = new Set(findings.map((row) => row.id));
+  for (const row of findings) insert.run({ ...row, now });
+  for (const row of existing) {
+    if (ids.has(row.id)) continue;
+    if (row.ruleId === "D5" && !ctx.scheduleMembers) continue;
+    if (row.date > ctx.today && row.ruleId !== "D6") continue;
+    clear.run(now, row.id);
+  }
+  return findings.length;
+}

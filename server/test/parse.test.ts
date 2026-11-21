@@ -1,0 +1,194 @@
+import { describe, expect, it } from "vitest";
+import { loadConfig } from "../src/config.js";
+import { checkColumns, indexOf } from "../src/parse/columns.js";
+import { clean, codeOf, localDate, parseDate } from "../src/parse/normalize.js";
+import { parseMaster } from "../src/parse/master.js";
+import { parseStatus } from "../src/parse/status.js";
+import { parseSchedule } from "../src/parse/schedule.js";
+import { parseAttendance } from "../src/parse/attendance.js";
+import { sample, sampleMaster, today, window } from "./sample.js";
+
+describe("normalization and column selection", () => {
+  it("preserves numeric strings and strips formulas and decimal suffixes", () => {
+    expect(codeOf(" 01254.0 ")).toBe("01254");
+    expect(clean("#REF!")).toBe("");
+    expect(clean("#N/A")).toBe("");
+    expect(indexOf("AA")).toBe(26);
+    expect(indexOf("CN")).toBe(91);
+    expect(() => checkColumns([["code"]], { date: "B" }, 0)).toThrow(
+      "MISSING_REQUIRED_COLUMN:date",
+    );
+    expect(
+      checkColumns(
+        [
+          ["code", "name"],
+          ["1", ""],
+          ["2", ""],
+        ],
+        { name: "B" },
+        1,
+      ),
+    ).toEqual(["COLUMN_LOOKS_WRONG:name"]);
+  });
+  it.each(["2026-11-21", "11/21/2026", "21-Nov", "Nov-21"])(
+    "reads %s",
+    (value) => expect(parseDate(value, window)).toBe(today),
+  );
+  it("rejects bad and ambiguous dates and can ignore the source year", () => {
+    expect(parseDate("2/29/2026")).toBeNull();
+    expect(parseDate("n/a")).toBeNull();
+    expect(parseDate("Nov-21")).toBeNull();
+    expect(
+      parseDate("21-Nov", { from: "2025-11-21", to: "2026-11-21" }),
+    ).toBeNull();
+    expect(parseDate("11/21/1990", window, true)).toBe(today);
+    expect(localDate("Africa/Cairo", new Date("2026-11-20T23:00:00Z"))).toBe(
+      today,
+    );
+  });
+});
+
+describe("roster", () => {
+  it("dedupes codes, normalizes leadership, and drops private fields in both layouts", () => {
+    const { agents, warnings } = sampleMaster();
+    expect(agents.map((row) => row.code)).toEqual([
+      "99001",
+      "99002",
+      "99003",
+      "99004",
+      "99005",
+      "99006",
+      "99008",
+    ]);
+    expect(agents[0]).toMatchObject({
+      fullName: "Avery Sample",
+      firstName: "Avery",
+      ownerGroup: "mine",
+    });
+    expect(agents[1].account2).toBe("");
+    expect(agents[2].ownerGroup).toBe("covered");
+    expect(agents.at(-1)?.active).toBe(false);
+    expect(warnings).toContain("DUPLICATE_CODES_DROPPED:1");
+    expect(JSON.stringify(agents)).not.toMatch(
+      /555-0100|example.invalid|FAKE-LAPTOP|Synthetic Alias/,
+    );
+    const config = loadConfig();
+    config.sources.master.headerRows = 0;
+    expect(
+      parseMaster(sample("master-no-header"), config, today).agents,
+    ).toEqual(agents);
+  });
+});
+
+describe("schedule", () => {
+  it.each([
+    ["15:45", "Scheduled"],
+    ["7:30", "Scheduled"],
+    ["OFF", "Off Day"],
+    ["Annual", "PTO"],
+    ["PTO", "PTO"],
+    ["UPL", "UPL"],
+    [" Sick ", "Sick"],
+    ["Casual", "Casual"],
+    ["On Hold", "On Hold"],
+    ["Not Hired", "Not Hired"],
+    ["Present", "Present"],
+    ["Absent", "Absent"],
+    ["No show", "Absent"],
+    ["", "Unknown"],
+    ["#REF!", "Unknown"],
+    ["#N/A", "Unknown"],
+    ["#VALUE!", "Unknown"],
+    ["constructor", "Unknown"],
+  ])("normalizes %s", (raw, status) => {
+    expect(parseStatus(raw, loadConfig().statusMap).status).toBe(status);
+  });
+  it("anchors 86 days, flags an anchor offset, ignores summaries and filters agents", () => {
+    const rows = sample("schedule");
+    const config = loadConfig();
+    const codes = new Set(sampleMaster().agents.map((agent) => agent.code));
+    const result = parseSchedule(rows, config, codes, window);
+    expect(result.dates).toHaveLength(86);
+    expect(result.dates.slice(0, 2)).toEqual(["2026-10-21", "2026-10-22"]);
+    expect(result.dates.at(-1)).toBe("2027-01-14");
+    expect(result.scheduledCodes.has("99007")).toBe(false);
+    expect(result.scheduledCodes.has("99004")).toBe(false);
+    expect(
+      result.records.find((row) => row.date === today && row.code === "99005"),
+    ).toMatchObject({ status: "Unknown", raw: "" });
+    expect(result.warnings).not.toContain("ANCHOR_MISMATCH");
+    config.sources.schedule.anchor.date = "2026-10-22";
+    expect(parseSchedule(rows, config, codes, window).warnings).toContain(
+      "ANCHOR_MISMATCH",
+    );
+    rows[0] = rows[0].slice(0, 91);
+    expect(() => parseSchedule(rows, config, codes, window)).toThrow(
+      "MISSING_SCHEDULE_STOP_HEADER",
+    );
+  });
+});
+
+describe("attendance", () => {
+  it("parses the long layout and keeps configured missing text for team codes", () => {
+    const config = loadConfig();
+    const result = parseAttendance(
+      sample("attendance"),
+      config,
+      sampleMaster().agents,
+      window,
+    );
+    expect(result.records).toHaveLength(4);
+    expect(result.records[0]).toMatchObject({
+      code: "99001",
+      date: today,
+      status: "Sick",
+      missing: "Missing punch",
+    });
+    const duplicate = [
+      ...sample("attendance"),
+      ["99001", "", "", "", "11/21/2026", "", "Missing hours"],
+    ];
+    expect(
+      parseAttendance(duplicate, config, sampleMaster().agents, window)
+        .records[0].missing,
+    ).toBe("Missing punch\nMissing hours");
+    delete config.sources.attendance.long.columns.missing;
+    expect(
+      parseAttendance(
+        sample("attendance"),
+        config,
+        sampleMaster().agents,
+        window,
+      ).records[0].missing,
+    ).toBeNull();
+  });
+  it("matches only unique normalized names and ignores the wide header year", () => {
+    const config = loadConfig();
+    config.sources.attendance.layout = "wide";
+    const agents = sampleMaster().agents;
+    const rows = sample("attendance-wide");
+    const result = parseAttendance(rows, config, agents, window);
+    expect(result.records).toHaveLength(3);
+    expect(result.records[0]).toMatchObject({
+      code: "99001",
+      date: "2026-11-20",
+      status: "Present",
+    });
+    expect(result.warnings).toEqual([
+      "UNMATCHED_ATTENDANCE_NAME:Unmatched Sample",
+    ]);
+    const ambiguous = parseAttendance(
+      rows,
+      config,
+      [...agents, { ...agents[0], code: "99999" }],
+      window,
+    );
+    expect(
+      ambiguous.records.some(
+        (row) => row.code === "99001" || row.code === "99999",
+      ),
+    ).toBe(false);
+    config.sources.attendance.wide.keyType = "code";
+    expect(parseAttendance(rows, config, agents, window).records).toEqual([]);
+  });
+});
