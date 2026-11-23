@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ZodError } from "zod";
 import { loadConfig, type Config } from "./config.js";
-import { readEnv, type Env } from "./env.js";
+import { bindHost, readEnv, type Env } from "./env.js";
 import { openDb, type Db } from "./db/db.js";
 import { lastDashboardSyncAt } from "./db/repo.js";
 import { auth } from "./auth.js";
@@ -27,7 +27,7 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
   const app = express();
   app.disable("x-powered-by");
   if (env.SOURCE_MODE === "live")
-    app.set("trust proxy", env.local ? "loopback" : 1);
+    app.set("trust proxy", bindHost(env) === "127.0.0.1" ? "loopback" : 1);
   app.use((_req, res, next) => {
     res.set("X-Content-Type-Options", "nosniff");
     res.set("X-Frame-Options", "DENY");
@@ -119,16 +119,10 @@ export function startServer(now?: () => Date, env = readEnv()) {
   const cron = live ? [] : startCron(config, sync);
   if (!live && env.DATA_DIR !== ":memory:")
     cron.push(startBackupCron(db, env.DATA_DIR));
-  const server = app.listen(
-    env.PORT,
-    env.local
-      ? "127.0.0.1"
-      : (env.BIND_HOST ?? (live ? "0.0.0.0" : "127.0.0.1")),
-    () => {
-      console.log("Team Dashboard listening on port " + env.PORT);
-      void jobs?.check();
-    },
-  );
+  const server = app.listen(env.PORT, bindHost(env), () => {
+    console.log("Team Dashboard listening on port " + env.PORT);
+    void jobs?.check();
+  });
   const shutdown = () => server.close(() => process.exit(0));
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);

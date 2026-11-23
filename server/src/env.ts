@@ -69,6 +69,13 @@ export type Env = z.infer<typeof schema> & {
   DATA_DIR: string;
   local?: boolean;
 };
+
+export function bindHost(env: Env) {
+  return env.local
+    ? "127.0.0.1"
+    : (env.BIND_HOST ?? (env.SOURCE_MODE === "live" ? "0.0.0.0" : "127.0.0.1"));
+}
+
 export function readEnv(): Env {
   const result = schema.safeParse(process.env);
   if (!result.success)

@@ -69,7 +69,7 @@ The dashboard and its SQLite database run on your PC without a cloud account or 
    tailscale serve --bg --https=443 http://127.0.0.1:3000
    ```
 
-3. Connect Tailscale on your phone and open the full `https://<pc-name>.<tailnet-name>.ts.net` URL printed by Serve or `tailscale serve status`. Use HTTPS for sign-in because the phone session cookie requires it. Keep the PC on, awake, and signed in while using the dashboard.
+3. Connect Tailscale on your phone and open the full `https://<pc-name>.<tailnet-name>.ts.net` URL printed by Serve or `tailscale serve status`. Use HTTPS for sign-in because the phone session cookie requires it. Sign in once from your phone and confirm the dashboard loads. Keep the PC on, awake, and signed in while using the dashboard.
 
 ## Local development
 

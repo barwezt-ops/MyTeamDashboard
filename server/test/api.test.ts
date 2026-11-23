@@ -72,68 +72,92 @@ function request(method: string, path: string, body?: unknown) {
   });
 }
 
-it("allows Windows localhost sign-in and keeps HTTPS proxy cookies secure", async () => {
-  const config = loadConfig();
-  const app = createApp(
-    {
-      PORT: 3000,
-      DATA_DIR: ":memory:",
-      SOURCE_MODE: "live",
-      local: true,
-      TZ: "Africa/Cairo",
-      DASHBOARD_PASSWORD_HASH: await bcrypt.hash(password, 4),
-      SESSION_SECRET: "fixture-local-auth-session-secret",
-    },
-    config,
-    db,
-    createSync(db, config, "fixture"),
-  );
-  const local = app.listen(0, "127.0.0.1");
-  await once(local, "listening");
-  const port = (local.address() as AddressInfo).port;
-  function login(host: string, protocol?: string): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-      const req = httpRequest(
-        {
-          hostname: "127.0.0.1",
-          port,
-          path: "/api/login",
-          method: "POST",
-          headers: {
-            Host: host,
-            "Content-Type": "application/json",
-            ...(protocol ? { "X-Forwarded-Proto": protocol } : {}),
-          },
-        },
-        (res) => {
-          res.resume();
-          resolve(res.headers["set-cookie"] ?? []);
+it.each([
+  ["Windows", true, undefined, "127.0.0.1"],
+  ["loopback VM", false, "127.0.0.1", "127.0.0.1"],
+  ["public bind", false, "0.0.0.0", "0.0.0.0"],
+] as const)(
+  "uses the expected session cookies for %s",
+  async (_name, localMode, bindHost, address) => {
+    const loopback = address === "127.0.0.1";
+    const config = loadConfig();
+    const app = createApp(
+      {
+        PORT: 3000,
+        DATA_DIR: ":memory:",
+        SOURCE_MODE: "live",
+        local: localMode,
+        BIND_HOST: bindHost,
+        TZ: "Africa/Cairo",
+        DASHBOARD_PASSWORD_HASH: await bcrypt.hash(password, 4),
+        SESSION_SECRET: "fixture-local-auth-session-secret",
+      },
+      config,
+      db,
+      createSync(db, config, "fixture"),
+    );
+    const local = app.listen(0, address);
+    await once(local, "listening");
+    const port = (local.address() as AddressInfo).port;
+    async function login(host: string, protocol?: string) {
+      const result = await new Promise<{ status?: number; cookies: string[] }>(
+        (resolve, reject) => {
+          const req = httpRequest(
+            {
+              hostname: "127.0.0.1",
+              port,
+              path: "/api/login",
+              method: "POST",
+              headers: {
+                Host: host,
+                "Content-Type": "application/json",
+                ...(protocol ? { "X-Forwarded-Proto": protocol } : {}),
+              },
+            },
+            (res) => {
+              res.resume();
+              resolve({
+                status: res.statusCode,
+                cookies: res.headers["set-cookie"] ?? [],
+              });
+            },
+          );
+          req.on("error", reject);
+          req.end(JSON.stringify({ password }));
         },
       );
-      req.on("error", reject);
-      req.end(JSON.stringify({ password }));
-    });
-  }
-  try {
-    const direct = await login("localhost:" + port);
-    expect(direct).toHaveLength(2);
-    expect(direct.every((value) => !/; secure/i.test(value))).toBe(true);
-    const cookie = direct.map((value) => value.split(";")[0]).join("; ");
-    expect(
-      (
-        await fetch("http://127.0.0.1:" + port + "/api/me", {
-          headers: { Cookie: cookie },
-        })
-      ).ok,
-    ).toBe(true);
-    expect(await login("fake-pc.example.ts.net", "http")).toEqual([]);
-    const secure = await login("fake-pc.example.ts.net", "https");
-    expect(secure).toHaveLength(2);
-    expect(secure.every((value) => /; secure/i.test(value))).toBe(true);
-  } finally {
-    await new Promise<void>((resolve) => local.close(() => resolve()));
-  }
-});
+      expect(result.status).toBe(204);
+      return result.cookies;
+    }
+    try {
+      for (const host of ["localhost:" + port, "127.0.0.1:" + port]) {
+        const direct = await login(host);
+        expect(direct).toHaveLength(loopback ? 2 : 0);
+        expect(direct.every((value) => !/; secure/i.test(value))).toBe(true);
+      }
+      const proxyHost = "pc.tailnet.ts.net";
+      const fallback = await login(proxyHost);
+      expect(fallback).toHaveLength(loopback ? 2 : 0);
+      expect(fallback.every((value) => /; secure/i.test(value))).toBe(true);
+      expect(await login(proxyHost, "http")).toEqual([]);
+      const secure = await login(proxyHost, "https");
+      expect(secure).toHaveLength(2);
+      expect(secure.every((value) => /; secure/i.test(value))).toBe(true);
+      const cookie = (loopback ? fallback : secure)
+        .map((value) => value.split(";")[0])
+        .join("; ");
+      expect(
+        (
+          await fetch("http://127.0.0.1:" + port + "/api/me", {
+            headers: { Cookie: cookie },
+          })
+        ).ok,
+      ).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => local.close(() => resolve()));
+    }
+  },
+);
 
 it("serves only the public health fields and reports the last complete data sync", async () => {
   const { version } = JSON.parse(readFileSync("package.json", "utf8"));
