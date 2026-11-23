@@ -29,7 +29,7 @@ export function createSync(
   mode: Env["SOURCE_MODE"],
   now = () => new Date(),
 ) {
-  const runner = jobRunner(db, now);
+  const runner = jobRunner(db, now, mode === "live");
   const today = () => localDate(config.timezone, now());
   const window = (date = today()): Window => ({
     from: plusDays(date, -config.syncWindow.pastDays),

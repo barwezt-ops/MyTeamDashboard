@@ -135,7 +135,8 @@ describe("backups", () => {
       ),
       "other.json",
     ]);
-    expect(statSync(latest).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32")
+      expect(statSync(latest).mode & 0o777).toBe(0o600);
   });
 
   it("logs a successful nightly backup as job backup in sync_log", () => {

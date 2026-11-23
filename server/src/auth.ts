@@ -12,7 +12,7 @@ export function auth(env: Env) {
   const key = createHmac("sha256", env.SESSION_SECRET)
     .update(env.DASHBOARD_PASSWORD_HASH)
     .digest("base64url");
-  const session = cookieSession({
+  const loadSession = cookieSession({
     name: "dashboard",
     keys: [key],
     httpOnly: true,
@@ -20,6 +20,19 @@ export function auth(env: Env) {
     sameSite: "lax",
     maxAge: duration,
   });
+  const session: RequestHandler = (req, res, next) => {
+    loadSession(req, res, () => {
+      if (
+        env.local &&
+        !req.secure &&
+        !req.get("X-Forwarded-Proto") &&
+        /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(req.get("Host") ?? "") &&
+        req.sessionOptions
+      )
+        req.sessionOptions.secure = false;
+      next();
+    });
+  };
   const signedIn = (req: Request) =>
     typeof req.session?.expiresAt === "number" &&
     req.session.expiresAt > Date.now();

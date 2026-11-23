@@ -129,6 +129,26 @@ export function lastSuccess(db: Db, job: string) {
   return row?.time ?? null;
 }
 
+export function lastDailyStart(db: Db) {
+  const row = db
+    .prepare(
+      `
+      SELECT started_at AS time FROM sync_log WHERE job = 'daily' AND ok = 1
+      UNION ALL
+      SELECT previous.started_at AS time FROM sync_log AS rules
+      JOIN sync_log AS previous ON previous.id = (
+        SELECT MAX(id) FROM sync_log WHERE id < rules.id AND job <> 'backup'
+      )
+      WHERE rules.job = 'rules' AND rules.ok = 1 AND previous.ok = 1
+        AND previous.job IN ('schedule', 'attendance')
+        AND rules.id < COALESCE((SELECT MIN(id) FROM sync_log WHERE job = 'daily'), rules.id + 1)
+      ORDER BY time DESC LIMIT 1
+      `,
+    )
+    .get() as { time: string } | undefined;
+  return row?.time;
+}
+
 export function lastDashboardSyncAt(db: Db) {
   // Daily and all runs finish with rules after schedule or attendance.
   const row = db

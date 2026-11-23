@@ -3,8 +3,11 @@ import { once } from "node:events";
 import {
   chmodSync,
   mkdtempSync,
+  mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import type { AddressInfo } from "node:net";
@@ -36,7 +39,10 @@ afterEach(() => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-function expectStorageFailure(dataDir: string) {
+function expectStorageFailure(
+  dataDir: string,
+  message = "DATA_DIR is not writable. Set DATA_DIR to a writable directory.",
+) {
   const result = spawnSync(
     process.execPath,
     ["--import", "tsx", "server/src/index.ts"],
@@ -49,9 +55,7 @@ function expectStorageFailure(dataDir: string) {
   expect(result.error).toBeUndefined();
   expect(result.status).toBe(1);
   expect(result.stdout).toBe("");
-  expect(result.stderr.trim()).toBe(
-    "DATA_DIR is not writable. Set DATA_DIR to a writable directory.",
-  );
+  expect(result.stderr.trim()).toBe(message);
 }
 
 it("exits cleanly when DATA_DIR points to a file", () => {
@@ -74,7 +78,39 @@ it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
   },
 );
 
-it("starts one live sync after listening and skips it on the next boot", async () => {
+it("refuses to start with DATA_DIR in OneDrive", () => {
+  expectStorageFailure(
+    join(directory, "OneDrive - Example", "data"),
+    "Move DATA_DIR out of OneDrive — syncing a live database can corrupt it.",
+  );
+});
+
+it("uses the Windows default and rejects repo and OneDrive environment paths", () => {
+  vi.stubEnv("LOCALAPPDATA", directory);
+  vi.stubEnv("DATA_DIR", "");
+  expect(env.readDataDir(true)).toBe(
+    join(realpathSync.native(directory), "TeamDashboard", "data"),
+  );
+  vi.stubEnv("DATA_DIR", "./data");
+  expect(() => env.readDataDir(true)).toThrow(
+    "outside the Team Dashboard repository",
+  );
+  const customRoot = join(directory, "synced");
+  vi.stubEnv("OneDriveCommercial", customRoot);
+  vi.stubEnv("DATA_DIR", join(customRoot, "database"));
+  expect(() => env.readDataDir(true)).toThrow("Move DATA_DIR out of OneDrive");
+  mkdirSync(customRoot);
+  const link = join(directory, "data-link");
+  symlinkSync(
+    customRoot,
+    link,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  vi.stubEnv("DATA_DIR", join(link, "not-created-yet"));
+  expect(() => env.readDataDir(true)).toThrow("Move DATA_DIR out of OneDrive");
+});
+
+it("catches up once after listening and honors the local bind address", async () => {
   const config = loadConfig();
   config.sources.master.sheetId = "FakeMaster";
   config.sources.master.gid = "10";
@@ -109,14 +145,14 @@ it("starts one live sync after listening and skips it on the next boot", async (
       : new Response(null, { status: 404 });
   });
   vi.stubGlobal("fetch", request);
-  const today = () => new Date("2026-11-21T12:00:00.000Z");
+  const today = () => new Date("2026-11-21T16:00:00.000Z");
 
-  for (const [expected, bindHost, address] of [
-    ["all", "127.0.0.1", "127.0.0.1"],
-    [null, undefined, "0.0.0.0"],
+  for (const [expected, local, address] of [
+    ["daily", true, "127.0.0.1"],
+    [null, false, "0.0.0.0"],
   ] as const) {
-    vi.stubEnv("BIND_HOST", bindHost);
-    const { server, sync } = startServer(today);
+    vi.stubEnv("BIND_HOST", undefined);
+    const { server, sync } = startServer(today, { ...env.readEnv(), local });
     try {
       expect(sync.active).toBeNull();
       expect(request).toHaveBeenCalledTimes(expected ? 0 : 2);
@@ -135,6 +171,8 @@ it("starts one live sync after listening and skips it on the next boot", async (
       expect(
         db.prepare("SELECT job, ok FROM sync_log ORDER BY id").all(),
       ).toEqual([
+        { job: "backup", ok: 1 },
+        { job: "daily", ok: 1 },
         { job: "roster", ok: 1 },
         { job: "schedule", ok: 1 },
         { job: "rules", ok: 1 },

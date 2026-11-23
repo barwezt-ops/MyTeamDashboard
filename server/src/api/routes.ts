@@ -439,7 +439,14 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
   router.get(
     "/sync/status",
     endpoint({}, (_input, _req, res) => {
-      const jobs = ["roster", "schedule", "attendance", "rules", "backup"];
+      const jobs = [
+        "roster",
+        "schedule",
+        "attendance",
+        "rules",
+        "backup",
+        "daily",
+      ];
       const keys = ["master", "schedule", "attendance"] as SourceKey[];
       const date = sync.today();
       const result: SyncStatus = {

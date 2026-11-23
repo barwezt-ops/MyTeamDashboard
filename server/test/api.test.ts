@@ -1,7 +1,7 @@
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
-import type { Server } from "node:http";
+import { request as httpRequest, type Server } from "node:http";
 import bcrypt from "bcrypt";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
@@ -71,6 +71,69 @@ function request(method: string, path: string, body?: unknown) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
+
+it("allows Windows localhost sign-in and keeps HTTPS proxy cookies secure", async () => {
+  const config = loadConfig();
+  const app = createApp(
+    {
+      PORT: 3000,
+      DATA_DIR: ":memory:",
+      SOURCE_MODE: "live",
+      local: true,
+      TZ: "Africa/Cairo",
+      DASHBOARD_PASSWORD_HASH: await bcrypt.hash(password, 4),
+      SESSION_SECRET: "fixture-local-auth-session-secret",
+    },
+    config,
+    db,
+    createSync(db, config, "fixture"),
+  );
+  const local = app.listen(0, "127.0.0.1");
+  await once(local, "listening");
+  const port = (local.address() as AddressInfo).port;
+  function login(host: string, protocol?: string): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path: "/api/login",
+          method: "POST",
+          headers: {
+            Host: host,
+            "Content-Type": "application/json",
+            ...(protocol ? { "X-Forwarded-Proto": protocol } : {}),
+          },
+        },
+        (res) => {
+          res.resume();
+          resolve(res.headers["set-cookie"] ?? []);
+        },
+      );
+      req.on("error", reject);
+      req.end(JSON.stringify({ password }));
+    });
+  }
+  try {
+    const direct = await login("localhost:" + port);
+    expect(direct).toHaveLength(2);
+    expect(direct.every((value) => !/; secure/i.test(value))).toBe(true);
+    const cookie = direct.map((value) => value.split(";")[0]).join("; ");
+    expect(
+      (
+        await fetch("http://127.0.0.1:" + port + "/api/me", {
+          headers: { Cookie: cookie },
+        })
+      ).ok,
+    ).toBe(true);
+    expect(await login("fake-pc.example.ts.net", "http")).toEqual([]);
+    const secure = await login("fake-pc.example.ts.net", "https");
+    expect(secure).toHaveLength(2);
+    expect(secure.every((value) => /; secure/i.test(value))).toBe(true);
+  } finally {
+    await new Promise<void>((resolve) => local.close(() => resolve()));
+  }
+});
 
 it("serves only the public health fields and reports the last complete data sync", async () => {
   const { version } = JSON.parse(readFileSync("package.json", "utf8"));

@@ -11,6 +11,9 @@ fixtures/*
 test-results/
 playwright-report/
 config/sources.local.json
+.windows-runtime/
+server/dist.previous/
+server/dist.next/
 
 # Owner-only notes with real names/IDs (never commit)
 *.private.md
