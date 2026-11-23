@@ -15,7 +15,11 @@ import {
   previewBackup,
   restoreBackup,
 } from "../src/backup/data.js";
-import { readBackup, writeBackup } from "../src/backup/files.js";
+import {
+  readBackup,
+  runNightlyBackup,
+  writeBackup,
+} from "../src/backup/files.js";
 import { openDb, type Db } from "../src/db/db.js";
 
 const now = new Date("2026-11-21T22:00:00Z");
@@ -132,5 +136,31 @@ describe("backups", () => {
       "other.json",
     ]);
     expect(statSync(latest).mode & 0o777).toBe(0o600);
+  });
+
+  it("logs a successful nightly backup as job backup in sync_log", () => {
+    seed();
+    expect(runNightlyBackup(db, directory, now)).toBe(true);
+    const row = db
+      .prepare("SELECT job, ok, rows_kept, error FROM sync_log")
+      .get() as { job: string; ok: number; rows_kept: number; error: null };
+    expect(row).toEqual({ job: "backup", ok: 1, rows_kept: 4, error: null });
+    expect(readdirSync(join(directory, "backups"))).toEqual([
+      "backup-2026-11-22.json",
+    ]);
+  });
+
+  it("logs a failed nightly backup without throwing or leaking paths", () => {
+    const blocked = join(directory, "not-a-directory");
+    writeFileSync(blocked, "");
+    expect(runNightlyBackup(db, blocked, now)).toBe(false);
+    const row = db
+      .prepare("SELECT job, ok, finished_at, error FROM sync_log")
+      .get() as { job: string; ok: number; finished_at: string; error: string };
+    expect(row.job).toBe("backup");
+    expect(row.ok).toBe(0);
+    expect(row.finished_at).toBe(now.toISOString());
+    expect(row.error).toMatch(/^Nightly backup failed/);
+    expect(row.error).not.toContain(directory);
   });
 });

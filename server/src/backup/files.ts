@@ -55,6 +55,44 @@ export function writeBackup(db: Db, dataDir: string, now = new Date()) {
   return destination;
 }
 
+/**
+ * Nightly backup wrapper: records every attempt in sync_log as job "backup",
+ * so a failure shows on Settings and turns the sync badge red, like a failed sync.
+ */
+export function runNightlyBackup(db: Db, dataDir: string, now = new Date()) {
+  const id = db
+    .prepare("INSERT INTO sync_log (job,started_at) VALUES ('backup',?)")
+    .run(now.toISOString()).lastInsertRowid;
+  try {
+    writeBackup(db, dataDir, now);
+    const kept = db
+      .prepare(
+        "SELECT (SELECT COUNT(*) FROM notes) + (SELECT COUNT(*) FROM roster_snapshots) + (SELECT COUNT(*) FROM roster_events) + (SELECT COUNT(*) FROM discrepancies) AS n",
+      )
+      .get() as { n: number };
+    db.prepare(
+      "UPDATE sync_log SET finished_at=?,ok=1,rows_read=?,rows_kept=?,warnings='[]' WHERE id=?",
+    ).run(now.toISOString(), kept.n, kept.n, id);
+    return true;
+  } catch (error) {
+    const code =
+      error instanceof Error &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? " (" + error.code + ")"
+        : "";
+    db.prepare("UPDATE sync_log SET finished_at=?,ok=0,error=? WHERE id=?").run(
+      now.toISOString(),
+      "Nightly backup failed" +
+        code +
+        ". Check DATA_DIR and available disk space.",
+      id,
+    );
+    console.error("Nightly backup failed" + code);
+    return false;
+  }
+}
+
 export function readBackup(path: string) {
   const fd = openSync(path, "r");
   try {
