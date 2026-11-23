@@ -11,6 +11,11 @@ checkout=/opt/team-dashboard
 releases=/opt/team-dashboard-releases
 current=/opt/team-dashboard-current
 
+if ! curl -4fsS --max-time 10 https://github.com >/dev/null 2>&1; then
+  echo "GitHub isn't reachable over IPv6. Attach a temporary external IPv4 (see README) and rerun." >&2
+  exit 1
+fi
+
 exec 9>/run/lock/team-dashboard-deploy.lock
 flock 9
 runuser -u "$SUDO_USER" -- git -C "$checkout" pull --ff-only

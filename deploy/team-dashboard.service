@@ -14,6 +14,7 @@ Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
+PrivateTmp=true
 ReadWritePaths=/var/lib/team-dashboard
 UMask=0077
 

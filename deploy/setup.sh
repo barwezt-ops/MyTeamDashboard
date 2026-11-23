@@ -11,8 +11,20 @@ checkout=/opt/team-dashboard
 env_file=/etc/team-dashboard.env
 swap_file=/swapfile-team-dashboard
 
+if ! command -v curl >/dev/null; then
+  apt-get update
+  apt-get install -y ca-certificates curl
+fi
+if ! curl -4fsS --max-time 10 https://github.com >/dev/null 2>&1; then
+  echo "GitHub isn't reachable over IPv6. Attach a temporary external IPv4 (see README) and rerun." >&2
+  exit 1
+fi
+
 apt-get update
-apt-get install -y ca-certificates curl git build-essential python3
+apt-get install -y ca-certificates git build-essential python3 unattended-upgrades
+printf '%s\n' 'APT::Periodic::Update-Package-Lists "1";' 'APT::Periodic::Unattended-Upgrade "1";' \
+  > /etc/apt/apt.conf.d/99-team-dashboard-auto-upgrades
+
 if [[ $(/usr/bin/node --version 2>/dev/null || true) != v20.* ]]; then
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
     -o /usr/share/keyrings/team-dashboard-nodesource.asc
@@ -25,6 +37,7 @@ if [[ $(/usr/bin/node --version) != v20.* ]]; then
   echo "Node 20 is required for Team Dashboard." >&2
   exit 1
 fi
+systemctl enable --now apt-daily.timer apt-daily-upgrade.timer
 
 if ! id dashboard >/dev/null 2>&1; then
   useradd --system --user-group --home-dir /var/lib/team-dashboard --shell /usr/sbin/nologin dashboard
