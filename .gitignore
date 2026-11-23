@@ -11,3 +11,6 @@ fixtures/*
 test-results/
 playwright-report/
 config/sources.local.json
+
+# Owner-only notes with real names/IDs (never commit)
+*.private.md
