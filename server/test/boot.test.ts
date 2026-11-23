@@ -82,11 +82,19 @@ it("starts one live sync after listening and skips it on the next boot", async (
   config.sources.schedule.gid = "20";
   expect(config.sources.attendance.enabled).toBe(false);
   vi.stubEnv("DASHBOARD_SOURCE_CONFIG", JSON.stringify(config));
-  vi.spyOn(env, "readEnv").mockReturnValue({
+  const liveEnv = {
     ...fixtureEnv,
+    PORT: 3000,
     DATA_DIR: directory,
-    SOURCE_MODE: "live",
-  });
+    SOURCE_MODE: "live" as const,
+  };
+  for (const [key, value] of Object.entries(liveEnv))
+    vi.stubEnv(key, String(value));
+  const readEnv = env.readEnv;
+  vi.spyOn(env, "readEnv").mockImplementation(() => ({
+    ...readEnv(),
+    PORT: 0,
+  }));
   const request = vi.fn(async (input: string) => {
     const sheet = new URL(input).searchParams.get("gid");
     const source =
@@ -103,14 +111,18 @@ it("starts one live sync after listening and skips it on the next boot", async (
   vi.stubGlobal("fetch", request);
   const today = () => new Date("2026-11-21T12:00:00.000Z");
 
-  for (const expected of ["all", null]) {
+  for (const [expected, bindHost, address] of [
+    ["all", "127.0.0.1", "127.0.0.1"],
+    [null, undefined, "0.0.0.0"],
+  ] as const) {
+    vi.stubEnv("BIND_HOST", bindHost);
     const { server, sync } = startServer(today);
     try {
       expect(sync.active).toBeNull();
       expect(request).toHaveBeenCalledTimes(expected ? 0 : 2);
       await once(server, "listening");
       expect(sync.active).toBe(expected);
-      expect((server.address() as AddressInfo).port).toBeGreaterThan(0);
+      expect((server.address() as AddressInfo).address).toBe(address);
     } finally {
       await vi.waitFor(() => expect(sync.active).toBeNull());
       const closed = once(server, "close");

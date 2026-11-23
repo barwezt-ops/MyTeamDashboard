@@ -1,0 +1,21 @@
+[Unit]
+Description=Team Dashboard
+Wants=network-online.target
+After=network-online.target
+ConditionFileNotEmpty=/etc/team-dashboard.env
+
+[Service]
+User=dashboard
+Group=dashboard
+WorkingDirectory=/opt/team-dashboard-current
+EnvironmentFile=/etc/team-dashboard.env
+ExecStart=/usr/bin/env BIND_HOST=127.0.0.1 TZ=Africa/Cairo /usr/bin/node server/dist/index.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/team-dashboard
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

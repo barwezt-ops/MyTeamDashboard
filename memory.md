@@ -1,15 +1,15 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
+_Last updated: 2026-11-23 for the Free VM deployment handoff._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
-- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Phase 7 is **code done, deploy pending owner**.
-- **Tests on main:** 126 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean. CI = lint + typecheck + unit tests.
+- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Phase 7 boot and health work is merged in PR #8. Free VM deployment code is ready for review and the live setup is pending the owner.
+- **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
-- **Not live yet:** no Railway deploy, no real sheet IDs configured anywhere, attendance disabled.
-- **Next task:** Owner follows the README runbook to deploy with attendance off, verify the next day's daily sync and 02:00 Cairo backup, and collect the Checkpoint 7 evidence. Phase 6 follows when the attendance link arrives.
+- **Not live yet:** VM provisioning, Tailscale access, and real sheet configuration are pending the owner. Attendance is disabled.
+- **Next task:** Owner reviews the deployment PR, then follows the Free VM runbook and verifies the next day's daily sync and 02:00 Cairo backup. Phase 6 follows when the attendance link arrives.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -30,7 +30,8 @@ _Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 | Backups + restore | done | `backup/` | nightly 02:00 Cairo to `DATA_DIR/backups`, keep 14; logged as job `backup` in `sync_log`; restore = preview token → confirm, one transaction, never touches schedule/attendance |
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
-| Railway deploy readiness | **code done, deploy pending owner** | `railway.json`, `README.md`, `index.ts`, `db/db.ts` | Startup checks `DATA_DIR`. Live boot starts All after listening if no successful roster exists. Public health returns only `ok`, `version`, and `lastSyncAt`. |
+| First live boot and public health | done | `index.ts`, `db/db.ts` | Startup checks `DATA_DIR`. Live boot starts All after listening if no successful roster exists. Public health returns only `ok`, `version`, and `lastSyncAt`. |
+| Free VM deploy readiness | **code ready for review, deploy pending owner** | `deploy/`, `README.md`, `env.ts` | Ubuntu e2-micro with systemd and 2 GB swap. The service listens on loopback behind Tailscale Serve. Builds finish in a separate release before switching. Railway remains optional. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
 
 ## 3. Architecture as built
@@ -41,11 +42,11 @@ _Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 - **Tables:** agents, roster_snapshots, roster_events, schedule_days, attendance_days, discrepancies, notes, sync_log.
 
 ## 4. Config & environment
-- Sample config: `config/sources.json` (fake names, empty IDs). Live config: gitignored `config/sources.local.json` (local) or env `DASHBOARD_SOURCE_CONFIG` (Railway, full JSON).
+- Sample config: `config/sources.json` (fake names, empty IDs). Live config: gitignored `config/sources.local.json` (local) or env `DASHBOARD_SOURCE_CONFIG` (full JSON in the VM's environment file or hosting variables).
 - Keys that matter for go-live: `me.rosterName`, `me.alsoCover`, `dateOrder` (`MDY`/`DMY`), `sources.*.sheetId` / `gid`, `sources.master.expectHeaders` (**set it** — it's what catches inserted columns), `sources.schedule.anchor`, `sources.attendance.enabled` (keep false until Phase 6), `thresholds` (empty).
-- Env var names: `PORT`, `DATA_DIR`, `DASHBOARD_PASSWORD_HASH`, `SESSION_SECRET`, `SOURCE_MODE` (`fixture`|`live`), `TZ=Africa/Cairo`, `DASHBOARD_SOURCE_CONFIG`.
+- Env var names: `PORT`, `BIND_HOST`, `DATA_DIR`, `DASHBOARD_PASSWORD_HASH`, `SESSION_SECRET`, `SOURCE_MODE` (`fixture`|`live`), `TZ`, `DASHBOARD_SOURCE_CONFIG`.
 - Local run: `npm ci` → `cp .env.example .env` → `npm run hash-password` → set `SESSION_SECRET` → `npm run sync -- --job=all` → `npm run dev`.
-- Railway: build `npm run build`, start `npm start`, health `/api/health`, restart on failure, volume at `/data`, `SOURCE_MODE=live`. Full steps in README.
+- Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
 | Date | Decision | Why | Alternatives rejected |
@@ -65,6 +66,7 @@ _Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 | 2026-11-23 | PRs merged with merge commits (not squash) | Keeps the stacked branches' history intact | Squash |
 | 2026-11-23 | Bootstrap live data after listen when no successful roster is recorded | A new instance can respond to health checks immediately. A persisted successful roster prevents another boot sync. | Run All on every boot |
 | 2026-11-23 | Report completed daily and successful roster timestamps on public health | A successful schedule fetch alone can precede a rules failure. Keep source, configuration, and team data behind login. | Expose authenticated sync status publicly |
+| 2026-11-23 | Use a Google Cloud Free Tier e2-micro VM with Tailscale private HTTPS | The owner wants to avoid a recurring hosting bill. Use external IPv6 for normal operation and verify Tailscale plan eligibility for work use before going live. | Railway as the project's hosting target |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -76,6 +78,7 @@ _Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 | Real master column positions and date order unverified | Incorrect mappings can block roster sync or misread dates | Run `test-link` on the real master and use the README example's `expectHeaders` at deploy |
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
+| Outbound networking and tailnet plan depend on owner setup | External IPv4 can incur charges and Tailscale Personal is for non-commercial use | Use the README IPv6 and IAP setup, verify an eligible tailnet, and check next-day sync and billing |
 
 ## 7. Open questions for the owner
 | # | Question | Blocking? | Status |
@@ -93,6 +96,9 @@ _Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-23 — Free VM deployment path
+- Added setup and staged update scripts, a loopback-only systemd unit, and the owner runbook for an e2-micro VM with Tailscale private HTTPS. Added live bind-address test coverage. Owner review and the live deployment are pending.
+
 ### 2026-11-23 — Phase 7 deploy readiness
 - Added the writable-storage boot check, live bootstrap sync, and minimal public health response. Added regression tests for the boot failure, restart behavior, and public response.
 - Added the fake live config with all ten master headers, attendance disabled, and the Railway runbook. Production deploy and scheduled-run verification are pending the owner at Checkpoint 7.

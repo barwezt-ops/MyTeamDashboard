@@ -115,7 +115,7 @@ export function startServer(now?: () => Date) {
   if (env.DATA_DIR !== ":memory:") cron.push(startBackupCron(db, env.DATA_DIR));
   const server = app.listen(
     env.PORT,
-    env.SOURCE_MODE === "fixture" ? "127.0.0.1" : "0.0.0.0",
+    env.BIND_HOST ?? (env.SOURCE_MODE === "fixture" ? "127.0.0.1" : "0.0.0.0"),
     () => {
       console.log("Team Dashboard listening on port " + env.PORT);
       if (env.SOURCE_MODE === "live" && !lastSuccess(db, "roster"))

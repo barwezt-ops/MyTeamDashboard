@@ -5,6 +5,7 @@ const dataDir = z.string().min(1).default("./data");
 export const readDataDir = () => dataDir.parse(process.env.DATA_DIR);
 const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  BIND_HOST: z.ipv4().optional(),
   DATA_DIR: dataDir,
   DASHBOARD_PASSWORD_HASH: z
     .string()
