@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync, mkdtempSync, rmdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 export type Db = Database.Database;
@@ -35,8 +35,16 @@ export function openExistingDbReadOnly(directory: string): Db {
 }
 
 export function openDb(directory: string): Db {
-  if (directory !== ":memory:")
-    mkdirSync(directory, { recursive: true, mode: 0o700 });
+  if (directory !== ":memory:") {
+    try {
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      rmdirSync(mkdtempSync(resolve(directory, ".write-check-")));
+    } catch {
+      throw new Error(
+        "DATA_DIR is not writable. Set DATA_DIR to a writable directory.",
+      );
+    }
+  }
   const db = new Database(
     directory === ":memory:" ? directory : resolve(directory, "dashboard.db"),
   );

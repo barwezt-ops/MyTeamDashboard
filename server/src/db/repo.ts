@@ -128,3 +128,23 @@ export function lastSuccess(db: Db, job: string) {
     .get(job) as { time: string } | undefined;
   return row?.time ?? null;
 }
+
+export function lastDashboardSyncAt(db: Db) {
+  // Daily and all runs finish with rules after schedule or attendance.
+  const row = db
+    .prepare(
+      `
+    SELECT MAX(finished_at) AS time FROM sync_log AS run
+    WHERE ok=1 AND (
+      job='roster' OR (job='rules' AND (
+        SELECT ok=1 AND job IN ('schedule', 'attendance')
+        FROM sync_log
+        WHERE id < run.id AND job <> 'backup'
+        ORDER BY id DESC LIMIT 1
+      ))
+    )
+  `,
+    )
+    .get() as { time: string | null };
+  return row.time;
+}

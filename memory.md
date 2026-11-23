@@ -1,15 +1,15 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-23 by Claude (rebuilt from the merged codebase and the review history after the original local memory.md was lost with the owner's machine) — main @ PR #6 merged_
+_Last updated: 2026-11-23 for the Phase 7 Checkpoint 7 handoff._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
-- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link), Phase 7 deploy to Railway.
+- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Phase 7 is **code done, deploy pending owner**.
 - **Tests on main:** 126 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean. CI = lint + typecheck + unit tests.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Not live yet:** no Railway deploy, no real sheet IDs configured anywhere, attendance disabled.
-- **Next task:** Phase 7 deploy with attendance off (see §7 Open questions for what the owner must supply first), then Phase 6 once the attendance link arrives.
+- **Next task:** Owner follows the README runbook to deploy with attendance off, verify the next day's daily sync and 02:00 Cairo backup, and collect the Checkpoint 7 evidence. Phase 6 follows when the attendance link arrives.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -30,7 +30,7 @@ _Last updated: 2026-11-23 by Claude (rebuilt from the merged codebase and the re
 | Backups + restore | done | `backup/` | nightly 02:00 Cairo to `DATA_DIR/backups`, keep 14; logged as job `backup` in `sync_log`; restore = preview token → confirm, one transaction, never touches schedule/attendance |
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
-| Railway deploy | **not done** | `railway.json` exists | Phase 7 |
+| Railway deploy readiness | **code done, deploy pending owner** | `railway.json`, `README.md`, `index.ts`, `db/db.ts` | Startup checks `DATA_DIR`. Live boot starts All after listening if no successful roster exists. Public health returns only `ok`, `version`, and `lastSyncAt`. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
 
 ## 3. Architecture as built
@@ -63,6 +63,8 @@ _Last updated: 2026-11-23 by Claude (rebuilt from the merged codebase and the re
 | 2026-11-23 | `origin` = `barwezt-ops/MyTeamDashboard`; B–F moved there from the fork | They were pushed to the `travis-holt` fork by mistake | — |
 | 2026-11-23 | Nightly backup logged as job `backup` in `sync_log` | Failures were console-only and invisible | — |
 | 2026-11-23 | PRs merged with merge commits (not squash) | Keeps the stacked branches' history intact | Squash |
+| 2026-11-23 | Bootstrap live data after listen when no successful roster is recorded | A new instance can respond to health checks immediately. A persisted successful roster prevents another boot sync. | Run All on every boot |
+| 2026-11-23 | Report completed daily and successful roster timestamps on public health | A successful schedule fetch alone can precede a rules failure. Keep source, configuration, and team data behind login. | Expose authenticated sync status publicly |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -71,7 +73,7 @@ _Last updated: 2026-11-23 by Claude (rebuilt from the merged codebase and the re
 | Check-a-link rejects multi-account links (`/spreadsheets/u/1/d/...`) | Minor friction | Accept and normalise `/u/N/` |
 | Restore preview says "updated", not "X resolved flags will reopen" | Could surprise | Clearer preview wording |
 | D5 reopen keeps the first-seen date | Optional | Owner to decide |
-| `expectHeaders` not set in the sample config | Inserted columns undetected unless set in live config | Set it in live config at deploy |
+| Real master column positions and date order unverified | Incorrect mappings can block roster sync or misread dates | Run `test-link` on the real master and use the README example's `expectHeaders` at deploy |
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
 
@@ -91,6 +93,11 @@ _Last updated: 2026-11-23 by Claude (rebuilt from the merged codebase and the re
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-23 — Phase 7 deploy readiness
+- Added the writable-storage boot check, live bootstrap sync, and minimal public health response. Added regression tests for the boot failure, restart behavior, and public response.
+- Added the fake live config with all ten master headers, attendance disabled, and the Railway runbook. Production deploy and scheduled-run verification are pending the owner at Checkpoint 7.
+- Made the Playwright smoke launcher work on Windows and Linux through Node's `tsx` import hook.
+
 ### 2026-11-23 — Repo consolidation + merge + memory rebuild
 - Moved B–F from the fork to `barwezt-ops`, added the backup-logging commit to B, rebased C–F (one-line conflict in `routes.ts` status jobs list), opened #2–#6, merged #1–#6 in order. Main: 126 tests, build OK, Playwright 4/4.
 - Rebuilt CLAUDE.md, memory.md and a sanitised plan.md from the codebase and review history (originals were lost with the owner's machine).
