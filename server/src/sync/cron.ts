@@ -43,6 +43,34 @@ export function startBackupCron(db: Db, directory: string) {
 
 const hour = 3_600_000;
 
+function cronOffsets(pattern: string) {
+  const { minute, second } = cron.parse(pattern);
+  return minute
+    .flatMap((m) => second.map((s) => m * 60_000 + s * 1000))
+    .sort((a, b) => b - a);
+}
+
+// Cairo's offsets are whole hours, including DST. Within an hour, the newest
+// allowed minute and second match exactly when the hour and calendar match.
+function latestDue(
+  task: ReturnType<typeof cron.createTask>,
+  offsets: number[],
+  time: number,
+  after: number,
+) {
+  for (
+    let start = Math.floor(time / hour) * hour;
+    start + hour > after;
+    start -= hour
+  ) {
+    const offset = offsets.find((offset) => start + offset <= time);
+    if (offset === undefined) continue;
+    const candidate = start + offset;
+    if (candidate <= after) break;
+    if (task.match(new Date(candidate))) return candidate;
+  }
+}
+
 export function startLiveJobs(
   db: Db,
   directory: string,
@@ -53,31 +81,7 @@ export function startLiveJobs(
   const timezone = backupTimezone;
   const options = { timezone, suppressMissedWarning: true };
   const backupPattern = "0 2 * * *";
-  const dailyFields = cron.parse(config.jobs.daily);
-
-  // Cairo's UTC offsets are whole hours. Check allowed minutes/seconds with
-  // node-cron's matcher so weekday restrictions and DST still apply.
-  function due(
-    task: ReturnType<typeof cron.createTask>,
-    fields: typeof dailyFields,
-    date: string,
-    time: Date,
-  ) {
-    const second = Math.min(...fields.second) * 1000;
-    const currentHour = Math.floor(time.getTime() / hour) * hour;
-    for (
-      let start = currentHour;
-      start >= currentHour - 24 * hour;
-      start -= hour
-    ) {
-      if (localDate(timezone, new Date(start)) !== date) break;
-      for (const minute of fields.minute) {
-        const candidate = new Date(start + minute * 60_000 + second);
-        if (candidate <= time && task.match(candidate)) return true;
-      }
-    }
-    return false;
-  }
+  const dailyOffsets = cronOffsets(config.jobs.daily);
 
   function canRetry(job: "daily" | "backup", time: Date) {
     const last = lastRun(db, job);
@@ -91,22 +95,34 @@ export function startLiveJobs(
   function check() {
     if (sync.active) return;
     const time = now();
+    const timestamp = time.getTime();
     const date = localDate(timezone, time);
     if (
       directory !== ":memory:" &&
       !existsSync(join(directory, "backups", backupName(time))) &&
-      due(backup, backupFields, date, time) &&
       canRetry("backup", time)
-    )
-      runNightlyBackup(db, directory, time);
+    ) {
+      const due = latestDue(
+        backup,
+        backupOffsets,
+        timestamp,
+        timestamp - 25 * hour,
+      );
+      if (due !== undefined && localDate(timezone, new Date(due)) === date)
+        runNightlyBackup(db, directory, time);
+    }
 
-    const latest = lastDailyStart(db);
-    if (latest && localDate(timezone, new Date(latest)) === date) return;
-    if (due(daily, dailyFields, date, time) && canRetry("daily", time))
+    const completed = lastDailyStart(db);
+    if (
+      canRetry("daily", time) &&
+      (!completed ||
+        latestDue(daily, dailyOffsets, timestamp, Date.parse(completed)) !==
+          undefined)
+    )
       return sync.start("daily");
   }
 
-  const backupFields = cron.parse(backupPattern);
+  const backupOffsets = cronOffsets(backupPattern);
   const daily = cron.schedule(config.jobs.daily, () => void check(), options);
   const backup = cron.schedule(backupPattern, () => void check(), options);
   const weekly = cron.schedule(
