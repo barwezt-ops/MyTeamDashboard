@@ -1,0 +1,97 @@
+{
+  "me": {
+    "rosterName": "Demo Lead",
+    "alsoCover": ["Cover Lead"],
+    "defaultScope": "covered"
+  },
+  "dateOrder": "MDY",
+  "timezone": "Africa/Cairo",
+  "jobs": {
+    "daily": "0 16 * * *",
+    "weekly": "0 12 * * 0"
+  },
+  "syncWindow": {
+    "pastDays": 35,
+    "futureDays": 14
+  },
+  "sources": {
+    "master": {
+      "label": "House master sheet",
+      "sheetId": "",
+      "gid": "",
+      "tab": "TEAM",
+      "mode": "export",
+      "headerRows": 1,
+      "columns": {
+        "hireDate": "A",
+        "code": "B",
+        "name": "C",
+        "account": "D",
+        "account2": "E",
+        "dtl": "G",
+        "tl": "H",
+        "stl": "I",
+        "title": "K",
+        "lastWorkingDay": "M"
+      }
+    },
+    "schedule": {
+      "label": "Shifts and schedules",
+      "sheetId": "",
+      "gid": "",
+      "tab": "SHIFTS AND SCHEDULES",
+      "mode": "export",
+      "headerRows": 1,
+      "columns": {
+        "code": "A",
+        "name": "B",
+        "account": "D"
+      },
+      "anchor": {
+        "column": "F",
+        "date": "2026-10-21"
+      },
+      "stopAtHeader": "removed|counter|casuals"
+    },
+    "attendance": {
+      "label": "Attendance / discrepancies",
+      "enabled": false,
+      "sheetId": "",
+      "gid": "",
+      "tab": "",
+      "mode": "export",
+      "headerRows": 1,
+      "layout": "long",
+      "long": {
+        "columns": {
+          "code": "A",
+          "name": "B",
+          "date": "E",
+          "status": "F",
+          "missing": "G"
+        }
+      },
+      "wide": {
+        "keyColumn": "C",
+        "dtlColumn": "B",
+        "keyType": "name",
+        "firstDateColumn": "D",
+        "dateHeaderRow": 1
+      }
+    }
+  },
+  "statusMap": {
+    "off": "Off Day",
+    "annual": "PTO",
+    "pto": "PTO",
+    "upl": "UPL",
+    "sick": "Sick",
+    "casual": "Casual",
+    "on hold": "On Hold",
+    "not hired": "Not Hired",
+    "present": "Present",
+    "absent": "Absent",
+    "no show": "Absent"
+  },
+  "thresholds": {}
+}

@@ -1,0 +1,10 @@
+Hiring Date,Code,Name,Account,Account 2,Client Name,Deputy Team Leader,Team Leader,Senior TL,Operations Manager,Title,American Name,Last working day,Phone number,IWS Email,Client Email,Laptop Number
+1/12/2025,99001.0,Avery Sample,Support,Inbound,Sample Client, demo   lead ,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99001,Duplicate Sample,Support,Inbound,Sample Client,Demo Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99002,Jordan Sample,Support,#REF!,Sample Client,Demo Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99003,Casey Sample,Support,Inbound,Sample Client,Cover Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99004,Morgan Sample,Support,Inbound,Sample Client,Cover Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99005,Riley Sample,Support,Inbound,Sample Client,Demo Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99006,Taylor Sample,Support,Inbound,Sample Client,Cover Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99007,Quinn Sample,Support,Inbound,Sample Client,Other Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP
+1/12/2025,99008,Drew Sample,Support,Inbound,Sample Client,Demo Lead,Sample Manager,Sample Supervisor,Sample Director,Agent,Synthetic Alias,11/11/2026,555-0100,agent@example.invalid,client@example.invalid,FAKE-LAPTOP

@@ -1,1 +1,56 @@
-# MyTeamDashboard
+# Team Dashboard
+
+A password-protected dashboard for team schedules, roster changes, attendance and discrepancies. The Node service reads the configured Google Sheets through public CSV links. SQLite stores team history and notes.
+
+## Local development
+
+Use Node 20. Install dependencies and create an environment file.
+
+```sh
+npm ci
+cp .env.example .env
+npm run hash-password
+node -p "require('node:crypto').randomBytes(48).toString('base64url')"
+```
+
+Paste the bcrypt output into `DASHBOARD_PASSWORD_HASH` in `.env`. Set `SESSION_SECRET` to the generated random string.
+
+```sh
+npm run sync -- --job=all
+npm run dev
+```
+
+Use the local Vite address printed by `npm run dev`. It proxies `/api` to port 3000. If you change the server port, update the Vite proxy to match. Fixture mode uses the checked-in synthetic CSVs by default. The sample schedule starts on October 21, 2026. For testing at another time of year, use the Playwright fixture clock or supply matching local fixture data and configure its anchor.
+
+Environment keys live in `.env.example`. The optional `DASHBOARD_SOURCE_CONFIG` setting holds the full live config JSON as a service environment variable. Real config and SQLite data belong in private local files or the hosting service.
+
+## Connect or replace a sheet
+
+1. Open the intended tab and copy its view link. Check the export with `npm run test-link -- '<link>'`. It reports the HTTP status, content type, one interpreted sample date and five masked rows. Add `--source=master`, `--source=schedule` or `--source=attendance` to use the configured mapping for a new link. The schedule sample uses its configured anchor. Use `--show-rows` only when inspecting locally.
+2. Copy `config/sources.json` to the gitignored `config/sources.local.json` for a local live run. For Railway, set `DASHBOARD_SOURCE_CONFIG` to the full JSON. Set the configured identity, IDs, GIDs and mappings. Set `dateOrder` to `DMY` for slash dates in day/month/year order. The default is `MDY`. Sheet access must be read-only and work without signing in.
+3. Keep schedule on CSV export. Set `sources.schedule.anchor.column` and `sources.schedule.anchor.date` to the first date column and its Cairo date, and retain a matching `stopAtHeader`. Check the latest sync for `ANCHOR_MISMATCH`.
+4. Confirm attendance column meanings and verify its CSV export before enabling it. A nonempty value from the long layout’s configured `missing` column creates a D4 finding. The parser also supports a wide layout with date columns and no separate Missing field.
+5. Restart or redeploy and run **Sync now → All** in Settings. Check that the job results remain healthy and spot-check the dates against the sheet.
+
+The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and discrepancy sync runs at 16:00 Cairo. The app refreshes the roster first when its last successful sync is more than seven days old.
+
+## Railway
+
+Deploy to a single service using Node 20. In Railway service settings, set the build command to `npm run build`, the start command to `npm start`, the healthcheck path to `/api/health`, and the restart policy to **On Failure**. Set `SOURCE_MODE=live`, `TZ=Africa/Cairo`, `DATA_DIR=/data`, both authentication variables, and `DASHBOARD_SOURCE_CONFIG`. Mount a persistent volume at `/data`. Railway supplies `PORT`. Use the Railway HTTPS domain for login and secure session cookies. The checked-in `railway.json` carries the same build and deploy settings for existing services that still use Config as Code.
+
+The GitHub repository may remain public per the owner's instruction. Keep real source IDs, names, CSVs, notes, SQLite files, and environment values outside the repository. On first deploy, run **Sync now → All** from Settings on the authenticated dashboard, then check the sync log after two scheduled runs.
+
+To rotate the password, generate a new hash with `npm run hash-password`, replace `DASHBOARD_PASSWORD_HASH` on the service, then redeploy. Existing sessions expire with the old hash.
+
+## Verification
+
+```sh
+npm run lint
+npm run typecheck
+npm run coverage
+npx playwright install chromium
+npm run smoke
+npm run build
+```
+
+Playwright runs against synthetic data and writes light and dark screenshots under `test-results/`. CI runs lint, typechecks and unit tests without fetching live sheets.

@@ -1,0 +1,11 @@
+.env
+.env.*
+config/sources.local.json
+data/
+fixtures/local/
+plan.md
+memory.md
+CLAUDE.md
+coverage/
+test-results/
+playwright-report/
