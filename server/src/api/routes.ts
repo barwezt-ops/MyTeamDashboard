@@ -370,7 +370,7 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     );
   });
   router.get("/sync/status", (_req, res) => {
-    const jobs = ["roster", "schedule", "attendance", "rules"];
+    const jobs = ["roster", "schedule", "attendance", "rules", "backup"];
     const keys = ["master", "schedule", "attendance"] as SourceKey[];
     const result: SyncStatus = {
       jobs: Object.fromEntries(
