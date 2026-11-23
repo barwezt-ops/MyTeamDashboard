@@ -1,4 +1,5 @@
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 import bcrypt from "bcrypt";
@@ -70,6 +71,40 @@ function request(method: string, path: string, body?: unknown) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
+
+it("serves only the public health fields and reports the last complete data sync", async () => {
+  const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+  const health = async () => {
+    const response = await fetch(base + "/health");
+    expect(response.status).toBe(200);
+    return response.json();
+  };
+  const finish = db.prepare(
+    "INSERT INTO sync_log (job, finished_at, ok) VALUES (?, ?, ?)",
+  );
+  const stamp = (hour: number) =>
+    "2026-11-23T" + String(hour).padStart(2, "0") + ":00:00.000Z";
+
+  try {
+    expect(await health()).toEqual({ ok: true, version, lastSyncAt: null });
+    finish.run("roster", stamp(1), 1);
+    finish.run("rules", stamp(2), 1);
+    finish.run("schedule", stamp(3), 1);
+    finish.run("rules", stamp(4), 0);
+    finish.run("backup", stamp(5), 1);
+    expect(await health()).toEqual({ ok: true, version, lastSyncAt: stamp(1) });
+    finish.run("schedule", stamp(6), 1);
+    finish.run("backup", stamp(7), 1);
+    finish.run("rules", stamp(8), 1);
+    expect(await health()).toEqual({ ok: true, version, lastSyncAt: stamp(8) });
+    expect((await fetch(base + "/agents")).status).toBe(401);
+    expect((await fetch(base + "/sync/status")).status).toBe(401);
+  } finally {
+    db.prepare("DELETE FROM sync_log WHERE finished_at LIKE ?").run(
+      "2026-11-23T%",
+    );
+  }
+});
 
 describe("API request validation", () => {
   it.each([

@@ -1,10 +1,12 @@
 import express, { type ErrorRequestHandler } from "express";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ZodError } from "zod";
 import { loadConfig, type Config } from "./config.js";
 import { readEnv, type Env } from "./env.js";
 import { openDb, type Db } from "./db/db.js";
+import { lastDashboardSyncAt, lastSuccess } from "./db/repo.js";
 import { auth } from "./auth.js";
 import { endpoint } from "./api/request.js";
 import { checkLinkRoutes } from "./api/checkLink.js";
@@ -12,6 +14,10 @@ import { createRoutes } from "./api/routes.js";
 import { createSync, type SyncService } from "./sync/service.js";
 import { backupRoutes } from "./backup/routes.js";
 import { startBackupCron, startCron } from "./sync/cron.js";
+
+const { version } = createRequire(import.meta.url)("../../package.json") as {
+  version: string;
+};
 
 export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
   const login = auth(env);
@@ -44,8 +50,7 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
   app.get(
     "/api/health",
     endpoint({}, (_input, _req, res) => {
-      db.prepare("SELECT 1").get();
-      res.json({ ok: true });
+      res.json({ ok: true, version, lastSyncAt: lastDashboardSyncAt(db) });
     }),
   );
   app.post("/api/login", login.loginLimit, login.login);
@@ -111,16 +116,21 @@ export function startServer(now?: () => Date) {
   const server = app.listen(
     env.PORT,
     env.SOURCE_MODE === "fixture" ? "127.0.0.1" : "0.0.0.0",
-    () => console.log("Team Dashboard listening on port " + env.PORT),
+    () => {
+      console.log("Team Dashboard listening on port " + env.PORT);
+      if (env.SOURCE_MODE === "live" && !lastSuccess(db, "roster"))
+        void sync.start("all");
+    },
   );
-  for (const signal of ["SIGTERM", "SIGINT"] as const)
-    process.once(signal, () => {
-      for (const task of cron) void task.destroy();
-      server.close(() => {
-        if (!sync.active) db.close();
-        process.exit(0);
-      });
-    });
+  const shutdown = () => server.close(() => process.exit(0));
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+  server.once("close", () => {
+    process.off("SIGTERM", shutdown);
+    process.off("SIGINT", shutdown);
+    for (const task of cron) void task.destroy();
+    if (!sync.active) db.close();
+  });
   return { app, server, sync };
 }
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url)

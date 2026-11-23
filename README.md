@@ -36,11 +36,167 @@ The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and 
 
 ## Railway
 
-Deploy to a single service using Node 20. In Railway service settings, set the build command to `npm run build`, the start command to `npm start`, the healthcheck path to `/api/health`, and the restart policy to **On Failure**. Set `SOURCE_MODE=live`, `TZ=Africa/Cairo`, `DATA_DIR=/data`, both authentication variables, and `DASHBOARD_SOURCE_CONFIG`. Mount a persistent volume at `/data`. Railway supplies `PORT`. Use the Railway HTTPS domain for login and secure session cookies. The checked-in `railway.json` carries the same build and deploy settings for existing services that still use Config as Code.
+### 1. Create the project and attach storage
 
-The GitHub repository may remain public per the owner's instruction. Keep real source IDs, names, CSVs, notes, SQLite files, and environment values outside the repository. On first deploy, run **Sync now → All** from Settings on the authenticated dashboard, then check the sync log after two scheduled runs.
+After the Phase 7 PR is merged, choose **New Project → GitHub Repo** in Railway and select `barwezt-ops/MyTeamDashboard`. Choose **Add Variables** to stage the service before its first deploy. Use the `main` branch and keep the repository root as the service root. Use one service with one replica. Leave **Serverless** off so the scheduled jobs can run even when nobody is signed in.
 
-To rotate the password, generate a new hash with `npm run hash-password`, replace `DASHBOARD_PASSWORD_HASH` on the service, then redeploy. Existing sessions expire with the old hash.
+Right-click the project canvas, choose **Attach Volume**, select the dashboard service, and set the mount path to `/data`. This volume holds the SQLite database and nightly backups. Keep it attached when redeploying or rolling back. [Railway quick start](https://docs.railway.com/quick-start) · [Volumes](https://docs.railway.com/volumes)
+
+### 2. Set the service variables
+
+Open the dashboard service's **Variables** tab and add the entries below. Run `npm ci` from the repository folder before generating the password hash or checking sheet links. The app targets Node 20. On Windows, Node 24 can run these setup commands if the Node 20 install asks for Visual Studio C++ build tools.
+
+| Variable                  | Purpose and how to set it                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATA_DIR`                | Set to `/data` so SQLite and backups use the mounted volume.                                                                                                                              |
+| `SOURCE_MODE`             | Set to `live` so the service reads the configured Google Sheets and uses secure session cookies.                                                                                          |
+| `TZ`                      | Set to `Africa/Cairo` for the server's timezone. The example JSON also uses Cairo for the sync jobs.                                                                                      |
+| `DASHBOARD_PASSWORD_HASH` | Run `npm run hash-password` locally, type your chosen dashboard password, and press Enter. Paste only the resulting bcrypt hash into the variable. Save the password privately for login. |
+| `SESSION_SECRET`          | Run `node -p "require('node:crypto').randomBytes(48).toString('base64url')"` locally and paste the generated string into the variable. It signs dashboard sessions.                       |
+| `DASHBOARD_SOURCE_CONFIG` | Paste the full JSON prepared in the next step into this single variable. It contains the team filter, sources, and schedule settings.                                                     |
+| `PORT`                    | Railway provides this listening port automatically. Leave it unset in the service variables.                                                                                              |
+
+Keep real source links, team names, and secrets in private local files or service variables. [Railway variables](https://docs.railway.com/variables)
+
+### 3. Prepare the live config with attendance off
+
+Copy the **EXAMPLE** JSON below to `config/sources.local.json` on your machine. The file is gitignored. Replace the demo lead names with the exact roster names used in the lead columns. Use `[]` for `me.alsoCover` if you cover nobody. For each master and schedule tab, copy the sheet ID from between `/d/` and the next slash in its view link and the numeric GID after `gid=`. Set the tab names and check the column letters against the tabs. For the schedule, set `anchor.column` and `anchor.date` to the first date column and its Cairo date in `YYYY-MM-DD` format.
+
+Run `test-link` on the real master first. Set `dateOrder` from the sample date by comparing the reported `sampleDate` with the date in the sheet. Use `MDY` for month/day/year or `DMY` for day/month/year. If the report is empty or the date is ambiguous, verify an unambiguous date in the master, then rerun the check. Confirm that all ten mapped headers match `expectHeaders`. Check the schedule link too. Keep `sources.attendance.enabled` set to `false`.
+
+```sh
+npm run test-link -- '<real master tab view link>' --source=master
+npm run test-link -- '<real schedule tab view link>' --source=schedule
+```
+
+When both links export CSV without sign-in and the results match the tabs, paste the entire edited JSON into `DASHBOARD_SOURCE_CONFIG` in Railway.
+
+```json
+{
+  "me": {
+    "rosterName": "Demo Lead",
+    "alsoCover": ["Cover Lead"],
+    "defaultScope": "covered"
+  },
+  "dateOrder": "MDY",
+  "timezone": "Africa/Cairo",
+  "jobs": {
+    "daily": "0 16 * * *",
+    "weekly": "0 12 * * 0"
+  },
+  "syncWindow": {
+    "pastDays": 35,
+    "futureDays": 14
+  },
+  "sources": {
+    "master": {
+      "label": "House master sheet",
+      "sheetId": "EXAMPLE_MASTER_SHEET_ID",
+      "gid": "123456789",
+      "tab": "TEAM",
+      "mode": "export",
+      "headerRows": 1,
+      "columns": {
+        "hireDate": "A",
+        "code": "B",
+        "name": "C",
+        "account": "D",
+        "account2": "E",
+        "dtl": "G",
+        "tl": "H",
+        "stl": "I",
+        "title": "K",
+        "lastWorkingDay": "M"
+      },
+      "expectHeaders": {
+        "hireDate": "Hiring Date",
+        "code": "Code",
+        "name": "Name",
+        "account": "Account",
+        "account2": "Account 2",
+        "dtl": "Deputy Team Leader",
+        "tl": "Team Leader",
+        "stl": "Senior TL",
+        "title": "Title",
+        "lastWorkingDay": "Last working day"
+      }
+    },
+    "schedule": {
+      "label": "Shifts and schedules",
+      "sheetId": "EXAMPLE_SCHEDULE_SHEET_ID",
+      "gid": "987654321",
+      "tab": "SHIFTS AND SCHEDULES",
+      "mode": "export",
+      "headerRows": 1,
+      "columns": {
+        "code": "A",
+        "name": "B",
+        "account": "D"
+      },
+      "anchor": {
+        "column": "F",
+        "date": "2026-10-21"
+      },
+      "stopAtHeader": "removed|counter|casuals"
+    },
+    "attendance": {
+      "label": "Attendance / discrepancies",
+      "enabled": false,
+      "sheetId": "",
+      "gid": "",
+      "tab": "",
+      "mode": "export",
+      "headerRows": 1,
+      "layout": "long",
+      "long": {
+        "columns": {
+          "code": "A",
+          "name": "B",
+          "date": "E",
+          "status": "F",
+          "missing": "G"
+        }
+      },
+      "wide": {
+        "keyColumn": "C",
+        "dtlColumn": "B",
+        "keyType": "name",
+        "firstDateColumn": "D",
+        "dateHeaderRow": 1
+      }
+    }
+  },
+  "statusMap": {
+    "off": "Off Day",
+    "annual": "PTO",
+    "pto": "PTO",
+    "upl": "UPL",
+    "sick": "Sick",
+    "casual": "Casual",
+    "on hold": "On Hold",
+    "not hired": "Not Hired",
+    "present": "Present",
+    "absent": "Absent",
+    "no show": "Absent"
+  },
+  "thresholds": {}
+}
+```
+
+### 4. Deploy, sign in, and check the first sync
+
+1. Review the staged changes and click **Deploy**. The checked-in `railway.json` sets `npm run build`, `npm start`, `/api/health`, and the **On Failure** restart policy. The health check can pass while the first sync is still running.
+2. When the deployment is successful, open the service's **Settings → Networking → Public Networking**, click **Generate Domain**, and open the HTTPS URL. Sign in with the password you chose.
+3. In dashboard **Settings**, wait for the automatic first sync to finish, then click **Sync now → All** to verify the setup. In **Sync log**, confirm `roster`, `schedule`, and `rules` succeeded. Read **Details** for warnings or errors and check the source cards for more context. For example, correct the master mapping if you see `COLUMN_HEADER_MISMATCH` or check the schedule's first date column and anchor if you see `ANCHOR_MISMATCH`. Run **All** again after applying a correction. Spot-check the Roster and Today views against the source tabs.
+4. The next day, after 16:00 Cairo, refresh **Settings → Sync log**. Look for a successful `backup` at 02:00 and successful `schedule` and `rules` entries starting at 16:00 Cairo or shortly after. Use the **Started** column to distinguish the scheduled rows from a manual run. The weekly roster job runs Sunday at 12:00 Cairo. If an expected entry is missing or failed, check the Railway deployment logs and the **Details** column.
+5. For Checkpoint 7, share the HTTPS login URL, a screenshot of the sync log showing the two scheduled runs with any sensitive details cropped out, and this runbook.
+
+### 5. Maintain the deployment
+
+- **Swap a sheet link.** Paste the new tab's view link into **Settings → Check a link** or run the appropriate `test-link` command above. Check the headers and sample date. Edit that source's `sheetId`, `gid`, `tab`, and any changed mappings in your local JSON. Replace the whole `DASHBOARD_SOURCE_CONFIG` value, deploy the staged change, then run **Settings → Sync now → All** and review the log.
+- **Change the schedule anchor.** When the first date column or its date changes, update `sources.schedule.anchor.column` and `sources.schedule.anchor.date`, and verify `stopAtHeader` still matches the first non-date section. Deploy the updated JSON, run **All**, and check for `ANCHOR_MISMATCH` and correct dates on **Today**.
+- **Rotate the password.** Generate a new bcrypt hash with `npm run hash-password`. Replace `DASHBOARD_PASSWORD_HASH`, deploy the staged change, and sign in again with the new password. Changing the hash invalidates existing sessions.
+- **Roll back a bad deploy.** In the Railway service's **Deployments** tab, find the last good deployment, open its three-dot menu, choose **Rollback**, and confirm. Railway restores the previous image and service variables, so verify which password and source config are now active. The attached volume retains its current data. Open the HTTPS URL, sign in, and check the dashboard and sync log. [Railway rollback](https://docs.railway.com/deployments/deployment-actions#rollback)
 
 ## Verification
 
