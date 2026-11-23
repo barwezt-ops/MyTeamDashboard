@@ -1,5 +1,5 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-23 for the Free VM deployment handoff._
+_Last updated: 2026-11-23 for the PR #9 deployment review._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
@@ -9,7 +9,7 @@ _Last updated: 2026-11-23 for the Free VM deployment handoff._
 - **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Not live yet:** VM provisioning, Tailscale access, and real sheet configuration are pending the owner. Attendance is disabled.
-- **Next task:** Owner reviews the deployment PR, then follows the Free VM runbook and verifies the next day's daily sync and 02:00 Cairo backup. Phase 6 follows when the attendance link arrives.
+- **Next task:** Owner reviews PR #9, then follows the Free VM runbook. Attach ephemeral IPv4 for setup and detach it after configuring Tailscale. Verify APT over IPv6, then check the next day's daily sync and 02:00 Cairo backup. Phase 6 follows when the attendance link arrives.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -31,7 +31,7 @@ _Last updated: 2026-11-23 for the Free VM deployment handoff._
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
 | First live boot and public health | done | `index.ts`, `db/db.ts` | Startup checks `DATA_DIR`. Live boot starts All after listening if no successful roster exists. Public health returns only `ok`, `version`, and `lastSyncAt`. |
-| Free VM deploy readiness | **code ready for review, deploy pending owner** | `deploy/`, `README.md`, `env.ts` | Ubuntu e2-micro with systemd and 2 GB swap. The service listens on loopback behind Tailscale Serve. Builds finish in a separate release before switching. Railway remains optional. |
+| Free VM deploy readiness | **code ready for review, deploy pending owner** | `deploy/`, `README.md`, `env.ts` | Ubuntu e2-micro with systemd, 2 GB swap, and unattended security updates. The service listens on loopback behind Tailscale Serve. Setup and staged updates check GitHub reachability over IPv4. Railway remains optional. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
 
 ## 3. Architecture as built
@@ -67,6 +67,7 @@ _Last updated: 2026-11-23 for the Free VM deployment handoff._
 | 2026-11-23 | Bootstrap live data after listen when no successful roster is recorded | A new instance can respond to health checks immediately. A persisted successful roster prevents another boot sync. | Run All on every boot |
 | 2026-11-23 | Report completed daily and successful roster timestamps on public health | A successful schedule fetch alone can precede a rules failure. Keep source, configuration, and team data behind login. | Expose authenticated sync status publicly |
 | 2026-11-23 | Use a Google Cloud Free Tier e2-micro VM with Tailscale private HTTPS | The owner wants to avoid a recurring hosting bill. Use external IPv6 for normal operation and verify Tailscale plan eligibility for work use before going live. | Railway as the project's hosting target |
+| 2026-11-23 | Use IPv6-only internet access in normal operation and attach ephemeral IPv4 for setup and every app update | GitHub access requires IPv4. Detaching it after maintenance limits address charges. | Keep external IPv4 attached full-time |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -79,6 +80,7 @@ _Last updated: 2026-11-23 for the Free VM deployment handoff._
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
 | Outbound networking and tailnet plan depend on owner setup | External IPv4 can incur charges and Tailscale Personal is for non-commercial use | Use the README IPv6 and IAP setup, verify an eligible tailnet, and check next-day sync and billing |
+| App updates require a temporary IPv4 window | GitHub pulls cannot run over the VM's normal IPv6-only internet connection | Attach IPv4, run the update, then detach it. Apply Ubuntu security updates in the same window if APT cannot refresh over IPv6. |
 
 ## 7. Open questions for the owner
 | # | Question | Blocking? | Status |
@@ -96,6 +98,9 @@ _Last updated: 2026-11-23 for the Free VM deployment handoff._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-23 — PR #9 review fixes
+- Made temporary IPv4 mandatory for setup and updates, added GitHub reachability checks, and documented verifying APT over IPv6 and downloading a weekly off-VM backup. Setup enables unattended security updates and the dashboard unit uses a private temporary directory.
+
 ### 2026-11-23 — Free VM deployment path
 - Added setup and staged update scripts, a loopback-only systemd unit, and the owner runbook for an e2-micro VM with Tailscale private HTTPS. Added live bind-address test coverage. Owner review and the live deployment are pending.
 

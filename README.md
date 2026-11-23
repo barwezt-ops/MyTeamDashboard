@@ -46,24 +46,23 @@ The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and 
 1. In **VPC network → VPC networks**, create a **Custom** network with one subnet in `us-central1`, `us-east1`, or `us-west1`. Give the subnet an unused private IPv4 range, such as `10.10.0.0/24`. Select **IPv4 and IPv6 (dual stack)** and **External** for IPv6 access.
 2. In **VPC network → Firewall**, add an ingress rule for TCP port 22 from `35.235.240.0/20` on that network. Use the target tag `dashboard-ssh` so it applies only to this VM. Give your Google account the IAP tunnel and VM login permissions in the linked guide.
 3. In **Compute Engine → VM instances → Create instance**, name the VM `team-dashboard`. Pick a zone in the subnet's region, **E2 → e2-micro** with Standard provisioning, and a **30 GB Standard persistent disk** with **Ubuntu 24.04 LTS x86/64**. Under **Networking**, use the new subnet and the `dashboard-ssh` tag. Select dual stack, **External IPv4 → None**, and **External IPv6 → Ephemeral (Automatic)**. Leave the HTTP and HTTPS firewall boxes unchecked.
-4. Open **Cloud Shell** from the console header and run the following in the browser, replacing the example zone with the VM's actual zone.
+4. Open the VM in **Compute Engine → VM instances**, click **Edit**, expand its network interface, and change **External IPv4** to **Ephemeral**. Save the change. GitHub requires IPv4, so attach this address before downloading setup. Keep it attached until Tailscale is installed and configured.
+5. Open **Cloud Shell** from the console header and run the following in the browser, replacing the example zone with the VM's actual zone.
 
    ```sh
    gcloud compute ssh team-dashboard --zone=us-central1-a --tunnel-through-iap
    ```
 
-The Free Tier covers one eligible e2-micro, 30 GB-months of standard disk, and up to 1 GB of eligible monthly outbound traffic from North America. External IPv6 addresses have no address fee. An external IPv4 address costs $0.005 per hour after the billing account's first eligible free hour each month, even when ephemeral. Keep external IPv4 unset for normal operation and skip Cloud NAT. [Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features#compute) · [Network pricing](https://cloud.google.com/vpc/network-pricing#ipaddress) · [Dual-stack VPC setup](https://docs.cloud.google.com/vpc/docs/create-modify-vpc-networks) · [SSH through IAP](https://docs.cloud.google.com/compute/docs/connect/ssh-using-iap)
+The Free Tier covers one eligible e2-micro, 30 GB-months of standard disk, and up to 1 GB of eligible monthly outbound traffic from North America. External IPv6 addresses have no address fee. The billing account gets one eligible external IPv4 hour per month across setup and updates, then pays about $0.005 per hour, including for ephemeral addresses. Keep external IPv4 unset for normal operation and skip Cloud NAT. [Free Tier limits](https://docs.cloud.google.com/free/docs/free-cloud-features#compute) · [Network pricing](https://cloud.google.com/vpc/network-pricing#ipaddress) · [Dual-stack VPC setup](https://docs.cloud.google.com/vpc/docs/create-modify-vpc-networks) · [SSH through IAP](https://docs.cloud.google.com/compute/docs/connect/ssh-using-iap)
 
 ### 3. Install and configure the dashboard
 
-After the deployment PR is merged into `main`, paste the following into the VM's SSH terminal. Setup installs Node 20, adds 2 GB of swap, builds the app, creates its data directory, and enables the service.
+After the deployment PR is merged into `main` and the ephemeral IPv4 address is attached, paste the following into the VM's SSH terminal. Setup installs Node 20, adds 2 GB of swap, builds the app, creates its data directory, and enables the service and Ubuntu's unattended security updates.
 
 ```sh
-curl -fsSLo setup.sh https://raw.githubusercontent.com/barwezt-ops/MyTeamDashboard/main/deploy/setup.sh
+curl -4fsSLo setup.sh https://raw.githubusercontent.com/barwezt-ops/MyTeamDashboard/main/deploy/setup.sh
 sudo bash setup.sh
 ```
-
-If GitHub or a package download needs IPv4, edit the VM's network interface in the console and temporarily choose **External IPv4 → Ephemeral**. Reconnect through Cloud Shell, finish setup and Tailscale installation, and switch it back to **None**. Track the total attachment time across setup and future updates against the billing account's free hour. Charges can apply if you exceed it.
 
 Generate the hash and session secret from the built release. Type your chosen password at the first prompt. Save that password privately for login.
 
@@ -109,16 +108,22 @@ curl -fsS http://127.0.0.1:3000/api/health
    ```
 
 2. Run `sudo tailscale serve --bg --https=443 http://127.0.0.1:3000`. If prompted, follow the link to enable HTTPS, then rerun the command. With Tailscale connected on your phone or laptop, open the `https://<name>.ts.net` URL shown by `sudo tailscale serve status`. Use Serve to keep access inside your tailnet. Leave Funnel and public web firewall rules off. [Serve command](https://tailscale.com/docs/reference/tailscale-cli/serve)
-3. Remove any temporary external IPv4 address before testing. Open the Tailscale HTTPS URL, sign in with the password you chose, and wait for the first automatic sync to finish. Open **Settings → Sync now → All**. In **Sync log**, check that `roster`, `schedule`, and `rules` succeeded, and read any warnings in **Details**. This verifies that the sheets still work with normal VM networking.
-4. The next day after 16:00 Cairo, check **Settings → Sync log** for a successful 02:00 `backup` and successful `schedule` and `rules` rows around 16:00. Review the billing report once usage is posted.
+3. Return to the VM's network interface in Google Cloud Console, set **External IPv4 → None**, and save. Reconnect through Cloud Shell if your SSH session closed. Run `sudo apt-get update --error-on=any` to confirm every configured package repository can refresh over IPv6. If the refresh fails, apply security updates during each IPv4 maintenance window using the command in the next section. [Ubuntu automatic updates](https://documentation.ubuntu.com/server/how-to/software/automatic-updates/)
+4. Open the Tailscale HTTPS URL, sign in with the password you chose, and wait for the first automatic sync to finish. Open **Settings → Sync now → All**. In **Sync log**, check that `roster`, `schedule`, and `rules` succeeded, and read any warnings in **Details**. This verifies that the sheets still work over IPv6.
+5. The next day after 16:00 Cairo, check **Settings → Sync log** for a successful 02:00 `backup` and successful `schedule` and `rules` rows around 16:00. Review the billing report once usage is posted.
 
 ### 5. Maintain the VM
 
-- **Update the dashboard.** SSH in and run `sudo bash /opt/team-dashboard/deploy/update.sh`. It pulls the latest code and builds a separate release before restarting. On a build failure the running release stays available. Use the temporary IPv4 steps above if GitHub or a package download needs it.
+> **Every dashboard update requires a temporary IPv4 address.**
+>
+> 1. In Google Cloud Console, edit the VM's network interface and set **External IPv4 → Ephemeral**. Save the change and SSH in through IAP.
+> 2. Run `sudo bash /opt/team-dashboard/deploy/update.sh`. It pulls and builds separately before restarting, so a failed build leaves the running release available. If APT could not refresh over IPv6, apply security updates during this window with `sudo apt-get update && sudo apt-get -y upgrade`.
+> 3. Set **External IPv4 → None** and save, even if the update failed. Check the dashboard through Tailscale.
+
 - **View logs.** Run `sudo journalctl -u team-dashboard -n 100 --no-pager` for recent messages or `sudo journalctl -u team-dashboard -f` for live logs. Press Ctrl+C to exit live logs.
 - **Restart.** Run `sudo systemctl restart team-dashboard`. Check `sudo systemctl status team-dashboard --no-pager`.
 - **Rotate the password.** In `/opt/team-dashboard-current`, run `npm run hash-password`. Use `sudoedit /etc/team-dashboard.env` to replace `DASHBOARD_PASSWORD_HASH`, then restart and sign in with the new password. Changing the hash invalidates existing sessions.
-- **Find backups.** The dashboard stores its nightly JSON backups in `/var/lib/team-dashboard/backups`. Use **Settings → Download backup** to keep a private copy outside the VM. The SQLite file is `/var/lib/team-dashboard/dashboard.db`.
+- **Keep a weekly backup off the VM.** Every week, use **Settings → Download backup** and keep the downloaded file in private storage outside the VM. The VM stores nightly JSON backups in `/var/lib/team-dashboard/backups` and the SQLite file at `/var/lib/team-dashboard/dashboard.db`.
 
 ## Railway
 
