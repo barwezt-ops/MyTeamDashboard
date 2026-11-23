@@ -8,7 +8,7 @@ import {
   runNightlyBackup,
 } from "../backup/files.js";
 import type { Config } from "../config.js";
-import { lastDailyStart, lastRun } from "../db/repo.js";
+import { lastDailyStart, lastRun, lastSuccess } from "../db/repo.js";
 import { localDate } from "../parse/normalize.js";
 import type { SyncService } from "./service.js";
 export function startCron(config: Config, sync: SyncService) {
@@ -82,6 +82,7 @@ export function startLiveJobs(
   const options = { timezone, suppressMissedWarning: true };
   const backupPattern = "0 2 * * *";
   const dailyOffsets = cronOffsets(config.jobs.daily);
+  let bootstrapAttempted = false;
 
   function canRetry(job: "daily" | "backup", time: Date) {
     const last = lastRun(db, job);
@@ -112,6 +113,10 @@ export function startLiveJobs(
         runNightlyBackup(db, directory, time);
     }
 
+    if (!bootstrapAttempted && !lastSuccess(db, "roster")) {
+      bootstrapAttempted = true;
+      return sync.start("all");
+    }
     const completed = lastDailyStart(db);
     if (
       canRetry("daily", time) &&

@@ -48,7 +48,7 @@ The dashboard and its SQLite database run on your PC without a cloud account or 
 
    If PowerShell says scripts are disabled even with this command, run `Get-ExecutionPolicy -List`. A restricted `MachinePolicy` or `UserPolicy` comes from Windows Group Policy. Ask the administrator to allow these scripts before installing.
 
-6. Open `http://localhost:3000`, sign in with the dashboard password, then open **Settings → Sync now → All**. If a catch-up sync is already running, wait for it to finish. Check **Sync log** for successful roster, schedule, and rules entries.
+6. Open `http://localhost:3000` and sign in with the dashboard password. The first live start syncs all sources if the dashboard has no successful roster sync. Once the dashboard is idle, open **Settings → Sync now → All** and check **Sync log** for successful roster, schedule, and rules entries.
 
 ### Maintain your Windows dashboard
 

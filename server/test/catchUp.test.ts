@@ -70,13 +70,42 @@ it.each([
   },
 );
 
+it.each([true, false])(
+  "starts All once at 10:00 Cairo on an empty live database (success %s)",
+  async (success) => {
+    const config = liveConfig();
+    const db = openDb(":memory:");
+    const now = () => new Date("2026-11-21T10:00:00+02:00");
+    const sync = createSync(db, config, "live", now);
+    const jobs = startLiveJobs(db, ":memory:", config, sync, now);
+    const start = vi.spyOn(sync, "start");
+    vi.stubGlobal(
+      "fetch",
+      success ? fetchFixture : async () => new Response(null, { status: 404 }),
+    );
+    try {
+      const bootstrap = jobs.check();
+      expect(jobs.check()).toBeUndefined();
+      expect(await bootstrap).toBe(success);
+      expect(jobs.check()).toBeUndefined();
+      expect(start).toHaveBeenCalledExactlyOnceWith("all");
+    } finally {
+      jobs.stop();
+      db.close();
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
 it("checks the current Cairo time after sleep, runs today's jobs once, and waits an hour after a failure", async () => {
   const directory = mkdtempSync(join(tmpdir(), "dashboard-catch-up-"));
   const db = openDb(":memory:");
   const config = liveConfig();
-  db.prepare(
-    "INSERT INTO sync_log (job, started_at, finished_at, ok) VALUES ('daily', ?, ?, 1)",
-  ).run("2026-11-20T14:00:00.000Z", "2026-11-20T14:01:00.000Z");
+  const seed = db.prepare(
+    "INSERT INTO sync_log (job, started_at, finished_at, ok) VALUES (?, ?, ?, 1)",
+  );
+  seed.run("daily", "2026-11-20T14:00:00.000Z", "2026-11-20T14:01:00.000Z");
+  seed.run("roster", "2026-11-13T14:00:00.000Z", "2026-11-13T14:01:00.000Z");
   let time = new Date("2026-11-21T13:59:59Z");
   const now = () => time;
   const sync = createSync(db, config, "live", now);
@@ -118,13 +147,13 @@ it("checks the current Cairo time after sleep, runs today's jobs once, and waits
     await jobs.check();
     expect(count("daily")).toBe(3);
     expect(count("backup")).toBe(2);
-    expect(count("roster")).toBe(2);
+    expect(count("roster")).toBe(3);
 
     time = new Date("2026-11-22T18:00:00+02:00");
     expect(await jobs.check()).toBe(true);
     expect(count("daily")).toBe(4);
     expect(count("backup")).toBe(3);
-    expect(count("roster")).toBe(2);
+    expect(count("roster")).toBe(3);
   } finally {
     jobs.stop();
     db.close();

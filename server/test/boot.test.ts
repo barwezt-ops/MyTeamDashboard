@@ -110,7 +110,7 @@ it("uses the Windows default and rejects repo and OneDrive environment paths", (
   expect(() => env.readDataDir(true)).toThrow("Move DATA_DIR out of OneDrive");
 });
 
-it("catches up once after listening and honors the local bind address", async () => {
+it("starts All once after listening before the daily slot and honors the local bind address", async () => {
   const config = loadConfig();
   config.sources.master.sheetId = "FakeMaster";
   config.sources.master.gid = "10";
@@ -145,10 +145,10 @@ it("catches up once after listening and honors the local bind address", async ()
       : new Response(null, { status: 404 });
   });
   vi.stubGlobal("fetch", request);
-  const today = () => new Date("2026-11-21T16:00:00.000Z");
+  const today = () => new Date("2026-11-21T10:00:00+02:00");
 
   for (const [expected, local, address] of [
-    ["daily", true, "127.0.0.1"],
+    ["all", true, "127.0.0.1"],
     [null, false, "0.0.0.0"],
   ] as const) {
     vi.stubEnv("BIND_HOST", undefined);
