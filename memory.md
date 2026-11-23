@@ -1,5 +1,5 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-24 for the Windows local deployment review._
+_Last updated: 2026-11-24 for the PR #10 review fixes._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
@@ -9,7 +9,7 @@ _Last updated: 2026-11-24 for the Windows local deployment review._
 - **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Not live yet:** Windows installation and real sheet configuration are pending the owner. Optional phone access uses Tailscale. Attendance is disabled.
-- **Next task:** Owner reviews the `windows-local` PR, then follows **Run on your Windows PC** and checks the next daily sync and 02:00 Cairo backup. Phase 6 follows when the attendance link arrives.
+- **Next task:** Owner reviews PR #10, then follows **Run on your Windows PC** and checks the next daily sync and 02:00 Cairo backup. If using Tailscale, confirm sign-in from the phone. Phase 6 follows when the attendance link arrives.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -23,14 +23,14 @@ _Last updated: 2026-11-24 for the Windows local deployment review._
 | Attendance dry run | done | `sync/attendancePreview.ts`, Settings | read-only; projected D1–D4 counts |
 | Rules D1–D7 | done (D1–D4 run only when attendance enabled) | `rules/` | D5 has stable id `code\|D5`; auto-clear only touches `open` rows |
 | Sync windows / replacement | done | `sync/service.ts`, `syncSchedule.ts`, `syncAttendance.ts` | window = today −35 / +14; replace only the dates the source covers (`coveredRange`); one Cairo date per run |
-| Cron and catch-up | done | `sync/cron.ts` | daily `0 16 * * *`, weekly `0 12 * * 0` (Sun), backup 02:00 Cairo. Live mode checks today's missed daily and backup at start and every 15 minutes. Automated retries wait at least one hour. Daily refreshes roster first if missing or >7 days old. |
-| Auth | done | `auth.ts` | single bcrypt password in env, signed cookie session (12 h), login rate limit. Windows loopback HTTP works for direct localhost sign-in. Proxied live sign-ins use secure cookies. |
+| Cron and catch-up | done | `sync/cron.ts` | daily `0 16 * * *`, weekly `0 12 * * 0` (Sun), backup 02:00 Cairo. Startup and 15-minute checks cover the latest elapsed daily slot and today's backup. A successful daily or All must start at or after the slot to satisfy it. Automated retries wait at least one hour. Daily refreshes roster first if missing or >7 days old. |
+| Auth | done | `auth.ts` | single bcrypt password in env, signed cookie session (12 h), login rate limit. Loopback live listeners allow direct localhost HTTP sign-in and use secure cookies for Tailscale hostnames even when Serve omits `X-Forwarded-Proto`. |
 | API with zod validation | done | `api/routes.ts`, `api/request.ts` | see §3 |
 | Copy as email table | done | `api/export.ts` | Code \| Name \| Team Leader \| Account \| Date \| Missing \| TL Comment; header `#16365c` white bold; black 1 px borders; Arial 11 pt |
 | Backups + restore | done | `backup/` | nightly 02:00 Cairo to `DATA_DIR/backups`, keep 14; logged as job `backup` in `sync_log`; restore = preview token → confirm, one transaction, never touches schedule/attendance |
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
-| First live boot and public health | done | `index.ts`, `db/db.ts` | Startup checks `DATA_DIR`, then starts catch-up after listening. The owner can seed manually from Settings. Public health returns only `ok`, `version`, and `lastSyncAt`. |
+| First live boot and public health | done | `index.ts`, `db/db.ts`, `sync/cron.ts` | Startup checks `DATA_DIR`, then starts catch-up after listening. With no successful roster, the first check starts All once at any Cairo hour. Public health returns only `ok`, `version`, and `lastSyncAt`. |
 | Windows local deployment | **ready for review, install pending owner** | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
 | Free VM and Railway | optional, needs a card | `deploy/`, `README.md` | Existing deploy runbooks remain available. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
@@ -70,6 +70,9 @@ _Last updated: 2026-11-24 for the Windows local deployment review._
 | 2026-11-23 | Use a Google Cloud Free Tier e2-micro VM with Tailscale private HTTPS | The owner wants to avoid a recurring hosting bill. Use external IPv6 for normal operation and verify Tailscale plan eligibility for work use before going live. | Railway as the project's hosting target |
 | 2026-11-23 | Use IPv6-only internet access in normal operation and attach ephemeral IPv4 for setup and every app update | GitHub access requires IPv4. Detaching it after maintenance limits address charges. | Keep external IPv4 attached full-time |
 | 2026-11-24 | Run on the owner's Windows PC with SQLite in `%LOCALAPPDATA%\TeamDashboard\data`, outside OneDrive and the repository | The owner wants a local setup that needs no hosting account or payment card. Keeping a live database out of sync folders avoids corruption. | Free VM and Railway |
+| 2026-11-24 | Compare completed daily and All start times with the latest elapsed Cairo slot | A manual All at 10:00 should leave the 16:00 sync due. Wake-up catches up from the most recent scheduled slot. | Treat any same-day success as sufficient |
+| 2026-11-24 | Restore one boot-time All attempt when there is no successful roster | The first live instance should populate data even before the daily time. The check guards against duplicate bootstrap attempts. | Wait until the scheduled daily time |
+| 2026-11-24 | Infer HTTPS for non-local hosts on live loopback listeners when the protocol header is absent | Tailscale Serve can omit `X-Forwarded-Proto`. Windows and the loopback-bound VM need secure session cookies, and direct localhost sign-in uses HTTP. | Require the header for every secure proxy sign-in |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -81,7 +84,7 @@ _Last updated: 2026-11-24 for the Windows local deployment review._
 | Real master column positions and date order unverified | Incorrect mappings can block roster sync or misread dates | Run `test-link` on the real master and use the README example's `expectHeaders` at deploy |
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
-| The dashboard syncs only while the PC is awake and the owner is signed in | The web app and scheduled jobs pause while the PC is unavailable | Startup and 15-minute catch-up run today's missed daily sync and backup. |
+| The dashboard syncs only while the PC is awake and the owner is signed in | The web app and scheduled jobs pause while the PC is unavailable | Startup and 15-minute catch-up cover the latest elapsed daily slot and today's backup. |
 | A Windows Group Policy can block PowerShell script files | The verification host had a restricted `MachinePolicy`, so Task Scheduler installation is pending a PC that allows the scripts | Use `Get-ExecutionPolicy -List` and ask the administrator to allow the scripts if needed. |
 | Outbound networking and tailnet plan depend on owner setup | External IPv4 can incur charges and Tailscale Personal is for non-commercial use | Use the README IPv6 and IAP setup, verify an eligible tailnet, and check next-day sync and billing |
 | App updates require a temporary IPv4 window | GitHub pulls cannot run over the VM's normal IPv6-only internet connection | Attach IPv4, run the update, then detach it. Apply Ubuntu security updates in the same window if APT cannot refresh over IPv6. |
@@ -99,9 +102,13 @@ _Last updated: 2026-11-24 for the Windows local deployment review._
 ## 8. Review feedback
 - **PR #1 review (2026-11-21): request changes → fixed → approved.** Must-fix: covered-range replacement, stable D5 id, AM/PM. Should-fix: scope unmatched wide-attendance warnings to team leads, any column letter + `expectHeaders` + refuse sensitive headers, `dateOrder`. Nits: "Not on schedule" separate from Unknown; copy schema.sql into dist. All addressed in 8 commits with tests.
 - **B–F review (2026-11-22): all approved.** Should-fix (done 2026-11-23): log nightly backup to `sync_log`. Nits open: see §6.
+- **PR #10 review (2026-11-24): fixes ready for review.** Compare successful runs with the scheduled Cairo slot, restore first-boot All, and adopt the secure-cookie fallback for loopback Tailscale hosts. Regression tests cover manual and scheduled runs, sleep/resume, bootstrap success and failure, and Windows, VM, and public-bind login behavior.
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-24 — PR #10 review fixes
+- Updated daily catch-up to use the latest elapsed slot, restored first-boot All, and fixed secure session cookies for Tailscale Serve with loopback binding. Added the phone login check to the Windows runbook.
+
 ### 2026-11-24 — Windows local deployment
 - Added Windows Task Scheduler scripts and the owner runbook, guarded local data paths, optional external live config, Cairo catch-up with hourly retry limits, and capped logs. Kept the Free VM and Railway runbooks as optional paths that need a card.
 - Verified the Windows Node 20 SQLite prebuild, PowerShell syntax, hidden launcher and staged build locally. The optional Windows CI job needs GitHub workflow-write permission.
