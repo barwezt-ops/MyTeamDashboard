@@ -135,20 +135,27 @@ export const configSchema = z
 export type Config = z.infer<typeof configSchema>;
 export type SourceKey = keyof Config["sources"];
 export function loadConfig(
-  path = resolve("config/sources.json"),
+  path: string | undefined = undefined,
   mode: "fixture" | "live" = "fixture",
+  checkLink = false,
 ): Config {
+  const localFile = resolve("config/sources.local.json");
+  const file =
+    path ??
+    (mode === "live" || checkLink
+      ? process.env.DASHBOARD_CONFIG_FILE?.trim() ||
+        (existsSync(localFile) ? localFile : undefined)
+      : undefined) ??
+    resolve("config/sources.json");
   try {
-    const file =
-      mode === "live" && existsSync(resolve("config/sources.local.json"))
-        ? resolve("config/sources.local.json")
-        : path;
     const raw =
-      mode === "live" && process.env.DASHBOARD_SOURCE_CONFIG
+      mode === "live" &&
+      !process.env.DASHBOARD_CONFIG_FILE?.trim() &&
+      process.env.DASHBOARD_SOURCE_CONFIG
         ? JSON.parse(process.env.DASHBOARD_SOURCE_CONFIG)
         : JSON.parse(readFileSync(file, "utf8"));
     const config = configSchema.parse(raw);
-    if (mode === "live") {
+    if (mode === "live" && !checkLink) {
       for (const key of ["master", "schedule", "attendance"] as const) {
         if (key === "attendance" && !config.sources.attendance.enabled)
           continue;
@@ -168,6 +175,6 @@ export function loadConfig(
         : error instanceof Error
           ? error.message
           : String(error);
-    throw new Error("Invalid source config " + path + "\n" + details);
+    throw new Error("Invalid source config " + file + "\n" + details);
   }
 }

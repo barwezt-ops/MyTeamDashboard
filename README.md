@@ -2,6 +2,75 @@
 
 A password-protected dashboard for team schedules, roster changes, attendance and discrepancies. The Node service reads the configured Google Sheets through public CSV links. SQLite stores team history and notes.
 
+## Run on your Windows PC
+
+The dashboard and its SQLite database run on your PC without a cloud account or payment card.
+
+1. Install [Node.js 20 for Windows x64](https://nodejs.org/download/release/latest-v20.x/) (choose the `x64.msi` installer) and [Git for Windows](https://git-scm.com/install/windows). Node 20 is the former LTS release this project uses. Its support has ended. Open PowerShell after installing and check that `node -v` starts with `v20.` and `node -p process.arch` prints `x64`. [Node.js support dates](https://nodejs.org/en/about/previous-releases)
+2. In PowerShell, clone the dashboard and install the dependencies needed for setup.
+
+   ```powershell
+   Set-Location $env:LOCALAPPDATA
+   git clone https://github.com/barwezt-ops/MyTeamDashboard.git TeamDashboard-code
+   Set-Location TeamDashboard-code
+   npm.cmd ci
+   Copy-Item .env.example .env
+   npm.cmd run hash-password
+   node -p "require('node:crypto').randomBytes(48).toString('base64url')"
+   notepad.exe .env
+   ```
+
+   At the password prompt, type the password you want to use in the dashboard and press Enter. The command may show your input on screen. Put the bcrypt hash after `DASHBOARD_PASSWORD_HASH=` and the separate random string after `SESSION_SECRET=`. Set `SOURCE_MODE=live`, leave `DATA_DIR=` blank, and keep `PORT=3000`. Save the file and keep it private.
+
+3. Copy the sample config into the gitignored live config file, then open the copy.
+
+   ```powershell
+   Copy-Item config\sources.json config\sources.local.json
+   notepad.exe config\sources.local.json
+   ```
+
+   Fill in your exact roster name and any covered leads, the master and schedule sheet IDs and numeric tab GIDs, and the column mappings. Set `sources.master.expectHeaders` to the real header text, and set the schedule anchor to the first date column and its Cairo date. Leave attendance disabled until you have mapped it. See [Connect or replace a sheet](#connect-or-replace-a-sheet) and the [example live JSON](#3-prepare-the-live-config-with-attendance-off).
+
+   You can also keep the config alongside the data folder. Move the file to `%LOCALAPPDATA%\TeamDashboard\sources.local.json`, then set `DASHBOARD_CONFIG_FILE` in `.env` to its full path. Run `Join-Path $env:LOCALAPPDATA 'TeamDashboard\sources.local.json'` to display the path to paste.
+
+4. Check both sheet links, replacing the placeholder in each command with the actual Google Sheets tab URL. Fix any reported mapping errors before continuing.
+
+   ```powershell
+   npm.cmd run test-link -- '<master tab URL>' --source=master
+   npm.cmd run test-link -- '<schedule tab URL>' --source=schedule
+   ```
+
+5. Run the installer as the Windows user who will use the dashboard. It builds the app and registers the hidden **Team Dashboard** task, which starts now and at your next Windows sign-in.
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\deploy\windows\install.ps1
+   ```
+
+   If PowerShell says scripts are disabled even with this command, run `Get-ExecutionPolicy -List`. A restricted `MachinePolicy` or `UserPolicy` comes from Windows Group Policy. Ask the administrator to allow these scripts before installing.
+
+6. Open `http://localhost:3000` and sign in with the dashboard password. The first live start syncs all sources if the dashboard has no successful roster sync. Once the dashboard is idle, open **Settings → Sync now → All** and check **Sync log** for successful roster, schedule, and rules entries.
+
+### Maintain your Windows dashboard
+
+- **Update.** In the checkout folder, run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\update.ps1`. It pulls with `--ff-only` and builds in a separate folder while the current version runs. It switches builds after a successful build and checks health after starting the task.
+- **Check status.** Run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\status.ps1` for the task state, health response, data path, and last 20 log lines. The dashboard keeps three log files of up to 5 MB each under `data\logs`.
+- **Find and protect your data.** In File Explorer, enter `%LOCALAPPDATA%\TeamDashboard\data` to find `dashboard.db`, `backups` and `logs`. Keep `DATA_DIR` outside the checkout and outside OneDrive. Each week, use **Settings → Download backup** and keep a private copy outside the PC, for example on a USB drive. See [Back up and restore dashboard data](#back-up-and-restore-dashboard-data) for what the downloaded file contains.
+- **When the PC is off or asleep.** The dashboard runs while the PC is awake and your Windows account is signed in. On start and every 15 minutes, it checks the latest scheduled daily sync and today's backup using Cairo time. A manual sync before the scheduled time leaves that scheduled run due. Today's backup is due after 02:00. After a failure the dashboard waits at least an hour before retrying automatically. Check **Settings → Sync log** or the sync badge for failures.
+- **Stop.** Run `Stop-ScheduledTask -TaskName 'Team Dashboard'` in PowerShell. To start again, run `Start-ScheduledTask -TaskName 'Team Dashboard'` or sign out and sign back in.
+- **Uninstall.** Run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\uninstall.ps1`. It removes the scheduled task and prints the path where your data is kept.
+- **SQLite installation troubleshooting.** The locked `better-sqlite3` version provides a Windows x64 prebuilt binary for Node 20. If npm tries to run `node-gyp` or asks for Visual Studio, recheck `node -v` and `node -p process.arch`, clear any `npm_config_build_from_source` override, and make sure GitHub release downloads are reachable. Rerun `npm.cmd ci` after fixing the issue. If your network blocks the prebuilt download and you must build from source, install Python 3 and Visual Studio 2022 Build Tools with **Desktop development with C++**, then rerun the command. [SQLite prebuilt binaries](https://github.com/WiseLibs/better-sqlite3/releases/tag/v12.9.0) · [node-gyp Windows requirements](https://github.com/nodejs/node-gyp#on-windows)
+
+### Optional phone access with Tailscale
+
+1. Install Tailscale on Windows and on your phone. Sign both in to the same tailnet, and use a tailnet approved for your work if applicable. [Windows setup](https://tailscale.com/docs/install/windows) · [Tailscale downloads](https://tailscale.com/download)
+2. On the PC, open PowerShell as Administrator and run the following command. If Tailscale prompts you to enable HTTPS, follow its link and rerun the command. [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve)
+
+   ```powershell
+   tailscale serve --bg --https=443 http://127.0.0.1:3000
+   ```
+
+3. Connect Tailscale on your phone and open the full `https://<pc-name>.<tailnet-name>.ts.net` URL printed by Serve or `tailscale serve status`. Use HTTPS for sign-in because the phone session cookie requires it. Sign in once from your phone and confirm the dashboard loads. Keep the PC on, awake, and signed in while using the dashboard.
+
 ## Local development
 
 Use Node 20. Install dependencies and create an environment file.
@@ -34,7 +103,7 @@ Environment keys live in `.env.example`. The optional `DASHBOARD_SOURCE_CONFIG` 
 
 The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and discrepancy sync runs at 16:00 Cairo. The app refreshes the roster first when its last successful sync is more than seven days old.
 
-## Free VM deploy
+## Free VM deploy (optional, needs a card)
 
 ### 1. Create the project and budget
 
@@ -109,7 +178,7 @@ curl -fsS http://127.0.0.1:3000/api/health
 
 2. Run `sudo tailscale serve --bg --https=443 http://127.0.0.1:3000`. If prompted, follow the link to enable HTTPS, then rerun the command. With Tailscale connected on your phone or laptop, open the `https://<name>.ts.net` URL shown by `sudo tailscale serve status`. Use Serve to keep access inside your tailnet. Leave Funnel and public web firewall rules off. [Serve command](https://tailscale.com/docs/reference/tailscale-cli/serve)
 3. Return to the VM's network interface in Google Cloud Console, set **External IPv4 → None**, and save. Reconnect through Cloud Shell if your SSH session closed. Run `sudo apt-get update --error-on=any` to confirm every configured package repository can refresh over IPv6. If the refresh fails, apply security updates during each IPv4 maintenance window using the command in the next section. [Ubuntu automatic updates](https://documentation.ubuntu.com/server/how-to/software/automatic-updates/)
-4. Open the Tailscale HTTPS URL, sign in with the password you chose, and wait for the first automatic sync to finish. Open **Settings → Sync now → All**. In **Sync log**, check that `roster`, `schedule`, and `rules` succeeded, and read any warnings in **Details**. This verifies that the sheets still work over IPv6.
+4. Open the Tailscale HTTPS URL and sign in with the password you chose. Open **Settings → Sync now → All** once the dashboard is idle. In **Sync log**, check that `roster`, `schedule`, and `rules` succeeded, and read any warnings in **Details**. This verifies that the sheets still work over IPv6.
 5. The next day after 16:00 Cairo, check **Settings → Sync log** for a successful 02:00 `backup` and successful `schedule` and `rules` rows around 16:00. Review the billing report once usage is posted.
 
 ### 5. Maintain the VM
@@ -125,9 +194,9 @@ curl -fsS http://127.0.0.1:3000/api/health
 - **Rotate the password.** In `/opt/team-dashboard-current`, run `npm run hash-password`. Use `sudoedit /etc/team-dashboard.env` to replace `DASHBOARD_PASSWORD_HASH`, then restart and sign in with the new password. Changing the hash invalidates existing sessions.
 - **Keep a weekly backup off the VM.** Every week, use **Settings → Download backup** and keep the downloaded file in private storage outside the VM. The VM stores nightly JSON backups in `/var/lib/team-dashboard/backups` and the SQLite file at `/var/lib/team-dashboard/dashboard.db`.
 
-## Railway
+## Railway (optional, needs a card)
 
-**Optional hosting path.** This setup is retained for anyone who already uses Railway. The deployment target for this project is the free-tier VM above.
+This setup is retained for anyone who already uses Railway. The owner's setup runs on their Windows PC.
 
 ### 1. Create the project and attach storage
 
@@ -137,7 +206,7 @@ Right-click the project canvas, choose **Attach Volume**, select the dashboard s
 
 ### 2. Set the service variables
 
-Open the dashboard service's **Variables** tab and add the entries below. Run `npm ci` from the repository folder before generating the password hash or checking sheet links. The app targets Node 20. On Windows, Node 24 can run these setup commands if the Node 20 install asks for Visual Studio C++ build tools.
+Open the dashboard service's **Variables** tab and add the entries below. Run `npm ci` from the repository folder with Node 20 before generating the password hash or checking sheet links.
 
 | Variable                  | Purpose and how to set it                                                                                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -280,7 +349,7 @@ When both links export CSV without sign-in and the results match the tabs, paste
 
 1. Review the staged changes and click **Deploy**. The checked-in `railway.json` sets `npm run build`, `npm start`, `/api/health`, and the **On Failure** restart policy. The health check can pass while the first sync is still running.
 2. When the deployment is successful, open the service's **Settings → Networking → Public Networking**, click **Generate Domain**, and open the HTTPS URL. Sign in with the password you chose.
-3. In dashboard **Settings**, wait for the automatic first sync to finish, then click **Sync now → All** to verify the setup. In **Sync log**, confirm `roster`, `schedule`, and `rules` succeeded. Read **Details** for warnings or errors and check the source cards for more context. For example, correct the master mapping if you see `COLUMN_HEADER_MISMATCH` or check the schedule's first date column and anchor if you see `ANCHOR_MISMATCH`. Run **All** again after applying a correction. Spot-check the Roster and Today views against the source tabs.
+3. In dashboard **Settings**, click **Sync now → All** once the dashboard is idle. In **Sync log**, confirm `roster`, `schedule`, and `rules` succeeded. Read **Details** for warnings or errors and check the source cards for more context. For example, correct the master mapping if you see `COLUMN_HEADER_MISMATCH` or check the schedule's first date column and anchor if you see `ANCHOR_MISMATCH`. Run **All** again after applying a correction. Spot-check the Roster and Today views against the source tabs.
 4. The next day, after 16:00 Cairo, refresh **Settings → Sync log**. Look for a successful `backup` at 02:00 and successful `schedule` and `rules` entries starting at 16:00 Cairo or shortly after. Use the **Started** column to distinguish the scheduled rows from a manual run. The weekly roster job runs Sunday at 12:00 Cairo. If an expected entry is missing or failed, check the Railway deployment logs and the **Details** column.
 5. For Checkpoint 7, share the HTTPS login URL, a screenshot of the sync log showing the two scheduled runs with any sensitive details cropped out, and this runbook.
 

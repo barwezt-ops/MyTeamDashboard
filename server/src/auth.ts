@@ -5,14 +5,15 @@ import type { Request, RequestHandler } from "express";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
 import { endpoint } from "./api/request.js";
-import type { Env } from "./env.js";
+import { bindHost, type Env } from "./env.js";
 
 const duration = 12 * 60 * 60 * 1000;
 export function auth(env: Env) {
   const key = createHmac("sha256", env.SESSION_SECRET)
     .update(env.DASHBOARD_PASSWORD_HASH)
     .digest("base64url");
-  const session = cookieSession({
+  const loopback = env.SOURCE_MODE === "live" && bindHost(env) === "127.0.0.1";
+  const loadSession = cookieSession({
     name: "dashboard",
     keys: [key],
     httpOnly: true,
@@ -20,6 +21,19 @@ export function auth(env: Env) {
     sameSite: "lax",
     maxAge: duration,
   });
+  const session: RequestHandler = (req, res, next) => {
+    const host = req.get("Host");
+    const localHost = /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(host ?? "");
+    const directHttp = loopback && !req.secure && !req.get("X-Forwarded-Proto");
+    // Tailscale Serve can omit the protocol header on the loopback hop.
+    if (directHttp && host && !localHost)
+      req.headers["x-forwarded-proto"] = "https";
+    loadSession(req, res, () => {
+      if (directHttp && localHost && req.sessionOptions)
+        req.sessionOptions.secure = false;
+      next();
+    });
+  };
   const signedIn = (req: Request) =>
     typeof req.session?.expiresAt === "number" &&
     req.session.expiresAt > Date.now();

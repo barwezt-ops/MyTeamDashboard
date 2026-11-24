@@ -1,9 +1,33 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { configSchema, loadConfig } from "../src/config.js";
 import { openDb } from "../src/db/db.js";
+
+it("uses DASHBOARD_CONFIG_FILE for live sync and link checks", () => {
+  const directory = mkdtempSync(join(tmpdir(), "team-dashboard-config-"));
+  try {
+    const file = join(directory, "local.json");
+    const config = loadConfig();
+    config.me.rosterName = "External Demo Lead";
+    config.sources.master.sheetId = "FakeMaster";
+    config.sources.master.gid = "10";
+    config.sources.schedule.sheetId = "FakeSchedule";
+    config.sources.schedule.gid = "20";
+    writeFileSync(file, JSON.stringify(config));
+    vi.stubEnv("DASHBOARD_SOURCE_CONFIG", "{}");
+    vi.stubEnv("DASHBOARD_CONFIG_FILE", file);
+    expect(loadConfig(undefined, "live")).toEqual(config);
+    expect(loadConfig(undefined, "live", true)).toEqual(config);
+    expect(loadConfig().me.rosterName).not.toBe(config.me.rosterName);
+    vi.stubEnv("DASHBOARD_CONFIG_FILE", join(directory, "missing.json"));
+    expect(() => loadConfig(undefined, "live")).toThrow("missing.json");
+  } finally {
+    vi.unstubAllEnvs();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 it("loads the workspace config and rejects an invalid schedule anchor or cron", () => {
   const config = loadConfig();

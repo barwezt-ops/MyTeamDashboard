@@ -1,5 +1,4 @@
 import bcrypt from "bcrypt";
-import { existsSync } from "node:fs";
 import { loadConfig } from "./config.js";
 import { readBackup, writeBackup } from "./backup/files.js";
 import { restoreBackup } from "./backup/data.js";
@@ -27,9 +26,9 @@ try {
     const link = process.argv[3];
     if (!link) throw new Error("Pass a Google Sheets view link");
     const config = loadConfig(
-      existsSync("config/sources.local.json")
-        ? "config/sources.local.json"
-        : undefined,
+      undefined,
+      process.env.SOURCE_MODE === "live" ? "live" : "fixture",
+      true,
     );
     const selected = process.argv
       .find((arg) => arg.startsWith("--source="))

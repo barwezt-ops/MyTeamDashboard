@@ -7,6 +7,7 @@ export default [
       "coverage/**",
       "test-results/**",
       "playwright-report/**",
+      ".windows-runtime/**",
     ],
   },
   ...tseslint.configs.recommended,
