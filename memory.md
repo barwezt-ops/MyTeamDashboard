@@ -1,21 +1,22 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-24 for the PR #10 review fixes._
+_Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoint._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
-- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). The Windows local deployment is ready for review before the owner configures the first live instance.
+- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
 - **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
-- **Not live yet:** Windows installation and real sheet configuration are pending the owner. Optional phone access uses Tailscale. Attendance is disabled.
-- **Next task:** Owner reviews PR #10, then follows **Run on your Windows PC** and checks the next daily sync and 02:00 Cairo backup. If using Tailscale, confirm sign-in from the phone. Phase 6 follows when the attendance link arrives.
+- **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
+- **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
 |---|---|---|---|
 | Fetch sheets by public CSV link (`export` mode, `gviz` fallback) | done | `fetch/fetchCsv.ts`, `fetch/urls.ts` | HTML response ⇒ `SourceAccessError` ("link no longer public or moved"); retries on 5xx/429; 30 s timeout |
 | Master/roster parse + team filter | done | `parse/master.ts` | dedupe by code, `#REF!`→empty, codes `1254.0`→`1254`, team = DTL or TL ∈ {`me.rosterName`, `me.alsoCover`}; `ownerGroup` mine/covered; optional `expectHeaders` check → `COLUMN_HEADER_MISMATCH`; any column letter allowed; sensitive headers refused |
+| Month-name dates | review pending | `parse/normalize.ts` | Shared date parser reads full and abbreviated English months with a year in month-first or day-first order. Roster and link diagnostics use the same parser. |
 | Roster events (new / left / moved / rejoined) + weekly snapshots | done | `sync/syncRoster.ts` | `ROSTER_DROP_SUSPICIOUS` if >30% vanish |
 | Schedule parse with date anchor | done | `parse/schedule.ts` | `anchor.column` + `anchor.date`; stops at `stopAtHeader`; `ANCHOR_MISMATCH` sanity check on early weekday headers; AM/PM and `18:00:00` normalised to 24 h |
 | Status mapping | done | `parse/status.ts` | time ⇒ Scheduled; OFF, Annual→PTO, UPL, Sick, Casual (= unplanned/emergency), Present, Absent, On Hold/Not Hired (excluded), else Unknown |
@@ -31,7 +32,7 @@ _Last updated: 2026-11-24 for the PR #10 review fixes._
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
 | First live boot and public health | done | `index.ts`, `db/db.ts`, `sync/cron.ts` | Startup checks `DATA_DIR`, then starts catch-up after listening. With no successful roster, the first check starts All once at any Cairo hour. Public health returns only `ok`, `version`, and `lastSyncAt`. |
-| Windows local deployment | **ready for review, install pending owner** | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
+| Windows local deployment | **merged, install pending** | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
 | Free VM and Railway | optional, needs a card | `deploy/`, `README.md` | Existing deploy runbooks remain available. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
 
@@ -73,6 +74,7 @@ _Last updated: 2026-11-24 for the PR #10 review fixes._
 | 2026-11-24 | Compare completed daily and All start times with the latest elapsed Cairo slot | A manual All at 10:00 should leave the 16:00 sync due. Wake-up catches up from the most recent scheduled slot. | Treat any same-day success as sufficient |
 | 2026-11-24 | Restore one boot-time All attempt when there is no successful roster | The first live instance should populate data even before the daily time. The check guards against duplicate bootstrap attempts. | Wait until the scheduled daily time |
 | 2026-11-24 | Infer HTTPS for non-local hosts on live loopback listeners when the protocol header is absent | Tailscale Serve can omit `X-Forwarded-Proto`. Windows and the loopback-bound VM need secure session cookies, and direct localhost sign-in uses HTTP. | Require the header for every secure proxy sign-in |
+| 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -81,7 +83,7 @@ _Last updated: 2026-11-24 for the PR #10 review fixes._
 | Check-a-link rejects multi-account links (`/spreadsheets/u/1/d/...`) | Minor friction | Accept and normalise `/u/N/` |
 | Restore preview says "updated", not "X resolved flags will reopen" | Could surprise | Clearer preview wording |
 | D5 reopen keeps the first-seen date | Optional | Owner to decide |
-| Real master column positions and date order unverified | Incorrect mappings can block roster sync or misread dates | Run `test-link` on the real master and use the README example's `expectHeaders` at deploy |
+| Live master date sample pending post-merge check | The current main branch cannot parse the master export's month-name dates | Rerun `test-link` on the real master after the shared parser change merges |
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
 | The dashboard syncs only while the PC is awake and the owner is signed in | The web app and scheduled jobs pause while the PC is unavailable | Startup and 15-minute catch-up cover the latest elapsed daily slot and today's backup. |
@@ -93,7 +95,7 @@ _Last updated: 2026-11-24 for the PR #10 review fixes._
 | # | Question | Blocking? | Status |
 |---|---|---|---|
 | Q1 | Attendance sheet link + tab, long or wide layout, and what counts as a discrepancy (missing punch / missing hours / late / no-show)? | Phase 6 | open |
-| Q2 | Real house master link + tab + GID; does the master's header text match `expectHeaders`? Date order MDY or DMY (check with test-link)? | Phase 7 go-live | open |
+| Q2 | Does the live master match `expectHeaders` and return a parsed sample date? | Phase 7 go-live | Headers verified. Date sample pending post-merge check. |
 | Q3 | What time (Cairo) does WFM finish updating attendance? | daily cron time | open |
 | Q4 | Does the schedule move to a new file/tab each month? (anchor + GID would change monthly) | schedule upkeep | open |
 | Q5 | Any SOP thresholds for leave flags? | Trends badges | open (stays empty) |
@@ -106,6 +108,9 @@ _Last updated: 2026-11-24 for the PR #10 review fixes._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-25 — Master month-name dates and live source checks
+- Added shared month-name date parsing with coverage for roster hire dates, last working days, and link diagnostic samples. Verified the dated schedule export and anchored range. Paused the Windows install for review.
+
 ### 2026-11-24 — PR #10 review fixes
 - Updated daily catch-up to use the latest elapsed slot, restored first-boot All, and fixed secure session cookies for Tailscale Serve with loopback binding. Added the phone login check to the Windows runbook.
 

@@ -107,6 +107,18 @@ describe("check a sheet link", () => {
     });
   });
 
+  it("reports a month-name date from the master CSV", async () => {
+    const request = vi.fn(
+      () => new Response(csv.replace("1/12/2025", '"July 6, 2026"')),
+    );
+    const report = await checkSheetLink(
+      { link, source: "master" },
+      { ...config, dateOrder: "DMY" },
+      request,
+    );
+    expect(report).toMatchObject({ sampleDate: "2026-07-06", error: null });
+  });
+
   it("reports status and content type when Google returns HTML", async () => {
     const request = vi.fn(
       () =>
