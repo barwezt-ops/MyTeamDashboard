@@ -458,12 +458,13 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         ),
         sources: keys.map((key) => {
           const source = config.sources[key];
-          const url = source.sheetId
-            ? "https://docs.google.com/spreadsheets/d/" +
-              source.sheetId +
-              "/edit#gid=" +
-              source.gid
-            : null;
+          const url =
+            source.sheetId && source.access !== "file"
+              ? "https://docs.google.com/spreadsheets/d/" +
+                source.sheetId +
+                "/edit#gid=" +
+                source.gid
+              : null;
           return {
             job: key === "master" ? "roster" : key,
             label: source.label,
@@ -472,6 +473,7 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
           };
         }),
         running: sync.active,
+        attendanceCsvUpload: config.sources.attendance.access === "file",
         runs: recentRuns(db),
         timezone: config.timezone,
         config,

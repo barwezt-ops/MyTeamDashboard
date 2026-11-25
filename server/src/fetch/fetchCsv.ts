@@ -16,7 +16,7 @@ export function decodeCsv(body: string): string[][] {
     skip_empty_lines: false,
   });
 }
-async function readBody(response: Response, limit?: number) {
+export async function readBody(response: Response, limit?: number) {
   if (!limit) return response.text();
   if (!response.body) return "";
   const reader = response.body.getReader();

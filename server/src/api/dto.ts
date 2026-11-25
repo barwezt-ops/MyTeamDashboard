@@ -144,6 +144,7 @@ export interface SyncStatus {
   }[];
   runs: SyncRun[];
   running: Job | null;
+  attendanceCsvUpload: boolean;
   timezone: string;
   config: unknown;
   date: string;

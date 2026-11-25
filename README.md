@@ -1,6 +1,6 @@
 # Team Dashboard
 
-A password-protected dashboard for team schedules, roster changes, attendance and discrepancies. The Node service reads the configured Google Sheets through public CSV links. SQLite stores team history and notes.
+A password-protected dashboard for team schedules, roster changes, attendance and discrepancies. Sources can use public CSV, the read-only Google Sheets API, or local CSV files. SQLite stores team history and notes.
 
 ## Run on your Windows PC
 
@@ -385,6 +385,24 @@ On the machine that has the database, run `npm run backup` to save a copy. Run `
 
 1. Identify the layout and header rows. In a long sheet, each row contains an agent code, date and status. Set `sources.attendance.layout` to `long` and map `long.columns.code`, `date`, `status`, and, if available, `name` and `missing`. Check `dateOrder` against an unambiguous slash date.
 2. In a wide sheet, each row is one agent and date headers run across columns. Set `layout` to `wide` and configure `wide.keyColumn`, `keyType`, `firstDateColumn`, `dateHeaderRow`, and `dtlColumn`. Prefer code where present. With names, the parser matches a unique normalized full name. Date headers use the month and day inside the sync window because the printed year may be wrong. CSV cannot carry off-day formatting, so off days use the schedule.
-3. In your local live config, fill `sheetId`, `gid`, and `headerRows`. Keep `enabled: false`. Use Settings → **Check a link** with the attendance mapping to check the CSV. Sync roster and schedule before the dry run.
+3. In your local live config, fill `headerRows` and choose `access`. Public Google Sheets use `public` by default and need `sheetId` and `gid`. For restricted sheets or local CSV, follow the setup below. Keep `enabled: false` and sync roster and schedule before the dry run.
 4. Select **Dry-run attendance** in Settings, or run `npm run sync -- --job=attendance --dry-run` with the existing dashboard's `DATA_DIR`. Review source rows, team matches, records and dates that would be stored, sample statuses, and projected D1–D4 counts. Long sheets identify rows by code and cannot distinguish an unrecognized team code from a non-team code. A wide sheet can count unmatched rows under a configured team lead.
 5. Enable attendance only after the mappings and sample results agree with the source. Validate the dashboard against the sheet for five working days as part of Phase 6 acceptance.
+
+### Connect a restricted sheet with Google sign-in
+
+1. On the PC that runs the dashboard, open Google Cloud Console using the work account that can view the attendance tab. Create the project **team-dashboard** without billing or paid services. Enable only the **Google Sheets API**.
+2. In Google Auth Platform, set **Team Dashboard** as the app name and use the owner's work email for support. Choose **Internal** if available. Otherwise choose **External**, then **Publish to production**. External Testing grants for this scope expire after seven days. Add only `https://www.googleapis.com/auth/spreadsheets.readonly` under Data Access.
+3. Create a **Desktop app** OAuth client. Put its client ID and secret directly into the local `.env` as `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`. Keep the credentials and token private. Run `npm run google-login` as the Windows user who runs the dashboard. Complete the browser prompts with the work account and review any unverified-app warning. If Google reports an organization administrator block, stop and use the CSV workflow below.
+4. The app saves its refresh token in `DATA_DIR/google-token.json` with owner-only permissions. Run `npm run google-login` again when prompted after expiry or revocation. Run `npm run google-logout` to revoke the grant and delete the local token. Apply changes to the running installation's `.env` and launch it again to load the client settings.
+5. In the browser, inspect the tab title, header row and candidate column letters. Stop if any column looks like patient data. Put the exact `sheetId`, tab `gid`, case-sensitive tab name (`tab`), `access: "google"` and candidate mappings in the private config, with attendance disabled. Google needs an explicit `wide.lastDateColumn` for wide attendance. If configuring a Google schedule, set `stopColumn` to the existing stop header column. The app reads mapped columns by letter and maps them back to their original positions.
+6. Run `npm run test-link -- '<view-link>' --source=attendance --access=google` or use **Check a link** with the Attendance mapping and Google sign-in. Check the mapped headers, row count and sample date. Confirm what counts as missing attendance with the owner before finalizing the mapping. A Google check accepts the configured source and its exact tab link.
+7. Run the attendance dry run and review its record and flag counts. After the owner approves, set `enabled: true`, restart the running app, and select **Settings → Sync now → All**.
+
+[Google Desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app) · [App audience and publishing](https://support.google.com/cloud/answer/15549945) · [Sheets display values](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get)
+
+### Drop or upload an attendance CSV
+
+Set `sources.attendance.access` to `"file"` and use the same column mapping as the CSV export. Drop a completed UTF-8 CSV into `%LOCALAPPDATA%\TeamDashboard\inbox\attendance\`, or use **Settings → Upload attendance CSV** in live mode. The upload limit is 32 MB. Inspect the source for patient data before exporting. The inbox and archive hold the original local files. The dashboard stores only parsed team rows in SQLite.
+
+The daily job and catch-up read the latest file by modification time and move it to `processed` with a timestamp after a successful import. The archive keeps 14 files. If there is no newer drop, the job can reuse the latest successful CSV. A rejected file remains in the inbox and the sync log shows the error. Replace that file with a corrected CSV. A dry run reads the same input and leaves the file in place.
