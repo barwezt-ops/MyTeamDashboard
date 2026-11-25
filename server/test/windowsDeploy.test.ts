@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Linter } from "eslint";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   paths,
@@ -17,6 +18,20 @@ import {
 } from "../../deploy/windows/common.mjs";
 
 const roots: string[] = [];
+
+it.each(["run.js", "startup.js"])(
+  "keeps %s compatible with Windows Script Host JScript",
+  (file) => {
+    const script = readFileSync(
+      new URL(`../../deploy/windows/${file}`, import.meta.url),
+      "utf8",
+    );
+    const errors = new Linter().verify(script, [
+      { languageOptions: { ecmaVersion: 3, sourceType: "script" } },
+    ]);
+    expect(errors).toEqual([]);
+  },
+);
 const result = (status: number, output = "", detail = "") => ({
   status,
   output,
