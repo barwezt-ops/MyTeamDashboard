@@ -81,6 +81,24 @@ it("evaluates D1 through D7 with date and exclusion guards", () => {
     }),
   ).toEqual([]);
 });
+it("ignores blank and zero-duration attendance for D4", () => {
+  const ctx = context();
+  ctx.attendance = [
+    null,
+    "",
+    " ",
+    "0",
+    "0:00",
+    "00:00",
+    "0:00:00",
+    "00:00:00",
+    " 00:00 ",
+    "00:05",
+    "0:00:01",
+  ].map((missing) => ({ ...make("99001", "Present"), missing }));
+  expect(d4(ctx).map((row) => row.missing)).toEqual(["00:05", "0:00:01"]);
+});
+
 it("dedupes findings, keeps comments and resolves only open findings when corrected", () => {
   const db = openDb(":memory:");
   const ctx = context();
