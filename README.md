@@ -6,15 +6,15 @@ A password-protected dashboard for team schedules, roster changes, attendance an
 
 The dashboard and its SQLite database run on your PC without a cloud account or payment card.
 
-1. Install [Node.js 20 for Windows x64](https://nodejs.org/download/release/latest-v20.x/) (choose the `x64.msi` installer) and [Git for Windows](https://git-scm.com/install/windows). Node 20 is the former LTS release this project uses. Its support has ended. Open PowerShell after installing and check that `node -v` starts with `v20.` and `node -p process.arch` prints `x64`. [Node.js support dates](https://nodejs.org/en/about/previous-releases)
-2. In PowerShell, clone the dashboard and install the dependencies needed for setup.
+1. Install [Node.js 20 for Windows x64](https://nodejs.org/download/release/latest-v20.x/) (choose the `x64.msi` installer) and [Git for Windows](https://git-scm.com/install/windows). Node 20 is the former LTS release this project uses. Its support has ended. Open Command Prompt after installing and check that `node -v` starts with `v20.` and `node -p process.arch` prints `x64`. [Node.js support dates](https://nodejs.org/en/about/previous-releases)
+2. In Command Prompt, clone the dashboard and install the dependencies needed for setup.
 
-   ```powershell
-   Set-Location $env:LOCALAPPDATA
+   ```cmd
+   cd /d "%LOCALAPPDATA%"
    git clone https://github.com/barwezt-ops/MyTeamDashboard.git TeamDashboard-code
-   Set-Location TeamDashboard-code
+   cd TeamDashboard-code
    npm.cmd ci
-   Copy-Item .env.example .env
+   copy .env.example .env
    npm.cmd run hash-password
    node -p "require('node:crypto').randomBytes(48).toString('base64url')"
    notepad.exe .env
@@ -24,40 +24,42 @@ The dashboard and its SQLite database run on your PC without a cloud account or 
 
 3. Copy the sample config into the gitignored live config file, then open the copy.
 
-   ```powershell
-   Copy-Item config\sources.json config\sources.local.json
+   ```cmd
+   copy config\sources.json config\sources.local.json
    notepad.exe config\sources.local.json
    ```
 
    Fill in your exact roster name and any covered leads, the master and schedule sheet IDs and numeric tab GIDs, and the column mappings. Set `sources.master.expectHeaders` to the real header text, and set the schedule anchor to the first date column and its Cairo date. Leave attendance disabled until you have mapped it. See [Connect or replace a sheet](#connect-or-replace-a-sheet) and the [example live JSON](#3-prepare-the-live-config-with-attendance-off).
 
-   You can also keep the config alongside the data folder. Move the file to `%LOCALAPPDATA%\TeamDashboard\sources.local.json`, then set `DASHBOARD_CONFIG_FILE` in `.env` to its full path. Run `Join-Path $env:LOCALAPPDATA 'TeamDashboard\sources.local.json'` to display the path to paste.
+   You can also keep the config alongside the data folder. Move the file to `%LOCALAPPDATA%\TeamDashboard\sources.local.json`, then set `DASHBOARD_CONFIG_FILE` in `.env` to its full path. Run `echo %LOCALAPPDATA%\TeamDashboard\sources.local.json` to display the path to paste.
 
 4. Check both sheet links, replacing the placeholder in each command with the actual Google Sheets tab URL. Fix any reported mapping errors before continuing.
 
-   ```powershell
-   npm.cmd run test-link -- '<master tab URL>' --source=master
-   npm.cmd run test-link -- '<schedule tab URL>' --source=schedule
+   ```cmd
+   npm.cmd run test-link -- "<master tab URL>" --source=master
+   npm.cmd run test-link -- "<schedule tab URL>" --source=schedule
    ```
 
-5. Run the installer as the Windows user who will use the dashboard. It builds the app and registers the hidden **Team Dashboard** task, which starts now and at your next Windows sign-in.
+5. Run the installer as the Windows user who will use the dashboard. It builds the app and registers the hidden **Team Dashboard** task for the current user. The app starts now and at your next Windows sign-in. Task Scheduler retries failed starts up to three times, one minute apart.
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\deploy\windows\install.ps1
+   ```cmd
+   deploy\windows\install.cmd
    ```
 
-   If PowerShell says scripts are disabled even with this command, run `Get-ExecutionPolicy -List`. A restricted `MachinePolicy` or `UserPolicy` comes from Windows Group Policy. Ask the administrator to allow these scripts before installing.
+   If PowerShell scripts are blocked, use the `.cmd` scripts. The `.ps1` scripts remain available on PCs that allow them. Keep using the same script family for maintenance.
+
+   If Task Scheduler is unavailable or requires administrator rights, the installer uses a shortcut in your Windows Startup folder (`shell:startup`). The shortcut starts the dashboard at sign-in and has no automatic restart. If Windows Script Host or the Startup folder is blocked, the installer stops and identifies the failed step.
 
 6. Open `http://localhost:3000` and sign in with the dashboard password. The first live start syncs all sources if the dashboard has no successful roster sync. Once the dashboard is idle, open **Settings → Sync now → All** and check **Sync log** for successful roster, schedule, and rules entries.
 
 ### Maintain your Windows dashboard
 
-- **Update.** In the checkout folder, run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\update.ps1`. It pulls with `--ff-only` and builds in a separate folder while the current version runs. It switches builds after a successful build and checks health after starting the task.
-- **Check status.** Run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\status.ps1` for the task state, health response, data path, and last 20 log lines. The dashboard keeps three log files of up to 5 MB each under `data\logs`.
+- **Update.** In the checkout folder, run `deploy\windows\update.cmd`. It pulls with `--ff-only` and builds in a separate folder while the current version runs. It verifies health after starting the new build and restores the previous build if the health check fails.
+- **Check status.** Run `deploy\windows\status.cmd` for the startup entry, health response, data path, and last 20 log lines. The dashboard keeps three log files of up to 5 MB each under `data\logs`.
 - **Find and protect your data.** In File Explorer, enter `%LOCALAPPDATA%\TeamDashboard\data` to find `dashboard.db`, `backups` and `logs`. Keep `DATA_DIR` outside the checkout and outside OneDrive. Each week, use **Settings → Download backup** and keep a private copy outside the PC, for example on a USB drive. See [Back up and restore dashboard data](#back-up-and-restore-dashboard-data) for what the downloaded file contains.
 - **When the PC is off or asleep.** The dashboard runs while the PC is awake and your Windows account is signed in. On start and every 15 minutes, it checks the latest scheduled daily sync and today's backup using Cairo time. A manual sync before the scheduled time leaves that scheduled run due. Today's backup is due after 02:00. After a failure the dashboard waits at least an hour before retrying automatically. Check **Settings → Sync log** or the sync badge for failures.
-- **Stop.** Run `Stop-ScheduledTask -TaskName 'Team Dashboard'` in PowerShell. To start again, run `Start-ScheduledTask -TaskName 'Team Dashboard'` or sign out and sign back in.
-- **Uninstall.** Run `powershell -ExecutionPolicy Bypass -File .\deploy\windows\uninstall.ps1`. It removes the scheduled task and prints the path where your data is kept.
+- **Stop and restart.** For a scheduled task, run `schtasks /End /TN "Team Dashboard"` to stop and `schtasks /Run /TN "Team Dashboard"` to start. For a Startup shortcut, sign out to stop and sign back in to start.
+- **Uninstall.** Run `deploy\windows\uninstall.cmd`. It stops the dashboard, removes its scheduled task or Startup shortcut, and leaves the data in place.
 - **SQLite installation troubleshooting.** The locked `better-sqlite3` version provides a Windows x64 prebuilt binary for Node 20. If npm tries to run `node-gyp` or asks for Visual Studio, recheck `node -v` and `node -p process.arch`, clear any `npm_config_build_from_source` override, and make sure GitHub release downloads are reachable. Rerun `npm.cmd ci` after fixing the issue. If your network blocks the prebuilt download and you must build from source, install Python 3 and Visual Studio 2022 Build Tools with **Desktop development with C++**, then rerun the command. [SQLite prebuilt binaries](https://github.com/WiseLibs/better-sqlite3/releases/tag/v12.9.0) · [node-gyp Windows requirements](https://github.com/nodejs/node-gyp#on-windows)
 
 ### Optional phone access with Tailscale
