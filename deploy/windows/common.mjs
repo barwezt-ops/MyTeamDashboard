@@ -110,7 +110,7 @@ export function taskXml(p, sid) {
   const args = launcherArgs(p)
     .map((arg) => `"${arg}"`)
     .join(" ");
-  return `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <Triggers><LogonTrigger><UserId>${sid}</UserId></LogonTrigger></Triggers>
   <Principals><Principal id="Owner">
@@ -220,7 +220,7 @@ export function startup(p, execute = command, check = checked, launch = spawn) {
         if (!sid)
           throw new Error("Could not determine the current Windows user SID.");
         const file = join(p.lock, "task.xml");
-        writeFileSync(file, taskXml(p, sid));
+        writeFileSync(file, "\uFEFF" + taskXml(p, sid), "utf16le");
         try {
           const result = task("/Create", "/XML", file);
           if (result.status === 0) return { kind: "task", managed: true };
