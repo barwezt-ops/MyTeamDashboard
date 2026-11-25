@@ -11,6 +11,8 @@ import {
 } from "../db/repo.js";
 import { fetchCsv } from "../fetch/fetchCsv.js";
 import { readFixture } from "../fetch/fixtures.js";
+import { fetchGoogleRows } from "../fetch/googleSheets.js";
+import { loadSourceFile } from "../fetch/sourceFile.js";
 import { sourceUrl } from "../fetch/urls.js";
 import { parseMaster } from "../parse/master.js";
 import { localDate, plusDays, weekday } from "../parse/normalize.js";
@@ -28,6 +30,7 @@ export function createSync(
   config: Config,
   mode: Env["SOURCE_MODE"],
   now = () => new Date(),
+  dataDir = ":memory:",
 ) {
   const runner = jobRunner(db, now, mode === "live");
   const today = () => localDate(config.timezone, now());
@@ -36,7 +39,8 @@ export function createSync(
     to: plusDays(date, config.syncWindow.futureDays),
   });
   async function load(source: SourceKey, log = true) {
-    const result =
+    const settings = config.sources[source];
+    const result: { rows: string[][]; bytes?: number; archive?: () => void } =
       mode === "fixture"
         ? readFixture(
             source,
@@ -45,21 +49,24 @@ export function createSync(
               ? "attendance-wide"
               : source,
           )
-        : await fetchCsv(sourceUrl(config.sources[source]));
+        : settings.access === "google"
+          ? await fetchGoogleRows(config, source, dataDir)
+          : settings.access === "file"
+            ? loadSourceFile(config, source, dataDir)
+            : await fetchCsv(sourceUrl(settings));
     if (log)
       console.log(
         source +
           ": " +
-          result.bytes +
-          " bytes, " +
+          (result.bytes === undefined ? "" : result.bytes + " bytes, ") +
           result.rows.length +
           " rows",
       );
-    return result.rows;
+    return result;
   }
   const roster = (date: string) =>
     runner.runStep("roster", async () => {
-      const rows = await load("master");
+      const { rows, archive } = await load("master");
       const { agents, warnings } = parseMaster(rows, config, date);
       const week = plusDays(date, -weekday(date));
       db.transaction(() => {
@@ -76,12 +83,13 @@ export function createSync(
           "INSERT INTO roster_events (date,code,type,detail) VALUES (@date,@code,@type,@detail)",
         );
         for (const event of updates.events) insert.run({ ...event, date });
+        archive?.();
       })();
       return { rowsRead: rows.length, rowsKept: agents.length, warnings };
     });
   const schedule = (range: Window) =>
     runner.runStep("schedule", async () => {
-      const rows = await load("schedule");
+      const { rows, archive } = await load("schedule");
       const { records, warnings, scheduledCodes, dates } = parseSchedule(
         rows,
         config,
@@ -91,33 +99,46 @@ export function createSync(
       if (!scheduledCodes.size) throw new Error("NO_TEAM_ROWS");
       if (!records.length) throw new Error("NO_SCHEDULE_DATES_IN_WINDOW");
       const covered = coveredRange(dates, range);
-      db.transaction(() =>
+      db.transaction(() => {
         replaceSchedule(
           db,
           records,
           scheduledCodes,
           covered,
           now().toISOString(),
-        ),
-      )();
+        );
+        archive?.();
+      })();
       return { rowsRead: rows.length, rowsKept: records.length, warnings };
     });
   const attendance = (range: Window) =>
     runner.runStep("attendance", async () => {
-      const rows = await load("attendance");
-      const { records, matchedRows, warnings, dates } = parseAttendance(
-        rows,
-        config,
-        agentsOf(db),
-        range,
-      );
+      const { rows, archive } = await load("attendance");
+      const { records, matchedRows, warnings, dates, invalidDateRows } =
+        parseAttendance(rows, config, agentsOf(db), range);
+      if (archive && invalidDateRows)
+        throw new Error(
+          "Attendance CSV has invalid dates for team rows. Check the CSV and column mapping.",
+        );
       if (!matchedRows) throw new Error("NO_TEAM_ROWS");
       if (!records.length) throw new Error("NO_ATTENDANCE_DATES_IN_WINDOW");
       const covered = coveredRange(dates, range);
-      db.transaction(() =>
-        replaceAttendance(db, records, covered, now().toISOString()),
-      )();
-      return { rowsRead: rows.length, rowsKept: records.length, warnings };
+      db.transaction(() => {
+        replaceAttendance(db, records, covered, now().toISOString());
+        archive?.();
+      })();
+      return {
+        rowsRead: rows.length,
+        rowsKept: records.length,
+        warnings:
+          config.sources.attendance.access === "public"
+            ? warnings
+            : warnings.map((warning) =>
+                warning.startsWith("UNMATCHED_ATTENDANCE_NAME:")
+                  ? warning.split(/\s+/)[0]
+                  : warning,
+              ),
+      };
     });
   const rules = (date: string, range: Window) =>
     runner.runStep("rules", () => {
@@ -177,9 +198,11 @@ export function createSync(
   async function previewAttendance() {
     if (!agentsOf(db).length)
       throw new Error("Sync the roster before the dry run");
-    if (mode === "live" && !config.sources.attendance.sheetId)
+    const source = config.sources.attendance;
+    if (mode === "live" && source.access !== "file" && !source.sheetId)
       throw new Error("Configure an attendance source before the dry run");
-    const rows = await load("attendance", false).catch(() => {
+    const { rows } = await load("attendance", false).catch((error: unknown) => {
+      if (source.access !== "public") throw error;
       throw new Error(
         "Could not read the attendance CSV. Check the source link and tab.",
       );

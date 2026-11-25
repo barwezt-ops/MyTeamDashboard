@@ -3,7 +3,7 @@ import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { loadConfig, type Config } from "./config.js";
 import { bindHost, readEnv, type Env } from "./env.js";
 import { openDb, type Db } from "./db/db.js";
@@ -16,6 +16,8 @@ import { createSync, type SyncService } from "./sync/service.js";
 import { backupRoutes } from "./backup/routes.js";
 import { startBackupCron, startCron, startLiveJobs } from "./sync/cron.js";
 import { startFileLog } from "./log.js";
+import { csvLimit, uploadAttendanceCsv } from "./fetch/sourceFile.js";
+import { SourceAccessError } from "./fetch/fetchCsv.js";
 
 const { version } = createRequire(import.meta.url)("../../package.json") as {
   version: string;
@@ -61,7 +63,38 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
   app.use("/api", login.requireSession);
   app.post("/api/logout", login.logout);
   app.use("/api/backup", backupRoutes(db));
-  app.use("/api/check-link", checkLinkRoutes(config));
+  app.use("/api/check-link", checkLinkRoutes(config, env.DATA_DIR));
+  app.post(
+    "/api/attendance/upload",
+    express.raw({
+      type: "application/octet-stream",
+      limit: csvLimit,
+      inflate: false,
+    }),
+    endpoint(
+      { body: z.instanceof(Buffer, { error: "Choose an attendance CSV." }) },
+      ({ body }, _req, res, next) => {
+        if (
+          env.SOURCE_MODE !== "live" ||
+          config.sources.attendance.access !== "file"
+        ) {
+          res.status(409).json({
+            error:
+              "Set attendance access to file in the live source configuration.",
+          });
+          return;
+        }
+        try {
+          uploadAttendanceCsv(body, config, env.DATA_DIR);
+          res.sendStatus(204);
+        } catch (error) {
+          if (error instanceof SourceAccessError)
+            res.status(422).json({ error: error.message });
+          else next(error);
+        }
+      },
+    ),
+  );
   app.use("/api", createRoutes(db, config, sync));
   app.use(express.static(webDist, { index: false }));
   app.get("*", (req, res) => {
@@ -112,7 +145,7 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
 export function startServer(now?: () => Date, env = readEnv()) {
   const config = loadConfig(undefined, env.SOURCE_MODE);
   const db = openDb(env.DATA_DIR);
-  const sync = createSync(db, config, env.SOURCE_MODE, now);
+  const sync = createSync(db, config, env.SOURCE_MODE, now, env.DATA_DIR);
   const app = createApp(env, config, db, sync);
   const live = env.SOURCE_MODE === "live";
   const jobs = live ? startLiveJobs(db, env.DATA_DIR, config, sync, now) : null;

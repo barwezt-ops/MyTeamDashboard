@@ -25,9 +25,10 @@ const body = z.strictObject({
     .regex(/^\d{1,20}$/, "Expected a numeric tab GID")
     .optional(),
   source: z.enum(sourceKeys).optional(),
+  access: z.enum(["public", "google"]).optional(),
 });
 
-export function checkLinkRoutes(config: Config) {
+export function checkLinkRoutes(config: Config, dataDir: string) {
   const router = Router();
   const limit = rateLimit({
     windowMs: 60_000,
@@ -40,7 +41,7 @@ export function checkLinkRoutes(config: Config) {
     "/",
     limit,
     endpoint({ body }, ({ body: input }, _req, res, next) => {
-      void checkSheetLink(input, config)
+      void checkSheetLink(input, config, fetch, dataDir)
         .then((report) => res.json(report))
         .catch(next);
     }),

@@ -1,12 +1,19 @@
 import type { Config, SourceKey } from "../config.js";
 import { indexOf } from "../parse/columns.js";
-import { masterHeaderMismatches, sensitiveHeader } from "../parse/master.js";
+import { masterHeaderMismatches } from "../parse/master.js";
 import { fetchCsv, SourceAccessError } from "./fetchCsv.js";
+import { fetchGoogleRows } from "./googleSheets.js";
 import { sampleSourceDate } from "./sampleDate.js";
+import { privateHeader, sourceMapping } from "./sourceColumns.js";
 import { exportUrl, parseLink } from "./urls.js";
 
 export const sourceKeys = ["master", "schedule", "attendance"] as const;
-export type CheckLinkInput = { link: string; gid?: string; source?: SourceKey };
+export type CheckLinkInput = {
+  link: string;
+  gid?: string;
+  source?: SourceKey;
+  access?: "public" | "google";
+};
 type Header = { field: string; column: string; header: string | null };
 
 export interface LinkReport {
@@ -60,30 +67,14 @@ function safeExportFetch(request: typeof fetch): typeof fetch {
 }
 
 function mappedHeaders(config: Config, source: SourceKey, rows: string[][]) {
-  const { master, schedule, attendance } = config.sources;
-  const wide = source === "attendance" && attendance.layout === "wide";
-  const headerRows = wide
-    ? attendance.wide.dateHeaderRow
-    : config.sources[source].headerRows;
-  const columns =
-    source === "master"
-      ? master.columns
-      : source === "schedule"
-        ? { ...schedule.columns, firstDate: schedule.anchor.column }
-        : wide
-          ? {
-              key: attendance.wide.keyColumn,
-              dtl: attendance.wide.dtlColumn,
-              firstDate: attendance.wide.firstDateColumn,
-            }
-          : attendance.long.columns;
-  return Object.entries(columns).flatMap(([field, column]): Header[] => {
+  const { fields, headerRows } = sourceMapping(config, source);
+  return Object.entries(fields).flatMap(([field, column]): Header[] => {
     if (!column) return [];
     const value = rows[headerRows - 1]?.[indexOf(column)]?.trim();
     const header =
       value &&
       value.length <= 80 &&
-      !sensitiveHeader(value) &&
+      !privateHeader(value) &&
       !value.includes("@") &&
       !/^\+?\d[\d ()-]{6,}$/.test(value)
         ? value
@@ -96,6 +87,7 @@ export async function checkSheetLink(
   input: CheckLinkInput,
   config: Config,
   request = fetch,
+  dataDir = ":memory:",
 ): Promise<LinkReport> {
   const parsed = parseLink(input.link);
   const { sheetId } = parsed;
@@ -110,13 +102,28 @@ export async function checkSheetLink(
     ) ??
     null;
   const base = { sheetId, gid, source, dateOrder: config.dateOrder };
+  const settings = source ? config.sources[source] : null;
+  const google = (input.access ?? settings?.access) === "google";
   try {
-    const result = await fetchCsv(
-      exportUrl(sheetId, gid),
-      safeExportFetch(request),
-      undefined,
-      32 * 1024 * 1024,
-    );
+    if (
+      google &&
+      (!source ||
+        settings?.access !== "google" ||
+        settings.sheetId !== sheetId ||
+        settings.gid !== gid)
+    )
+      throw new SourceAccessError(
+        "Choose the configured Google source and its exact tab link.",
+      );
+    const result =
+      google && source
+        ? await fetchGoogleRows(config, source, dataDir, request, true)
+        : await fetchCsv(
+            exportUrl(sheetId, gid),
+            safeExportFetch(request),
+            undefined,
+            32 * 1024 * 1024,
+          );
     const headers = source ? mappedHeaders(config, source, result.rows) : [];
     const mismatchedFields =
       source === "master" ? masterHeaderMismatches(result.rows, config) : [];
@@ -142,7 +149,11 @@ export async function checkSheetLink(
       headers: [],
       mismatches: [],
       sampleDate: null,
-      error: access?.message ?? "Google Sheets CSV download failed",
+      error:
+        access?.message ??
+        (google
+          ? "Google Sheets API request failed"
+          : "Google Sheets CSV download failed"),
     };
   }
 }

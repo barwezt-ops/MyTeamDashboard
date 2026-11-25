@@ -7,6 +7,7 @@ import { openDb, openExistingDbReadOnly } from "./db/db.js";
 import { checkSheetLink, sourceKeys } from "./fetch/checkLink.js";
 import { createSync } from "./sync/service.js";
 import { createInterface } from "node:readline/promises";
+import { googleLogin, googleLogout } from "./fetch/googleAuth.js";
 
 async function hashPassword() {
   const input = createInterface({ input: process.stdin, terminal: false });
@@ -22,7 +23,13 @@ async function hashPassword() {
 }
 try {
   if (process.argv[2] === "hash-password") await hashPassword();
-  else if (process.argv[2] === "test-link") {
+  else if (process.argv[2] === "google-login") {
+    await googleLogin(readDataDir());
+    console.log("Google sign-in saved.");
+  } else if (process.argv[2] === "google-logout") {
+    await googleLogout(readDataDir());
+    console.log("Google sign-in removed.");
+  } else if (process.argv[2] === "test-link") {
     const link = process.argv[3];
     if (!link) throw new Error("Pass a Google Sheets view link");
     const config = loadConfig(
@@ -38,7 +45,23 @@ try {
       throw new Error(
         "Pass --source=master, --source=schedule or --source=attendance",
       );
-    const report = await checkSheetLink({ link, source }, config);
+    const access = process.argv
+      .find((arg) => arg.startsWith("--access="))
+      ?.slice("--access=".length);
+    if (access !== undefined && access !== "public" && access !== "google")
+      throw new Error("Pass --access=public or --access=google");
+    const directory =
+      access === "google" ||
+      (access !== "public" &&
+        sourceKeys.some((key) => config.sources[key].access === "google"))
+        ? readDataDir()
+        : undefined;
+    const report = await checkSheetLink(
+      { link, source, access },
+      config,
+      fetch,
+      directory,
+    );
     console.log(JSON.stringify(report, null, 2));
     if (report.error || report.mismatches.length) process.exitCode = 1;
   } else if (process.argv[2] === "backup" || process.argv[2] === "restore") {
@@ -74,7 +97,13 @@ try {
       ? openExistingDbReadOnly(env.DATA_DIR)
       : openDb(env.DATA_DIR);
     try {
-      const sync = createSync(db, config, env.SOURCE_MODE);
+      const sync = createSync(
+        db,
+        config,
+        env.SOURCE_MODE,
+        undefined,
+        env.DATA_DIR,
+      );
       if (dryRun)
         console.log(JSON.stringify(await sync.previewAttendance(), null, 2));
       else if (job === "roster" || job === "daily" || job === "all") {

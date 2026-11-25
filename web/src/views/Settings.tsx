@@ -83,7 +83,7 @@ export function Settings({
       </Section>
       <Backups />
       <CheckSheetLink />
-      <AttendancePreview />
+      <AttendancePreview allowUpload={data.attendanceCsvUpload} />
       <div className="source-cards">
         {data.sources.map((source) => {
           const status = data.jobs[source.job];

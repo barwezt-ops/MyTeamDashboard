@@ -4,11 +4,15 @@ import cron from "node-cron";
 import { z } from "zod";
 import { statuses } from "./api/dto.js";
 import { parseDate } from "./parse/normalize.js";
+import { indexOf } from "./parse/columns.js";
+
+export const accessModes = ["public", "google", "file"] as const;
 
 const column = z
   .string()
   .regex(/^[A-Z]{1,3}$/, "Expected a spreadsheet column letter");
 const source = z.object({
+  access: z.enum(accessModes).default("public"),
   label: z.string().min(1),
   sheetId: z.string().regex(/^[A-Za-z0-9_-]*$/),
   gid: z.string().regex(/^\d*$/),
@@ -63,6 +67,7 @@ const schedule = source.extend({
         return false;
       }
     }, "Invalid regex"),
+  stopColumn: column.optional(),
 });
 const attendance = source.extend({
   enabled: z.boolean(),
@@ -83,6 +88,7 @@ const attendance = source.extend({
     dtlColumn: column.default("B"),
     keyType: z.enum(["name", "code"]),
     firstDateColumn: column,
+    lastDateColumn: column.optional(),
     dateHeaderRow: z.number().int().positive(),
   }),
 });
@@ -123,14 +129,47 @@ export const configSchema = z
   .superRefine((config, ctx) => {
     for (const key of ["master", "schedule", "attendance"] as const) {
       const item = config.sources[key];
-      if (item.sheetId && !(item.mode === "export" ? item.gid : item.tab)) {
+      if (item.access === "file") continue;
+      const tabField =
+        item.access === "google" || item.mode === "gviz" ? "tab" : "gid";
+      if (item.sheetId && !item[tabField].trim()) {
         ctx.addIssue({
           code: "custom",
-          path: ["sources", key, item.mode === "export" ? "gid" : "tab"],
+          path: ["sources", key, tabField],
           message: "Required when a sheet is configured",
         });
       }
+      if (item.sheetId && item.access === "google" && !item.gid)
+        ctx.addIssue({
+          code: "custom",
+          path: ["sources", key, "gid"],
+          message: "Set the GID for the configured Google tab",
+        });
     }
+    const { schedule, attendance } = config.sources;
+    if (
+      schedule.access === "google" &&
+      (!schedule.stopColumn ||
+        indexOf(schedule.stopColumn) <= indexOf(schedule.anchor.column))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["sources", "schedule", "stopColumn"],
+        message:
+          "Set the stop header column after the anchor for Google access",
+      });
+    if (
+      attendance.access === "google" &&
+      attendance.layout === "wide" &&
+      (!attendance.wide.lastDateColumn ||
+        indexOf(attendance.wide.lastDateColumn) <
+          indexOf(attendance.wide.firstDateColumn))
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["sources", "attendance", "wide", "lastDateColumn"],
+        message: "Set the last date column for Google access",
+      });
   });
 export type Config = z.infer<typeof configSchema>;
 export type SourceKey = keyof Config["sources"];
@@ -159,7 +198,10 @@ export function loadConfig(
       for (const key of ["master", "schedule", "attendance"] as const) {
         if (key === "attendance" && !config.sources.attendance.enabled)
           continue;
-        if (!config.sources[key].sheetId)
+        if (
+          config.sources[key].access !== "file" &&
+          !config.sources[key].sheetId
+        )
           throw new Error(
             "sources." + key + ".sheetId is required in live mode",
           );

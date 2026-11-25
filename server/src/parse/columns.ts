@@ -7,6 +7,12 @@ export function indexOf(column: string) {
     ) - 1
   );
 }
+export function columnAt(index: number) {
+  let letters = "";
+  for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26))
+    letters = String.fromCharCode(65 + ((n - 1) % 26)) + letters;
+  return letters;
+}
 export function pick<K extends string>(
   row: string[],
   columns: Record<K, string>,

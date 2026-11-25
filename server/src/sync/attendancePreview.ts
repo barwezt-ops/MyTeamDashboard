@@ -55,6 +55,7 @@ export function summarizeAttendance(
       findingsByRule[rule as keyof typeof findingsByRule]++;
   }
   const sampleStatuses = new Set(records.map((row) => row.status));
+  const flaggedCodes = new Set(findings.map((finding) => finding.code));
   return {
     layout: config.sources.attendance.layout,
     dataRows,
@@ -68,6 +69,19 @@ export function summarizeAttendance(
       : null,
     sampleStatuses: statuses.filter((status) => sampleStatuses.has(status)),
     findingsByRule,
+    ...(config.sources.attendance.access === "public"
+      ? {}
+      : {
+          flaggedFirstNames: [
+            ...new Set(
+              agents
+                .filter(
+                  (agent) => flaggedCodes.has(agent.code) && agent.firstName,
+                )
+                .map((agent) => agent.firstName.split(/\s+/)[0]),
+            ),
+          ].sort(),
+        }),
     warnings: parsed.warnings.filter(
       (warning) => !warning.startsWith("UNMATCHED_ATTENDANCE_NAME:"),
     ),

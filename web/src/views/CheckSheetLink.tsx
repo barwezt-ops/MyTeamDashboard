@@ -8,6 +8,7 @@ export function CheckSheetLink() {
   const [link, setLink] = useState("");
   const [gid, setGid] = useState("");
   const [source, setSource] = useState<SourceKey>("master");
+  const [access, setAccess] = useState<"" | "public" | "google">("");
   const [report, setReport] = useState<LinkReport>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,6 +24,7 @@ export function CheckSheetLink() {
           link,
           gid: gid.trim() || undefined,
           source,
+          access: access || undefined,
         }),
       );
     } catch (error) {
@@ -70,6 +72,18 @@ export function CheckSheetLink() {
             <option value="master">Master roster</option>
             <option value="schedule">Schedule</option>
             <option value="attendance">Attendance</option>
+          </select>
+        </label>
+        <label>
+          Access
+          <select
+            value={access}
+            onChange={(event) => setAccess(event.target.value as typeof access)}
+            disabled={busy}
+          >
+            <option value="">Use source configuration</option>
+            <option value="public">Public CSV</option>
+            <option value="google">Google sign-in</option>
           </select>
         </label>
         <div className="button-row">
