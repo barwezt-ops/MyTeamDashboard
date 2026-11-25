@@ -6,7 +6,10 @@ export const codeOf = (value?: string) => clean(value).replace(/\.0$/, "");
 export const labelOf = (value = "") =>
   clean(value).toLowerCase().replace(/\s+/g, " ");
 export const nameOf = (value = "") => labelOf(value.replace(/\p{P}/gu, ""));
-const months = "jan feb mar apr may jun jul aug sep oct nov dec".split(" ");
+const months =
+  "january february march april may june july august september october november december".split(
+    " ",
+  );
 export function isoDate(year: number, month: number, day: number) {
   if (year < 1000 || year > 9999) return null;
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -33,18 +36,34 @@ export function parseDate(
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
   const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(raw);
   const named = /^(\d{1,2})-([a-z]{3})$|^([a-z]{3})-(\d{1,2})$/.exec(raw);
-  if (!iso && !slash && !named) return null;
-  const year = iso ? +iso[1] : slash ? +slash[3] : null;
-  const month = iso
-    ? +iso[2]
-    : slash
-      ? +slash[dateOrder === "DMY" ? 2 : 1]
-      : months.indexOf(named![2] || named![3]) + 1;
-  const day = iso
-    ? +iso[3]
-    : slash
-      ? +slash[dateOrder === "DMY" ? 1 : 2]
-      : +(named![1] || named![4]);
+  const namedWithYear =
+    /^(?:([a-z]{3,9})\s+(\d{1,2})|(\d{1,2})\s+([a-z]{3,9}))(?:,\s*|\s+)(\d{4})$/.exec(
+      raw,
+    );
+  let year: number | null;
+  let month: number;
+  let day: number;
+  if (iso) {
+    year = +iso[1];
+    month = +iso[2];
+    day = +iso[3];
+  } else if (slash) {
+    year = +slash[3];
+    month = +slash[dateOrder === "DMY" ? 2 : 1];
+    day = +slash[dateOrder === "DMY" ? 1 : 2];
+  } else {
+    const monthName =
+      namedWithYear?.[1] ?? namedWithYear?.[4] ?? named?.[2] ?? named?.[3];
+    const dayText =
+      namedWithYear?.[2] ?? namedWithYear?.[3] ?? named?.[1] ?? named?.[4];
+    if (!monthName || !dayText) return null;
+    month =
+      months.findIndex(
+        (name) => name === monthName || name.slice(0, 3) === monthName,
+      ) + 1;
+    day = +dayText;
+    year = namedWithYear ? +namedWithYear[5] : null;
+  }
   if (year !== null && !ignoreYear) return isoDate(year, month, day);
   if (!window) return null;
   const matches = [];

@@ -35,6 +35,23 @@ describe("normalization and column selection", () => {
     "reads %s",
     (value) => expect(parseDate(value, { window })).toBe(today),
   );
+  it.each([
+    ["July 6, 2026", "2026-07-06"],
+    ["December 15, 2025", "2025-12-15"],
+    ["Jul 6, 2026", "2026-07-06"],
+    ["6 July 2026", "2026-07-06"],
+    ["jULY 6 2026", "2026-07-06"],
+    ["6 JUL, 2026", "2026-07-06"],
+    ["February 29, 2024", "2024-02-29"],
+    ["February 29, 2026", null],
+    ["Julian 6, 2026", null],
+  ])(
+    "reads month-name date %s independently of slash date order",
+    (value, expected) => {
+      expect(parseDate(value, { dateOrder: "MDY" })).toBe(expected);
+      expect(parseDate(value, { dateOrder: "DMY" })).toBe(expected);
+    },
+  );
   it("rejects bad and ambiguous dates and can ignore the source year", () => {
     expect(parseDate("2/29/2026")).toBeNull();
     expect(parseDate("n/a")).toBeNull();
@@ -43,6 +60,9 @@ describe("normalization and column selection", () => {
       parseDate("21-Nov", { window: { from: "2025-11-21", to: "2026-11-21" } }),
     ).toBeNull();
     expect(parseDate("11/21/1990", { window, ignoreYear: true })).toBe(today);
+    expect(parseDate("November 21, 1990", { window, ignoreYear: true })).toBe(
+      today,
+    );
     expect(localDate("Africa/Cairo", new Date("2026-11-20T23:00:00Z"))).toBe(
       today,
     );
@@ -50,6 +70,20 @@ describe("normalization and column selection", () => {
 });
 
 describe("roster", () => {
+  it("parses month names in both master date fields", () => {
+    const config = loadConfig();
+    config.dateOrder = "DMY";
+    const rows = sample("master").slice(0, 2);
+    rows[1][indexOf(config.sources.master.columns.hireDate)] = "July 6, 2026";
+    rows[1][indexOf(config.sources.master.columns.lastWorkingDay)] =
+      "December 15, 2025";
+    expect(parseMaster(rows, config, today).agents[0]).toMatchObject({
+      hireDate: "2026-07-06",
+      lastWorkingDay: "2025-12-15",
+      active: false,
+    });
+  });
+
   it("dedupes codes, normalizes leadership, and drops private fields in both layouts", () => {
     const { agents, warnings } = sampleMaster();
     expect(agents.map((row) => row.code)).toEqual([
