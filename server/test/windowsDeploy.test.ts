@@ -60,7 +60,8 @@ it("registers an interactive, limited logon task with a hidden launcher and rest
     if (args.length === 6 && args[0] === "//B") return result(73);
     if (args[0] === "/Query") return result(0x80070003);
     if (args[0] === "/Create") {
-      const xml = readFileSync(args[4], "utf8");
+      const xml = readFileSync(args[4], "utf16le");
+      expect(xml).toMatch(/^\uFEFF<\?xml version="1\.0" encoding="UTF-16"\?>/);
       expect(xml).toContain(
         "<LogonTrigger><UserId>S-1-5-21-111-222-333-1001</UserId>",
       );
