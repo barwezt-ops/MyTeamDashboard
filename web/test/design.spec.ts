@@ -14,9 +14,7 @@ test("design system: responsive samples, states, dialogs, search and local fonts
   await page.goto("/styleguide");
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Today", exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
   await page.goto("/styleguide");
   await expect(
     page.getByRole("heading", { name: "A calmer kind of clarity." }),

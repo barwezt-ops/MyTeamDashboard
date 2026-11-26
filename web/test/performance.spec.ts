@@ -8,6 +8,8 @@ test("large synthetic roster supports searching and tab navigation", async ({
   await page.goto("/");
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await page.goto("/today");
   const agents = page.getByRole("table", { name: "Agents" });
   await expect(agents.getByRole("button")).toHaveCount(204);
   await page.getByRole("textbox", { name: "Search agents" }).fill("Fixture199");

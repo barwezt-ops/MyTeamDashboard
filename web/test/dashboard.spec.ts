@@ -43,6 +43,11 @@ test("sign in, review views, add an agent note, and copy the email table", async
   await theme(true);
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Needs you", exact: true }),
+  ).toBeVisible();
+  await screenshot("home-empty-light");
+  await page.goto("/today");
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
   await expect(

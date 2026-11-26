@@ -16,6 +16,8 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
   await page.goto("/");
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).press("Enter");
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await page.goto("/today");
   await expect(page.getByRole("alert")).toHaveText(
     "Fixture connection interrupted",
   );
