@@ -1,19 +1,25 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-26 for V2 Phase 1 design review._
+_Last updated: 2026-11-27 for V2 Phase 2 (data layer)._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **V2 Phase 2 (data layer):** done on `v2-phase-2-data`, stacked on `v2-phase-1-design-system` (PR #20 approved, still open). This session took over from an interrupted agent: its uncommitted Phase 2 work was recovered, reviewed and finished, and nothing was discarded. Phases 3–8 follow on stacked branches.
+- **Tests on the Phase 2 branch:** 202 Vitest tests passed, one existing skip; 7 Playwright specs passed. Lint, typecheck and the isolated build pass.
+- **Installed app:** `server/dist` in this checkout is a junction into the live release. Never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
 - **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
-- **Tests on V2 Phase 1 branch:** 181 Vitest tests passed, one existing skip; all six Playwright specs passed. Lint, typecheck and the isolated production build pass. Synthetic screenshots are saved under `docs/design/`.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
+- **V2 Phase 2 (API only, no screens yet):**
+  - Sources (off by default): line/queue tab with change history and weekly-template fallback; QA with headers-only inspection and a mapping that needs owner approval (`server/src/v2/sources.ts`).
+  - Owner records: coaching with checked evidence and follow-ups, private tagged notes, flag dismissals, settings; all in backups (`routes.ts`, `backup.ts`).
+  - Logic: cycle utilities, attendance day facts, flags engine, factual patterns, agreed-step outcomes and sentence templates (`cycle`, `facts`, `flags`, `patterns`, `outcomes`, `templates`).
 - **V2 Phase 1:** Self-hosted fonts, editorial tokens, responsive forest sidebar and bottom navigation, Cairo greeting/cycle header, source freshness, Ctrl/Cmd K search, component styleguide, native dialogs and notifications. Owner-only UI scope; later screens show explicit phase placeholders.
 | Feature | Status | Where | Notes |
 |---|---|---|---|
@@ -43,13 +49,14 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 ## 3. Architecture as built
 - **One Node 20 service** (Express 4) does sync jobs (node-cron), API and serves the built Vite/React app. SQLite via better-sqlite3 at `DATA_DIR/dashboard.db`. `schema.sql` is copied into `server/dist` at build.
 - **Data flow:** public CSV export → parse (whitelisted columns only) → filter to team codes → upsert in one transaction per job → rules → API → UI.
-- **API (all need a session except login/health):** `POST /login`, `POST /logout`, `GET /health`, `GET /me`, `GET /today?scope&date`, `GET /discrepancies?scope&state&rule&from&to&q&code`, `PATCH /discrepancies/:id`, `PATCH /discrepancies/bulk`, `GET /discrepancies/export`, `GET /trends?scope&from&to`, `GET /agents?scope`, `GET /agents/:code`, `POST /agents/:code/notes`, `PATCH /notes/:id`, `GET /roster/events?scope&since`, `GET /sync/status`, `POST /sync?job=roster|daily|all`, `POST /sync/attendance-preview`, `POST /check-link`, `GET /backup`, `POST /backup/preview`, `POST /backup/restore?token`.
+- **API (all need a session except login/health):** `POST /login`, `POST /logout`, `GET /health`, `GET /me`, `GET /today?scope&date`, `GET /discrepancies?scope&state&rule&from&to&q&code`, `PATCH /discrepancies/:id`, `PATCH /discrepancies/bulk`, `GET /discrepancies/export`, `GET /trends?scope&from&to`, `GET /agents?scope`, `GET /agents/:code`, `POST /agents/:code/notes`, `PATCH /notes/:id`, `GET /roster/events?scope&since`, `GET /sync/status`, `POST /sync?job=roster|daily|all`, `POST /sync/attendance-preview`, `POST /check-link`, `GET /backup`, `POST /backup/preview`, `POST /backup/restore?token`. V2: `GET /v2/data?cycle`, `GET|PATCH /v2/settings`, `POST /v2/coachings`, `PATCH /v2/followups/:id`, `POST /v2/notes`, `PATCH|DELETE /v2/notes/:id`, `POST /v2/flags/dismiss`.
 - **Scopes:** `mine` (owner's agents), `covered` (+ covered TL's agents, default), `all`.
-- **Tables:** agents, roster_snapshots, roster_events, schedule_days, attendance_days, discrepancies, notes, sync_log.
+- **Tables:** agents, roster_snapshots, roster_events, schedule_days, attendance_days, discrepancies, notes, sync_log, attendance_paste_details, attendance_mtd_snapshots, attendance_paste_state, line_history, qa_evaluations, coachings, coaching_followups, private_notes, flag_dismissals, owner_settings. All V2 tables are additive, so schema version stays 2.
 
 ## 4. Config & environment
 - Sample config: `config/sources.json` (fake names, empty IDs). Live config: gitignored `config/sources.local.json`, the private path in `DASHBOARD_CONFIG_FILE`, or full JSON in `DASHBOARD_SOURCE_CONFIG` for optional hosts.
 - Keys that matter for go-live: `me.rosterName`, `me.alsoCover`, `dateOrder` (`MDY`/`DMY`), `sources.*.sheetId` / `gid`, `sources.master.expectHeaders` (**set it** — it's what catches inserted columns), `sources.schedule.anchor`, `sources.attendance.enabled` (keep false until Phase 6), `thresholds` (empty).
+- V2 keys: `sources.lineQueue` (`enabled`, `sheetId`, `gid`, optional `headers`), `sources.qa` (`enabled`, `mappingApproved`, `columns`), `sources.attendance.paste.breakExceededLabel` (default `Exceeded`). V2 thresholds live in the database (`owner_settings`); only lateness incidents ships set (3).
 - Env var names: `PORT`, `BIND_HOST`, `DATA_DIR`, `DASHBOARD_PASSWORD_HASH`, `SESSION_SECRET`, `SOURCE_MODE` (`fixture`|`live`), `TZ`, `DASHBOARD_SOURCE_CONFIG`, `DASHBOARD_CONFIG_FILE`.
 - Windows run: follow the README to prepare `.env` and live config, check sheet links, run `deploy/windows/install.ps1`, and use **Settings → Sync now → All**. An empty `DATA_DIR` uses `%LOCALAPPDATA%\TeamDashboard\data`. Keep it outside OneDrive and the repository.
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
@@ -60,6 +67,14 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | MTD `Lateness mins` is a duration (h:mm:ss) despite its header. The interrupted change that read it as plain minutes was reverted. | The Sheets API returns a day fraction equal to the sum of daily Lateness. Checked read-only on the installed database (aggregates only): 15 of 16 agents match. | Treat the number as minutes |
+| 2026-11-27 | A break exceed is a per-day flag from the `Exceeded` label. No break minutes are shown. | The column holds only that label or nothing. | Parse minutes (always zero on real rows) |
+| 2026-11-27 | Line/queue and QA syncs run after attendance and rules; their failure marks the run failed. | An optional tab must not hold back attendance. | Stop the run at the first failure |
+| 2026-11-27 | A blank dated schedule cell counts as no entry, so the weekly template applies. Unrecognised text stays Unknown. | plan-v2 allows the template when there is no entry. | Treat blank as a dated entry |
+| 2026-11-27 | A dismissal stores the flag's fact keys and reopens only when a new key appears. | Re-syncs and corrections that remove facts are not new facts. | Hash of whole records |
+| 2026-11-27 | Count thresholds fire at or above the set number; QA fires below it. Missing-day windows end yesterday. NCNS/AWOL has an empty threshold and otherwise shows as LATER. | Match "3 or more"; attendance covers the previous day; NCNS/AWOL urgency is the owner's call. | — |
+| 2026-11-27 | Use MTD totals once their snapshot is newer than the latest daily row, else add up daily rows. | MTD is WFM's own figure. | Daily only |
+| 2026-11-27 | Display rules for LATER patterns: weekday lateness on at least 3 and a majority of the last 5 recorded weekdays; missing time after OFF at least twice; exceeded breaks 2+ worked days running. | Factual and quiet. These never raise urgency. | — |
 | 2026-11-26 | The owner pastes Attendance and MTD daily into a small restricted Google workbook. The dashboard reads it with the existing read-only Google sign-in. | Direct and browser-based reads of the original WFM workbook failed. | Automated reads of the original workbook. |
 | 2026-11-26 | The coaching cycle starts on the 21st and ends on the 20th. Attendance history comes from daily Attendance rows. MTD is snapshotted by Cairo sync date and agent code. | Match the cycle used by WFM. | — |
 | 2026-11-20 | Read sheets via public CSV export, no auth | Sheets open in incognito; Apps Script failed ("too large") and isn't allowed; viewer access only | Apps Script web app; Sheets API with OAuth (admin may block) |
@@ -91,6 +106,8 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 - The owner approved importing the prior coaching cycle. Its MTD totals are saved under the Cairo sync date with the source cycle recorded.
 | Issue | Impact | Planned fix |
 |---|---|---|
+| One agent's MTD lateness differs from the daily sum on the installed data | The dashboard shows the MTD total beside daily dates | Owner to check the workbook |
+| `npm run build` writes through the `server/dist` junction | Would overwrite the installed app | Use `build:smoke` in this checkout |
 | V2 review checkpoint | Phase 2 intentionally stopped | Owner reviews desktop and phone screenshots |
 | Check-a-link rejects multi-account links (`/spreadsheets/u/1/d/...`) | Minor friction | Accept and normalise `/u/N/` |
 | Restore preview says "updated", not "X resolved flags will reopen" | Could surprise | Clearer preview wording |
@@ -112,6 +129,10 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 | Q4 | Does the schedule move to a new file/tab each month? (anchor + GID would change monthly) | schedule upkeep | open |
 | Q5 | Any SOP thresholds for leave flags? | Trends badges | open (stays empty) |
 | Q6 | STL sign-off before anyone else uses the live dashboard | go-live | open |
+| Q7 | Should NCNS/AWOL be URGENT, and from how many days per cycle? | no (stays LATER) | open |
+| Q8 | "Behind pace" is done < 2 × elapsed ÷ total, so everyone at 0 is behind from day 1. Is that intended, or only once a whole coaching is due? | no | open |
+| Q9 | The paste has no break-exceed minutes. Is there a column with them? | no | open |
+| Q10 | Does a shout-out ("clean record") mean no lateness, missing time or unplanned absence, with planned leave allowed? | Phase 3 default | open |
 
 ## 8. Review feedback
 - **PR #20 design approved with five fixes:** viewport-sticky sidebar and internal nav scroll, greeting-name initials, smaller phone KPI values without sparklines, Floor phone wordmark/logout in Settings, and bottom-nav safe-area clearance. Regression coverage checks all current pages at 390px. Phases 2?8 are authorized after this gate.
@@ -121,6 +142,12 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - V2 Phase 2 data layer (handover)
+- Took over from an interrupted session. Recovered the unpushed Phase 2 work on `v2-phase-2-data` and backed it up before editing.
+- **Correction:** reverted its MTD lateness change to the day-fraction to duration handling and added a test that MTD lateness equals the sum of daily lateness per agent, including totals over 24 hours.
+- Fixed gaps found against plan-v2: exceeded-break parsing, queue sync blocking attendance, dismissals reopening on unrelated changes, line history dates in UTC, QA inspection hiding which headers failed. Added private notes, agreed-step outcomes, cycle utilities, sentence templates, NCNS/AWOL setting, line history in backups and `test-link --source=lineQueue`.
+- Kept the previous agent's test-only timing fix to `review-layout.spec.ts` as its own commit.
 
 ### 2026-11-26 - Phase 1 approved review fixes
 - Addressed all five design notes, refreshed the synthetic desktop/phone screenshots, and added a browser regression test for sticky navigation, initials, KPI overflow, logout placement and the last content edge on each page. Six browser specs passed.
