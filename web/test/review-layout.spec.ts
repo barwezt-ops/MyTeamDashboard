@@ -37,14 +37,24 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
     "/agent/99001",
   ]) {
     await page.goto(path);
+    await expect(page.locator(".shell-header")).toBeVisible();
     await expect(page.locator("main .loading")).toHaveCount(0);
-    await page.evaluate(() =>
-      window.scrollTo(0, document.documentElement.scrollHeight),
-    );
-    const nav = await page.locator(".sidebar").boundingBox();
-    const last = await page.locator("main.content > :last-child").boundingBox();
-    expect(last, path).not.toBeNull();
-    expect(last!.y + last!.height, path).toBeLessThanOrEqual(nav!.y);
+    await page.evaluate(() => document.fonts.ready);
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const nav = await page.locator(".sidebar").boundingBox();
+          const last = await page
+            .locator("main.content > :last-child")
+            .boundingBox();
+          return last!.y + last!.height - nav!.y;
+        },
+        { message: path },
+      )
+      .toBeLessThanOrEqual(0);
   }
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
   await page.goto("/settings");
