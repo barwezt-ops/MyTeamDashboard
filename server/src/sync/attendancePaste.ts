@@ -47,7 +47,11 @@ function checkedTeamRows(rows: PasteRow[], agents: Agent[], tab: string) {
   const codes = new Set(agents.map((agent) => agent.code));
   const team = rows.filter((row) => codes.has(codeOf(text(row.code))));
   if (!team.length)
-    throw new Error(tab + " has no rows matching the team roster.");
+    throw new Error(
+      tab === "Attendance"
+        ? "Attendance paste looks incomplete"
+        : tab + " has no rows matching the team roster.",
+    );
   if (team.some((row) => Object.values(row).some(isError)))
     throw new Error(tab + " has calculation errors in mapped team fields.");
   return team;
@@ -172,30 +176,32 @@ export function storeAttendancePaste(
 ) {
   return db.transaction(() => {
     const existing = db
-      .prepare("SELECT fingerprint FROM attendance_paste_state WHERE id=1")
-      .get() as { fingerprint: string } | undefined;
+      .prepare(
+        "SELECT fingerprint, team_code_count FROM attendance_paste_state WHERE id=1",
+      )
+      .get() as
+      { fingerprint: string; team_code_count: number | null } | undefined;
+    const teamCodeCount = new Set(paste.records.map((row) => row.code)).size;
+    if (teamCodeCount * 2 < (existing?.team_code_count ?? 0))
+      throw new Error("Attendance paste looks incomplete");
     const changed = existing?.fingerprint !== paste.fingerprint;
     if (changed) {
-      const deleteDay = db.prepare("DELETE FROM attendance_days WHERE date=?");
-      const deleteDetail = db.prepare(
-        "DELETE FROM attendance_paste_details WHERE date=?",
-      );
-      for (const date of paste.dates) {
-        deleteDay.run(date);
-        deleteDetail.run(date);
-      }
       const record = db.prepare(
-        "INSERT INTO attendance_days VALUES (@code,@date,@raw,@status,@missing,@now)",
+        "INSERT OR REPLACE INTO attendance_days VALUES (@code,@date,@raw,@status,@missing,@now)",
       );
       const detail = db.prepare(
-        "INSERT INTO attendance_paste_details VALUES (?,?,?)",
+        "INSERT OR REPLACE INTO attendance_paste_details VALUES (?,?,?)",
       );
       for (const row of paste.records) record.run({ ...row, now });
       for (const row of paste.details)
         detail.run(row.code, row.date, JSON.stringify(row.fields));
       db.prepare(
-        "INSERT INTO attendance_paste_state VALUES (1,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,last_changed_at=excluded.last_changed_at",
-      ).run(paste.fingerprint, now);
+        "INSERT INTO attendance_paste_state (id,fingerprint,last_changed_at,team_code_count) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,last_changed_at=excluded.last_changed_at,team_code_count=excluded.team_code_count",
+      ).run(paste.fingerprint, now, teamCodeCount);
+    } else if (existing.team_code_count === null) {
+      db.prepare(
+        "UPDATE attendance_paste_state SET team_code_count=? WHERE id=1",
+      ).run(teamCodeCount);
     }
     const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
     const already = db

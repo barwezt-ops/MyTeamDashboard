@@ -43,5 +43,6 @@ CREATE TABLE IF NOT EXISTS attendance_mtd_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_mtd_cycle ON attendance_mtd_snapshots(cycle_start, code, sync_date);
 CREATE TABLE IF NOT EXISTS attendance_paste_state (
-  id INTEGER PRIMARY KEY CHECK (id=1), fingerprint TEXT NOT NULL, last_changed_at TEXT NOT NULL
+  id INTEGER PRIMARY KEY CHECK (id=1), fingerprint TEXT NOT NULL, last_changed_at TEXT NOT NULL,
+  team_code_count INTEGER
 );

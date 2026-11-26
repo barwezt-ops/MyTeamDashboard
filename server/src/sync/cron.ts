@@ -140,11 +140,11 @@ export function startLiveJobs(
         }).format(time),
       );
       const last = lastRun(db, "attendance");
-      if (
-        hourInCairo >= paste.startHour &&
-        hourInCairo < paste.endHour &&
-        (!last || Date.parse(last.startedAt) < slot)
-      )
+      const withinHours =
+        paste.startHour < paste.endHour
+          ? hourInCairo >= paste.startHour && hourInCairo < paste.endHour
+          : hourInCairo >= paste.startHour || hourInCairo < paste.endHour;
+      if (withinHours && (!last || Date.parse(last.startedAt) < slot))
         return sync.start("attendance");
     }
   }

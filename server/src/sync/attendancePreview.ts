@@ -5,6 +5,7 @@ import { agentsOf, attendanceOf, scheduleOf } from "../db/repo.js";
 import { parseAttendance } from "../parse/attendance.js";
 import type { Window } from "../parse/schedule.js";
 import { attendanceFindings } from "../rules/index.js";
+import { dayKey } from "../rules/context.js";
 import { coveredRange } from "./syncAttendance.js";
 
 export function summarizeAttendance(
@@ -43,14 +44,16 @@ export function summarizeParsedAttendance(
   } = parsed;
   const recordDates = records.map((row) => row.date).sort();
   const cover = records.length ? coveredRange(dates, range) : null;
-  const coveredDates = new Set(dates);
+  const coveredPairs = new Set(
+    records.map((row) => dayKey(row.code, row.date)),
+  );
   const ruleRange = { from: range.from, to: today };
   const previous = attendanceOf(db, ruleRange);
   const next = cover
     ? [
         ...previous.filter((row) =>
           exactDates
-            ? !coveredDates.has(row.date)
+            ? !coveredPairs.has(dayKey(row.code, row.date))
             : row.date < cover.from || row.date > cover.to,
         ),
         ...records.filter((row) => row.date <= today),

@@ -75,12 +75,12 @@ const attendance = source.extend({
   paste: z
     .object({
       sheetId: z.string().regex(/^[\w-]+$/),
-      startHour: z.number().int().min(0).max(23).default(9),
-      endHour: z.number().int().min(1).max(24).default(18),
+      startHour: z.number().int().min(0).max(23).default(0),
+      endHour: z.number().int().min(0).max(24).default(24),
     })
     .refine(
-      (value) => value.startHour < value.endHour,
-      "Set attendance working hours in increasing order",
+      (value) => value.startHour !== value.endHour,
+      "Set different attendance start and end hours",
     )
     .optional(),
   layout: z.enum(["long", "wide"]),

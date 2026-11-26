@@ -418,4 +418,4 @@ npm run test-link -- --paste-tabs
 npm run sync -- --job=attendance --dry-run --paste
 ```
 
-After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly from `paste.startHour` inclusive to `paste.endHour` exclusive, defaulting to 09:00–18:00 Cairo time. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.
+After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly all day by default (`paste.startHour: 0`, `paste.endHour: 24` in Cairo). A window such as 12 to 2 starts at noon and ends at 02:00 the next day, with the end hour excluded. A paste with fewer than half as many matched Attendance codes as the last successful paste fails before writing attendance or MTD data. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.

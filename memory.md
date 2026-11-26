@@ -23,7 +23,7 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 | Status mapping | done | `parse/status.ts` | time ⇒ Scheduled; OFF, Annual→PTO, UPL, Sick, Casual (= unplanned/emergency), Present, Absent, On Hold/Not Hired (excluded), else Unknown |
 | Attendance parse (long + wide) | done, **disabled** | `parse/attendance.ts` | wide: match by code or unique normalised name, month+day matched within window (year may be wrong), unmatched warnings only for rows whose DTL column is the owner/covered TL |
 | Attendance dry run | done | `sync/attendancePreview.ts`, Settings | read-only; projected D1–D4 counts |
-| Restricted attendance paste | review pending | `fetch/attendancePaste.ts`, `sync/attendancePaste.ts` | Header-based Attendance and MTD reads, exact-date history replacement, daily MTD snapshots, and hourly working-hours checks in Cairo. |
+| Restricted attendance paste | Disabled until current-cycle paste and owner approval | `fetch/attendancePaste.ts`, `sync/attendancePaste.ts` | Header-based reads, agent/date replacement, daily MTD snapshots, and hourly checks all day by default in Cairo. |
 | Rules D1–D7 | done (D1–D4 run only when attendance enabled) | `rules/` | D5 has stable id `code\|D5`; auto-clear only touches `open` rows |
 | Sync windows / replacement | done | `sync/service.ts`, `syncSchedule.ts`, `syncAttendance.ts` | window = today −35 / +14; replace only the dates the source covers (`coveredRange`); one Cairo date per run |
 | Cron and catch-up | done | `sync/cron.ts` | daily `0 16 * * *`, weekly `0 12 * * 0` (Sun), backup 02:00 Cairo. Startup and 15-minute checks cover the latest elapsed daily slot and today's backup. A successful daily or All must start at or after the slot to satisfy it. Automated retries wait at least one hour. Daily refreshes roster first if missing or >7 days old. |
@@ -114,6 +114,8 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+- PR #19 review set attendance reads to hourly all day in Cairo and allowed overnight windows. Attendance replaces only pasted agent/date pairs. A paste with fewer than half the prior successful paste's matched Attendance codes fails before attendance or MTD writes.
 ### 2026-11-26 — Restricted attendance paste workbook
 
 - Replaced the proposed browser-session download with a small owner-maintained workbook. Verified all three tabs and ran an attendance preview with the existing read-only sign-in.

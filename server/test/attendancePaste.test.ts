@@ -14,6 +14,7 @@ import {
   storeAttendancePaste,
 } from "../src/sync/attendancePaste.js";
 import { sampleMaster } from "./sample.js";
+import { jobRunner } from "../src/sync/runJob.js";
 
 it("reads only approved fields as serial values and stops before data reads on patient headers", async () => {
   const directory = mkdtempSync(join(tmpdir(), "team-attendance-paste-"));
@@ -134,7 +135,7 @@ it("reads only approved fields as serial values and stops before data reads on p
   }
 });
 
-it("replaces only pasted dates, keeps daily MTD snapshots and detects unchanged pastes", () => {
+it("replaces only pasted code/date pairs, keeps daily MTD snapshots and detects unchanged pastes", () => {
   const db = openDb(":memory:");
   try {
     const agents = sampleMaster().agents.slice(0, 1);
@@ -165,6 +166,12 @@ it("replaces only pasted dates, keeps daily MTD snapshots and detects unchanged 
     );
     seed.run(code, "2026-10-21", "Replace");
     seed.run(code, "2026-10-22", "Keep");
+    seed.run("OTHER", "2026-10-21", "Keep absent agent");
+    db.prepare("INSERT INTO attendance_paste_details VALUES (?,?,?)").run(
+      "OTHER",
+      "2026-10-21",
+      "{}",
+    );
     const paste = prepareAttendancePaste(rows, snapshots, config, agents);
     expect(paste.otherRows).toBe(1);
     expect(paste.records.map((row) => [row.status, row.missing])).toEqual([
@@ -193,8 +200,25 @@ it("replaces only pasted dates, keeps daily MTD snapshots and detects unchanged 
       prepareAttendancePaste(rows, [{ code, ot: "#REF!" }], config, agents),
     ).toThrow("calculation errors");
     expect(
-      db.prepare("SELECT raw FROM attendance_days ORDER BY date").pluck().all(),
+      db
+        .prepare("SELECT raw FROM attendance_days WHERE code=? ORDER BY date")
+        .pluck()
+        .all(code),
     ).toEqual(["1st Half Ann", "Keep", "Dropped"]);
+    expect(
+      db
+        .prepare("SELECT raw FROM attendance_days WHERE code='OTHER'")
+        .pluck()
+        .get(),
+    ).toBe("Keep absent agent");
+    expect(
+      db
+        .prepare(
+          "SELECT fields FROM attendance_paste_details WHERE code='OTHER'",
+        )
+        .pluck()
+        .get(),
+    ).toBe("{}");
     expect(
       db
         .prepare(
@@ -216,6 +240,44 @@ it("replaces only pasted dates, keeps daily MTD snapshots and detects unchanged 
     expect(coachingCycle("2027-01-20", 21)).toEqual({
       from: "2026-12-21",
       to: "2027-01-20",
+    });
+  } finally {
+    db.close();
+  }
+});
+
+it("logs an incomplete paste as a failed sync and leaves the last successful paste intact", async () => {
+  const db = openDb(":memory:");
+  try {
+    const agents = sampleMaster().agents.slice(0, 3);
+    const config = loadConfig();
+    const rows = agents.map(({ code }) => ({ code, date: "21 October 2026" }));
+    const initial = prepareAttendancePaste(rows, rows, config, agents);
+    const now = () => new Date("2026-11-27T09:00:00Z");
+    storeAttendancePaste(db, initial, "2026-11-26", "2026-11-26T09:00:00Z", 21);
+    const short = prepareAttendancePaste(
+      rows.slice(0, 1),
+      rows,
+      config,
+      agents,
+    );
+    const dump = () =>
+      [
+        "attendance_days",
+        "attendance_paste_details",
+        "attendance_mtd_snapshots",
+        "attendance_paste_state",
+      ].map((table) => db.prepare("SELECT * FROM " + table).all());
+    const previous = dump();
+    const success = await jobRunner(db, now).runStep("attendance", () => {
+      storeAttendancePaste(db, short, "2026-11-27", now().toISOString(), 21);
+      return { rowsRead: 1, rowsKept: 1, warnings: [] };
+    });
+    expect(success).toBe(false);
+    expect(dump()).toEqual(previous);
+    expect(db.prepare("SELECT ok, error FROM sync_log").get()).toEqual({
+      ok: 0,
+      error: "Attendance paste looks incomplete",
     });
   } finally {
     db.close();

@@ -58,6 +58,16 @@ export function openDb(directory: string): Db {
     db.transaction(() => {
       if (version === 1) migrateD5(db);
       db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
+      if (
+        !db
+          .prepare(
+            "SELECT 1 FROM pragma_table_info('attendance_paste_state') WHERE name='team_code_count'",
+          )
+          .get()
+      )
+        db.exec(
+          "ALTER TABLE attendance_paste_state ADD COLUMN team_code_count INTEGER",
+        );
       if (version !== 2) db.pragma("user_version = 2");
     })();
     return db;

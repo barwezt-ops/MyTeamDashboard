@@ -36,10 +36,10 @@ it("runs attendance once per Cairo working-hour slot and avoids an active sync",
   Object.assign(config.sources.attendance, {
     access: "google",
     enabled: true,
-    paste: { sheetId: "FakePaste", startHour: 9, endHour: 11 },
+    paste: { sheetId: "FakePaste", startHour: 12, endHour: 2 },
   });
   const db = openDb(":memory:");
-  let time = new Date("2026-11-26T08:59:00+02:00");
+  let time = new Date("2026-11-26T11:59:00+02:00");
   const now = () => time;
   const log = db.prepare(
     "INSERT INTO sync_log (job,started_at,finished_at,ok) VALUES (?,?,?,1)",
@@ -57,15 +57,16 @@ it("runs attendance once per Cairo working-hour slot and avoids an active sync",
   });
   try {
     expect(jobs.check()).toBeUndefined();
-    time = new Date("2026-11-26T09:00:00+02:00");
+    time = new Date("2026-11-26T12:00:00+02:00");
     active.mockReturnValue("all");
     expect(jobs.check()).toBeUndefined();
     active.mockReturnValue(null);
     expect(await jobs.check()).toBe(true);
     expect(jobs.check()).toBeUndefined();
-    time = new Date("2026-11-26T10:15:00+02:00");
+    log.run("daily", "2026-11-26T14:00:00Z", "2026-11-26T14:00:00Z");
+    time = new Date("2026-11-27T01:15:00+02:00");
     expect(await jobs.check()).toBe(true);
-    time = new Date("2026-11-26T11:00:00+02:00");
+    time = new Date("2026-11-27T02:00:00+02:00");
     expect(jobs.check()).toBeUndefined();
     expect(start.mock.calls).toEqual([["attendance"], ["attendance"]]);
   } finally {
