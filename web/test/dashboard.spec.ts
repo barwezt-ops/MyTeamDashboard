@@ -78,13 +78,10 @@ test("sign in, review views, add an agent note, and copy the email table", async
   const agent = page.getByRole("dialog", { name: "Agent profile" });
   await expect(agent.getByText("Avery Sample")).toBeVisible();
   await agent.getByRole("button", { name: "Add note" }).click();
-  await agent.getByLabel("What happened").fill("Sample follow-up");
-  await agent
-    .getByLabel("What was said")
-    .fill("Synthetic note for smoke testing.");
-  await agent.getByLabel("Agreed next step").fill("Confirm next shift");
-  await agent.getByLabel("Follow-up date").fill("2026-11-21");
-  await agent.getByRole("button", { name: "Save note" }).click();
+  const note = page.getByRole("dialog", { name: "Add private note" });
+  await note.getByLabel("Note", { exact: true }).fill("Sample follow-up");
+  await note.getByLabel("Tags, separated by commas").fill("sample");
+  await note.getByRole("button", { name: "Save note" }).click();
   await expect(
     agent.getByText("Sample follow-up", { exact: true }),
   ).toBeVisible();

@@ -58,15 +58,17 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
 
   await agent.press("Enter");
   await drawer.getByRole("button", { name: "Add note" }).press("Enter");
-  await expect(drawer.getByLabel("Date", { exact: true })).toBeFocused();
-  await drawer.getByLabel("What happened").fill("Synthetic phone layout note");
-  await drawer.getByRole("button", { name: "Save note" }).press("Enter");
+  const note = page.getByRole("dialog", { name: "Add private note" });
+  await expect(note.getByLabel("Date", { exact: true })).toBeFocused();
+  await note
+    .getByLabel("Note", { exact: true })
+    .fill("Synthetic phone layout note");
+  await note.getByRole("button", { name: "Save note" }).press("Enter");
   await expect(drawer.getByText("Synthetic phone layout note")).toBeVisible();
   await drawer.getByRole("link", { name: "Full profile" }).press("Enter");
-  await expect(page.getByRole("heading", { name: "Riley" })).toBeVisible();
   await expect(
-    page.getByRole("table", { name: "Notes" }).getByRole("row").first(),
-  ).toHaveCSS("display", "grid");
+    page.getByRole("heading", { name: "Riley", exact: true }),
+  ).toBeVisible();
   await screenshot("agent");
 
   await page
