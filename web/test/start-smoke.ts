@@ -8,7 +8,8 @@ import { loadConfig } from "../../server/dist.test/config.js";
 import { openDb } from "../../server/dist.test/db/db.js";
 import { createSync } from "../../server/dist.test/sync/service.js";
 import { readEnv } from "../../server/dist.test/env.js";
-import { createApp, startServer } from "../../server/dist.test/index.js";
+import { seedV2Fixture } from "../../fixtures/v2.js";
+import { createApp } from "../../server/dist.test/index.js";
 
 process.env.PORT = "3210";
 process.env.DATA_DIR = ":memory:";
@@ -41,5 +42,25 @@ createApp(readEnv(), config, performanceDb, performanceSync).listen(
   "127.0.0.1",
 );
 
-const { sync } = startServer(() => new Date("2026-11-21T12:00:00Z"));
+const db = openDb(":memory:");
+const fixtureConfig = loadConfig();
+fixtureConfig.sources.lineQueue = {
+  enabled: true,
+  access: "public",
+  mode: "export",
+  label: "Sample queues",
+  sheetId: "FakeQueue",
+  gid: "0",
+  tab: "Sample queues",
+  headerRows: 1,
+};
+const sync = createSync(
+  db,
+  fixtureConfig,
+  "fixture",
+  () => new Date("2026-11-21T12:00:00Z"),
+);
+createApp(readEnv(), fixtureConfig, db, sync).listen(3210, "127.0.0.1");
 if (!(await sync.start("all"))) process.exit(1);
+
+seedV2Fixture(db);
