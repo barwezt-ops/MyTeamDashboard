@@ -12,7 +12,13 @@ import {
   recentRuns,
   scheduleOf,
 } from "../db/repo.js";
-import type { Config, SourceKey } from "../config.js";
+import {
+  canSaveBrowserSource,
+  saveBrowserSource,
+  type Config,
+  type SourceKey,
+} from "../config.js";
+import { parseLink } from "../fetch/urls.js";
 import type { SyncService } from "../sync/service.js";
 import type {
   Agent,
@@ -86,7 +92,12 @@ function summary(agent: Agent) {
   void fullName;
   return rest;
 }
-export function createRoutes(db: Db, config: Config, sync: SyncService) {
+export function createRoutes(
+  db: Db,
+  config: Config,
+  sync: SyncService,
+  live = false,
+) {
   const router = Router();
   const findAgent = (code: string) =>
     agentsOf(db).find((agent) => agent.code === code);
@@ -474,6 +485,8 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         }),
         running: sync.active,
         attendanceCsvUpload: config.sources.attendance.access === "file",
+        attendanceBrowser: config.sources.attendance.access === "browser",
+        attendanceLinkEditable: canSaveBrowserSource(config, live),
         runs: recentRuns(db),
         timezone: config.timezone,
         config,
@@ -499,10 +512,54 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     }),
   );
   router.post(
+    "/attendance/browser-source",
+    endpoint(
+      { body: z.strictObject({ link: z.string().trim().min(1).max(2048) }) },
+      ({ body }, _req, res) => {
+        if (!canSaveBrowserSource(config, live) || sync.active)
+          return res.status(409).json({
+            error:
+              "The browser source can be edited in local live configuration while sync is idle.",
+          });
+        let target;
+        try {
+          target = parseLink(body.link);
+        } catch {
+          return res.status(422).json({
+            error: "Paste a Google Sheets tab link with a numeric GID.",
+          });
+        }
+        try {
+          saveBrowserSource(config, target);
+        } catch {
+          return res.status(422).json({
+            error:
+              "Could not update the private attendance source configuration.",
+          });
+        }
+        return res.sendStatus(204);
+      },
+    ),
+  );
+  router.post(
     "/sync",
     endpoint(
-      { query: z.strictObject({ job: z.enum(["roster", "daily", "all"]) }) },
+      {
+        query: z.strictObject({
+          job: z.enum(["roster", "daily", "all", "attendance"]),
+        }),
+      },
       ({ query: { job } }, _req, res) => {
+        if (
+          job === "attendance" &&
+          (!config.sources.attendance.enabled ||
+            config.sources.attendance.access !== "browser")
+        ) {
+          res
+            .status(409)
+            .json({ error: "Enable browser attendance to run this job." });
+          return;
+        }
         if (!sync.start(job)) {
           res.status(409).json({ error: "A sync is already running" });
           return;

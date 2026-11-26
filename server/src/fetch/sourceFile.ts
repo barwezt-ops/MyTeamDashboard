@@ -180,6 +180,17 @@ function archiveName() {
   );
 }
 
+function trimAttendanceArchive(processed: string) {
+  const names = csvNames(processed).sort().reverse();
+  for (const name of names.slice(14)) unlinkSync(join(processed, name));
+}
+
+export function archiveBrowserAttendance(dataDir: string, rows: string[][]) {
+  const processed = join(inbox("attendance", dataDir), "processed");
+  saveFiltered(processed, rows);
+  trimAttendanceArchive(processed);
+}
+
 export async function uploadAttendanceCsv(
   input: AsyncIterable<Buffer>,
   config: Config,
@@ -246,8 +257,7 @@ export async function loadSourceFile(
               throw error;
             }
           }
-          const names = csvNames(processed).sort().reverse();
-          for (const name of names.slice(14)) unlinkSync(join(processed, name));
+          trimAttendanceArchive(processed);
         } catch {
           throw new SourceAccessError(
             "Could not archive the inbox CSV. Check the folder and retry.",

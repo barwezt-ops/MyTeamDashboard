@@ -403,6 +403,15 @@ On the machine that has the database, run `npm run backup` to save a copy. Run `
 
 [Google Desktop OAuth](https://developers.google.com/identity/protocols/oauth2/native-app) · [App audience and publishing](https://support.google.com/cloud/answer/15549945) · [Sheets display values](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get)
 
+### Download attendance through your signed-in browser
+
+1. Keep attendance disabled while testing. Set `sources.attendance.access` to `"browser"` and configure the existing `sheetId`, `gid`, and column mapping in `config/sources.local.json`. For long attendance, `expectHeaders` can pin exact header text by field.
+2. Run `npm run browser-login` from the checkout. Chrome opens directly with a dedicated owner-only profile at `DATA_DIR/browser-profile`. Sign in to your work Google account by hand and close the browser window. Keep credentials in your normal sign-in flow. The dashboard uses the session in that profile for the CSV download.
+3. Run **Settings → Dry-run attendance** and verify the mapping. After approval, set `enabled: true` and restart. Use **Settings → Sync now → Attendance** or **All** to sync on demand. The scheduled attendance sync checks once per working hour in Cairo time. If Google blocks the automated download, scheduled attendance pauses until a manual run succeeds.
+4. When WFM shares a new tab, paste its tab-specific view link into **Settings → Attendance sheet** and save. The field updates the local private config while sync is idle.
+
+The optional `sources.attendance.browser` settings are `channel` (installed `chrome` by default, or `msedge`), `executablePath` (absolute path to an installed browser), `timeoutMs` (default 600000), `startHour` (default 9), and `endHour` (default 18, exclusive). The app closes the browser and removes the raw download after each attempt. Successful syncs retain only a filtered team archive.
+
 ### Drop or upload an attendance CSV
 
 Set `sources.attendance.access` to `"file"` and verify the column mapping against the export. Once the roster has synced, use a UTF-8 CSV up to 150 MB directly from **File → Download → Comma-separated values (.csv)**. Leave the original column order intact. Stop if any header suggests patient data.

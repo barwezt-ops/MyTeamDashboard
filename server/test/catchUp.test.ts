@@ -7,6 +7,7 @@ import { openDb } from "../src/db/db.js";
 import { lastRun } from "../src/db/repo.js";
 import { startLiveJobs } from "../src/sync/cron.js";
 import { createSync } from "../src/sync/service.js";
+import { jobRunner } from "../src/sync/runJob.js";
 
 function liveConfig() {
   const config = loadConfig();
@@ -30,6 +31,72 @@ async function fetchFixture(url: Parameters<typeof globalThis.fetch>[0]) {
     },
   );
 }
+
+it("runs browser attendance once per working hour, without overlapping a sync", async () => {
+  const config = liveConfig();
+  Object.assign(config.sources.attendance, {
+    access: "browser",
+    enabled: true,
+    browser: {
+      ...config.sources.attendance.browser,
+      startHour: 9,
+      endHour: 11,
+    },
+  });
+  const db = openDb(":memory:");
+  const date = (time: string) => new Date("2026-11-21T" + time + ":00+02:00");
+  let time = date("08:59");
+  const now = () => time;
+  const seed = db.prepare(
+    "INSERT INTO sync_log (job,started_at,finished_at,ok) VALUES (?,?,?,1)",
+  );
+  seed.run("roster", date("08:00").toISOString(), date("08:00").toISOString());
+  seed.run("daily", date("08:00").toISOString(), date("08:00").toISOString());
+  const runner = jobRunner(db, now, true);
+  let release!: () => void;
+  const action = vi.fn(
+    () =>
+      new Promise<{ rowsRead: number; rowsKept: number; warnings: string[] }>(
+        (resolve) => {
+          release = () => resolve({ rowsRead: 4, rowsKept: 1, warnings: [] });
+        },
+      ),
+  );
+  const start = vi.fn((job: "attendance") =>
+    runner.start(job, () => runner.runStep("attendance", action)),
+  );
+  const sync = {
+    ...createSync(db, config, "live", now),
+    start,
+    get active() {
+      return runner.active;
+    },
+  };
+  const live = startLiveJobs(db, ":memory:", config, sync, now);
+  try {
+    expect(live.check()).toBeUndefined();
+    time = date("09:10");
+    const running = live.check();
+    expect(live.check()).toBeUndefined();
+    expect(start).toHaveBeenCalledExactlyOnceWith("attendance");
+    await Promise.resolve();
+    release();
+    expect(await running).toBe(true);
+    expect(live.check()).toBeUndefined();
+    time = date("10:00");
+    const second = live.check();
+    await Promise.resolve();
+    release();
+    expect(await second).toBe(true);
+    time = date("11:00");
+    expect(live.check()).toBeUndefined();
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(lastRun(db, "daily")?.startedAt).toBe(date("08:00").toISOString());
+  } finally {
+    live.stop();
+    db.close();
+  }
+});
 
 it.each([
   ["10:00", "16:05", true, 21],

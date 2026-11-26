@@ -1,15 +1,15 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoint._
+_Last updated: 2026-11-26 for Windows operation and browser attendance review._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
-- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
+- **Remaining for v1 (plan.md §18):** Verify browser attendance and the live column mapping before enabling D1–D4.
 - **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
-- **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
-- **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
+- **Windows setup checkpoint:** The local dashboard runs under the Windows scheduled task. Roster and schedule have synced successfully. The approved 150 MB streaming CSV drop is deployed and attendance is disabled pending mapping review.
+- **Next task:** Verify the signed-in browser download and attendance dry run. Review the status mapping and Missing field before enabling attendance.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -32,9 +32,10 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, Today, Discrepancies, Trends, Roster, Agent, Settings | done | `web/src/views/` | light/dark, 390 px phone layout, keyboard + aria, axe clean |
 | First live boot and public health | done | `index.ts`, `db/db.ts`, `sync/cron.ts` | Startup checks `DATA_DIR`, then starts catch-up after listening. With no successful roster, the first check starts All once at any Cairo hour. Public health returns only `ok`, `version`, and `lastSyncAt`. |
-| Windows local deployment | **merged, install pending** | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
+| Windows local deployment | **running** | `deploy/windows/`, `README.md`, `env.ts` | The Node and `.cmd` path installs without PowerShell scripts. Task Scheduler starts at sign-in and the app binds to loopback. |
 | Free VM and Railway | optional, needs a card | `deploy/`, `README.md` | Existing deploy runbooks remain available. |
-| Real attendance mapping | **not done** | — | Phase 6, blocked on link |
+| Browser attendance | **review pending** | `fetch/browserAttendance.ts`, Settings | Dedicated owner-only Chrome profile, hourly Cairo working-hours checks, and a private tab-link editor. |
+| Real attendance mapping | **pending** | — | Review source headers, status labels, and projected D1–D4 before enabling. |
 
 ## 3. Architecture as built
 - **One Node 20 service** (Express 4) does sync jobs (node-cron), API and serves the built Vite/React app. SQLite via better-sqlite3 at `DATA_DIR/dashboard.db`. `schema.sql` is copied into `server/dist` at build.
@@ -75,6 +76,7 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 | 2026-11-24 | Restore one boot-time All attempt when there is no successful roster | The first live instance should populate data even before the daily time. The check guards against duplicate bootstrap attempts. | Wait until the scheduled daily time |
 | 2026-11-24 | Infer HTTPS for non-local hosts on live loopback listeners when the protocol header is absent | Tailscale Serve can omit `X-Forwarded-Proto`. Windows and the loopback-bound VM need secure session cookies, and direct localhost sign-in uses HTTP. | Require the header for every secure proxy sign-in |
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
+| 2026-11-26 | Download WFM attendance through the owner's dedicated signed-in browser profile | Direct Sheets values, authenticated GViz, and authenticated CSV requests failed on the WFM workbook. The owner can download the CSV in their own browser. | Direct Google fetches for this workbook and IMPORTRANGE |
 
 ## 6. Known issues & tech debt
 | Issue | Impact | Planned fix |
@@ -108,6 +110,10 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-26 — Windows operation and browser attendance
+
+- Deployed the 150 MB streaming CSV drop on Windows and verified scheduled-task health. Added the review version of browser attendance, hourly Cairo working-hours scheduling, and Settings link updates. Attendance stays disabled pending live mapping review.
+
 ### 2026-11-25 — Master month-name dates and live source checks
 - Added shared month-name date parsing with coverage for roster hire dates, last working days, and link diagnostic samples. Verified the dated schedule export and anchored range. Paused the Windows install for review.
 

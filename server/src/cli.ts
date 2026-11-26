@@ -8,6 +8,7 @@ import { checkSheetLink, sourceKeys } from "./fetch/checkLink.js";
 import { createSync } from "./sync/service.js";
 import { createInterface } from "node:readline/promises";
 import { googleLogin, googleLogout } from "./fetch/googleAuth.js";
+import { browserLogin } from "./fetch/browserAttendance.js";
 
 async function hashPassword() {
   const input = createInterface({ input: process.stdin, terminal: false });
@@ -31,6 +32,10 @@ try {
       process.argv.includes("--drive-readonly"),
     );
     console.log("Google sign-in saved.");
+  } else if (process.argv[2] === "browser-login") {
+    const env = readEnv();
+    await browserLogin(loadConfig(undefined, env.SOURCE_MODE), env.DATA_DIR);
+    console.log("Browser sign-in window closed.");
   } else if (process.argv[2] === "google-logout") {
     await googleLogout(readDataDir());
     console.log("Google sign-in removed.");

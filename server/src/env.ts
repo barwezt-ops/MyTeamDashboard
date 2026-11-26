@@ -35,6 +35,10 @@ export function readDataDir(local = process.platform === "win32") {
     configured ||
       (local && appData ? join(appData, "TeamDashboard", "data") : "./data"),
   );
+  return validateDataPath(path, local);
+}
+
+export function validateDataPath(path: string, local = true) {
   const resolved = canonical(path);
   const oneDriveRoots = ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"]
     .map((key) => process.env[key])

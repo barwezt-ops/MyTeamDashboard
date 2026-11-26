@@ -105,6 +105,10 @@ export async function checkSheetLink(
   const settings = source ? config.sources[source] : null;
   const google = (input.access ?? settings?.access) === "google";
   try {
+    if (!input.access && settings?.access === "browser")
+      throw new SourceAccessError(
+        "Use the attendance dry run to check the saved browser source.",
+      );
     if (
       google &&
       (!source ||

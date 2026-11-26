@@ -66,6 +66,28 @@ export function checkSourceHeaders(
     throw new SourceAccessError(
       "Possible patient data in the source headers. Stop and review the source.",
     );
+  const attendance = config.sources.attendance;
+  if (
+    source === "attendance" &&
+    attendance.layout === "long" &&
+    attendance.expectHeaders
+  ) {
+    const columns = attendance.long.columns;
+    for (const field of Object.keys(
+      attendance.expectHeaders,
+    ) as (keyof typeof columns)[]) {
+      const letter = columns[field];
+      if (
+        !letter ||
+        header[indexOf(letter)]?.trim() !== attendance.expectHeaders[field]
+      )
+        throw new SourceAccessError(
+          "Attendance header mismatch for " +
+            field +
+            ". Check the saved column mapping.",
+        );
+    }
+  }
   const columns = mapped
     ? sourceColumnIndices(config, source)
     : Object.values(fields)

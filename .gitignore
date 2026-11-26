@@ -12,6 +12,7 @@ test-results/
 playwright-report/
 config/sources.local.json
 .windows-runtime/
+config/sources.local.json.*.tmp
 server/dist.previous/
 server/dist.next/
 

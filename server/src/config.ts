@@ -1,4 +1,12 @@
-import { existsSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import cron from "node-cron";
 import { z } from "zod";
@@ -6,7 +14,7 @@ import { statuses } from "./api/dto.js";
 import { parseDate } from "./parse/normalize.js";
 import { indexOf } from "./parse/columns.js";
 
-export const accessModes = ["public", "google", "file"] as const;
+export const accessModes = ["public", "google", "file", "browser"] as const;
 
 const column = z
   .string()
@@ -69,19 +77,39 @@ const schedule = source.extend({
     }, "Invalid regex"),
   stopColumn: column.optional(),
 });
+const attendanceColumns = z.strictObject({
+  code: column,
+  name: column.optional(),
+  date: column,
+  status: column,
+  missing: column.optional(),
+});
 const attendance = source.extend({
   enabled: z.boolean(),
   layout: z.enum(["long", "wide"]),
+  expectHeaders: z
+    .partialRecord(attendanceColumns.keyof(), z.string().trim().min(1))
+    .optional(),
+  browser: z
+    .object({
+      channel: z.enum(["chrome", "msedge"]).default("chrome"),
+      executablePath: z.string().trim().min(1).optional(),
+      timeoutMs: z.number().int().positive().max(3_600_000).default(600_000),
+      startHour: z.number().int().min(0).max(23).default(9),
+      endHour: z.number().int().min(1).max(24).default(18),
+    })
+    .default({
+      channel: "chrome",
+      timeoutMs: 600_000,
+      startHour: 9,
+      endHour: 18,
+    })
+    .refine(
+      (value) => value.startHour < value.endHour,
+      "Set browser working hours in increasing order",
+    ),
   long: z.object({
-    columns: z
-      .object({
-        code: column,
-        name: column.optional(),
-        date: column,
-        status: column,
-        missing: column.optional(),
-      })
-      .strict(),
+    columns: attendanceColumns,
   }),
   wide: z.object({
     keyColumn: column,
@@ -129,9 +157,18 @@ export const configSchema = z
   .superRefine((config, ctx) => {
     for (const key of ["master", "schedule", "attendance"] as const) {
       const item = config.sources[key];
+      if (key !== "attendance" && item.access === "browser")
+        ctx.addIssue({
+          code: "custom",
+          path: ["sources", key, "access"],
+          message: "Browser access is available for attendance only",
+        });
       if (item.access === "file") continue;
       const tabField =
-        item.access === "google" || item.mode === "gviz" ? "tab" : "gid";
+        item.access === "google" ||
+        (item.access !== "browser" && item.mode === "gviz")
+          ? "tab"
+          : "gid";
       if (item.sheetId && !item[tabField].trim()) {
         ctx.addIssue({
           code: "custom",
@@ -173,12 +210,50 @@ export const configSchema = z
   });
 export type Config = z.infer<typeof configSchema>;
 export type SourceKey = keyof Config["sources"];
+const localSourceConfig = () => resolve("config/sources.local.json");
+
+export function canSaveBrowserSource(config: Config, live: boolean) {
+  return (
+    live &&
+    config.sources.attendance.access === "browser" &&
+    !process.env.DASHBOARD_CONFIG_FILE?.trim() &&
+    !process.env.DASHBOARD_SOURCE_CONFIG &&
+    lstatSync(localSourceConfig(), { throwIfNoEntry: false })?.isFile() === true
+  );
+}
+
+export function saveBrowserSource(
+  config: Config,
+  change: { sheetId: string; gid: string },
+) {
+  const file = localSourceConfig();
+  const before = readFileSync(file, "utf8");
+  const raw = JSON.parse(before);
+  Object.assign(raw.sources.attendance, change);
+  const next = configSchema.parse(raw);
+  if (next.sources.attendance.access !== "browser")
+    throw new Error("Attendance source changed.");
+  const temp = file + "." + randomUUID() + ".tmp";
+  try {
+    writeFileSync(temp, JSON.stringify(raw, null, 2) + "\n", {
+      flag: "wx",
+      mode: 0o600,
+    });
+    if (readFileSync(file, "utf8") !== before)
+      throw new Error("Private config changed.");
+    renameSync(temp, file);
+  } finally {
+    rmSync(temp, { force: true });
+  }
+  Object.assign(config.sources.attendance, change);
+}
+
 export function loadConfig(
   path: string | undefined = undefined,
   mode: "fixture" | "live" = "fixture",
   checkLink = false,
 ): Config {
-  const localFile = resolve("config/sources.local.json");
+  const localFile = localSourceConfig();
   const file =
     path ??
     (mode === "live" || checkLink

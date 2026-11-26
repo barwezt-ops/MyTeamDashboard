@@ -12,7 +12,11 @@ import {
 import { fetchCsv } from "../fetch/fetchCsv.js";
 import { readFixture } from "../fetch/fixtures.js";
 import { fetchGoogleRows } from "../fetch/googleSheets.js";
-import { loadSourceFile } from "../fetch/sourceFile.js";
+import {
+  archiveBrowserAttendance,
+  loadSourceFile,
+} from "../fetch/sourceFile.js";
+import { fetchBrowserAttendance } from "../fetch/browserAttendance.js";
 import { sourceUrl } from "../fetch/urls.js";
 import { parseMaster } from "../parse/master.js";
 import { localDate, plusDays, weekday } from "../parse/normalize.js";
@@ -40,6 +44,17 @@ export function createSync(
   });
   async function load(source: SourceKey, log = true) {
     const settings = config.sources[source];
+    async function loadBrowser() {
+      const result = await fetchBrowserAttendance(
+        config,
+        dataDir,
+        agentsOf(db),
+      );
+      return {
+        ...result,
+        archive: () => archiveBrowserAttendance(dataDir, result.rows),
+      };
+    }
     const result: {
       rows: string[][];
       rowsRead?: number;
@@ -56,9 +71,11 @@ export function createSync(
           )
         : settings.access === "google"
           ? await fetchGoogleRows(config, source, dataDir)
-          : settings.access === "file"
-            ? await loadSourceFile(config, source, dataDir, agentsOf(db))
-            : await fetchCsv(sourceUrl(settings));
+          : settings.access === "browser"
+            ? await loadBrowser()
+            : settings.access === "file"
+              ? await loadSourceFile(config, source, dataDir, agentsOf(db))
+              : await fetchCsv(sourceUrl(settings));
     if (log)
       console.log(
         source +
@@ -185,6 +202,12 @@ export function createSync(
       const range = window(date);
       if (job === "roster")
         return (await roster(date)) && (await rules(date, range));
+      if (job === "attendance")
+        return (
+          config.sources.attendance.enabled &&
+          (await attendance(range)) &&
+          (await rules(date, range))
+        );
       const success = lastSuccess(db, "roster");
       if (
         job === "all" ||
@@ -194,7 +217,11 @@ export function createSync(
         if (!(await roster(date))) return false;
       }
       if (!(await schedule(range))) return false;
-      if (config.sources.attendance.enabled && !(await attendance(range)))
+      if (
+        config.sources.attendance.enabled &&
+        (config.sources.attendance.access !== "browser" || job === "all") &&
+        !(await attendance(range))
+      )
         return false;
       return rules(date, range);
     });

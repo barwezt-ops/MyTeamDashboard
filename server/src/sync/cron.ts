@@ -11,6 +11,7 @@ import type { Config } from "../config.js";
 import { lastDailyStart, lastRun, lastSuccess } from "../db/repo.js";
 import { localDate } from "../parse/normalize.js";
 import type { SyncService } from "./service.js";
+import { browserBlocked } from "../fetch/browserAttendance.js";
 export function startCron(config: Config, sync: SyncService) {
   const options = { timezone: config.timezone };
   return [
@@ -82,6 +83,7 @@ export function startLiveJobs(
   const options = { timezone, suppressMissedWarning: true };
   const backupPattern = "0 2 * * *";
   const dailyOffsets = cronOffsets(config.jobs.daily);
+  const attendanceSource = config.sources.attendance;
   let bootstrapAttempted = false;
 
   function canRetry(job: "daily" | "backup", time: Date) {
@@ -125,10 +127,33 @@ export function startLiveJobs(
           undefined)
     )
       return sync.start("daily");
+    if (attendance) {
+      const slot = Math.floor(timestamp / hour) * hour;
+      const last = lastRun(db, "attendance");
+      if (
+        attendance.match(new Date(slot)) &&
+        (!last ||
+          (Date.parse(last.startedAt) < slot &&
+            !last.error?.startsWith(browserBlocked)))
+      )
+        return sync.start("attendance");
+    }
   }
 
   const backupOffsets = cronOffsets(backupPattern);
   const daily = cron.schedule(config.jobs.daily, () => void check(), options);
+  const attendance =
+    attendanceSource.enabled && attendanceSource.access === "browser"
+      ? cron.schedule(
+          "0 " +
+            attendanceSource.browser.startHour +
+            "-" +
+            (attendanceSource.browser.endHour - 1) +
+            " * * *",
+          () => void check(),
+          options,
+        )
+      : undefined;
   const backup = cron.schedule(backupPattern, () => void check(), options);
   const weekly = cron.schedule(
     config.jobs.weekly,
@@ -140,7 +165,8 @@ export function startLiveJobs(
     check,
     stop() {
       clearInterval(timer);
-      for (const task of [daily, backup, weekly]) void task.destroy();
+      for (const task of [daily, backup, weekly, attendance])
+        if (task) void task.destroy();
     },
   };
 }

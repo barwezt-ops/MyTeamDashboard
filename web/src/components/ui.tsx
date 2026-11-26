@@ -204,6 +204,11 @@ export function tenure(hire: string | null, asOf: string) {
 export function syncLabel(status: SyncStatus) {
   if (status.running)
     return { tone: "waiting", label: "Syncing " + status.running };
+  if (
+    status.attendanceBrowser &&
+    status.jobs.attendance?.lastRun?.error?.startsWith("SIGN_IN_REQUIRED")
+  )
+    return { tone: "bad", label: "Attendance sign-in required" };
   if (Object.values(status.jobs).some((job) => job.lastRun?.ok === false))
     return { tone: "bad", label: "Last sync failed" };
   const roster = status.jobs.roster?.lastSuccessAt;

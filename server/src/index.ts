@@ -101,7 +101,7 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
       else next(error);
     }
   });
-  app.use("/api", createRoutes(db, config, sync));
+  app.use("/api", createRoutes(db, config, sync, env.SOURCE_MODE === "live"));
   app.use(express.static(webDist, { index: false }));
   app.get("*", (req, res) => {
     res.set("Cache-Control", "no-store");

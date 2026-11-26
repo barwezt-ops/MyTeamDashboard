@@ -25,6 +25,7 @@
     "sync": "tsx server/src/cli.ts sync",
     "test-link": "tsx server/src/cli.ts test-link",
     "google-login": "tsx server/src/cli.ts google-login",
+    "browser-login": "tsx server/src/cli.ts browser-login",
     "google-logout": "tsx server/src/cli.ts google-logout",
     "hash-password": "tsx server/src/cli.ts hash-password"
   },

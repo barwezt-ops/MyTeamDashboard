@@ -29,6 +29,8 @@ export function Settings({
 }) {
   const [request, setRequest] = useState<Job | null>(null);
   const [error, setError] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const [savingLink, setSavingLink] = useState(false);
   if (status.error)
     return <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>;
   if (!status.data) return <Loading />;
@@ -53,6 +55,13 @@ export function Settings({
       setRequest(null);
     }
   }
+  const attendanceSource = data.sources.find(
+    (source) => source.job === "attendance",
+  );
+  const jobs: Job[] =
+    data.attendanceBrowser && attendanceSource?.enabled
+      ? ["roster", "daily", "attendance", "all"]
+      : ["roster", "daily", "all"];
   return (
     <>
       <PageHeader
@@ -64,7 +73,7 @@ export function Settings({
         action={<span className="muted">Cairo time</span>}
       >
         <div className="button-row panel-body">
-          {(["roster", "daily", "all"] as const).map((job) => (
+          {jobs.map((job) => (
             <button
               className={job === "all" ? "primary" : "secondary"}
               key={job}
@@ -84,6 +93,49 @@ export function Settings({
       <Backups />
       <CheckSheetLink />
       <AttendancePreview allowUpload={data.attendanceCsvUpload} />
+      {data.attendanceLinkEditable && (
+        <Section title="Attendance sheet">
+          <form
+            className="panel-body source-details"
+            key={attendanceSource?.url}
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const link = String(
+                new FormData(event.currentTarget).get("link") ?? "",
+              );
+              setSavingLink(true);
+              setLinkError("");
+              try {
+                await api("/attendance/browser-source", "POST", { link });
+                status.reload();
+              } catch (error) {
+                setLinkError(message(error));
+              } finally {
+                setSavingLink(false);
+              }
+            }}
+          >
+            <label>
+              Google Sheets tab link
+              <input
+                name="link"
+                type="url"
+                required
+                defaultValue={attendanceSource?.url ?? ""}
+              />
+            </label>
+            <div className="button-row">
+              <button
+                className="secondary"
+                disabled={savingLink || !!data.running}
+              >
+                {savingLink ? "Saving…" : "Save attendance link"}
+              </button>
+            </div>
+            {linkError && <ErrorNotice>{linkError}</ErrorNotice>}
+          </form>
+        </Section>
+      )}
       <div className="source-cards">
         {data.sources.map((source) => {
           const status = data.jobs[source.job];

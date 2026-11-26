@@ -40,7 +40,7 @@ You are working on a private-use team dashboard: a Node/Express + SQLite service
 
 ## Hard rules (don't break these)
 
-1. Never write to the source sheets. Sources are read-only, via public CSV export or, for sources marked access: google, the Google Sheets API with the owner's read-only sign-in. No Apps Script, no service accounts, no API keys.
+1. Never write to the source sheets. Sources are read-only. Use public CSV export, the Google Sheets API with the owner's read-only sign-in for `access: google`, a local CSV drop for `access: file`, or read-only CSV download through the owner's own signed-in browser profile for `access: browser`. No Apps Script, service accounts, or API keys.
 2. **No real data in git, ever.** No real names, agent codes, phone numbers, emails, sheet IDs, CSVs, SQLite files, notes or env values. Fixtures are fake (`Demo Lead`, `Cover Lead`, codes `99xxx`). Real config lives in gitignored `config/sources.local.json` or the `DASHBOARD_SOURCE_CONFIG` env var.
 3. **No patient data** exists in the sources and none may ever be stored.
 4. **Join on agent code, never on name.** Names differ between sheets.
