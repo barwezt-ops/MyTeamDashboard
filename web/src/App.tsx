@@ -264,7 +264,7 @@ function Dashboard({
                     )
                   }
                 />
-                <Route path="/agent/:code" element={<Agent today={today} />} />
+                <Route path="/agent/:code" element={<Agent />} />
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/styleguide" element={<Styleguide />} />
@@ -299,9 +299,7 @@ function Dashboard({
             openAgent={openAgent}
           />
         )}
-        {drawer && (
-          <Agent key={drawer} today={today} code={drawer} close={closeAgent} />
-        )}
+        {drawer && <Agent key={drawer} code={drawer} close={closeAgent} />}
         {toast && <Toast close={closeToast}>{toast}</Toast>}
       </div>
     </SharedContext.Provider>

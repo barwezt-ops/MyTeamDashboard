@@ -769,3 +769,282 @@ table[aria-label="Team"] thead th:first-child {
     display: none;
   }
 }
+
+/* Records and documents */
+.record-form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.record-form label:not(.check) {
+  display: grid;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.record-form textarea,
+.record-form input:not([type="checkbox"]),
+.record-form select {
+  width: 100%;
+  font-size: 13px;
+}
+.record-form textarea.document-text {
+  min-height: 320px;
+  font:
+    400 12px/1.5 "Geist Mono",
+    monospace;
+}
+.command-dialog .dialog-body {
+  overflow: auto;
+}
+
+/* Agent profile */
+.profile {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.profile > * {
+  min-width: 0;
+}
+.panel-body {
+  padding: 0 18px 18px;
+  display: grid;
+  gap: 12px;
+}
+.panel-body h3 {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  padding: 18px;
+}
+.profile-head > span > .avatar {
+  width: 72px;
+  height: 72px;
+  font:
+    500 24px "Fraunces",
+    serif;
+}
+.profile-identity {
+  flex: 1 1 300px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  justify-items: start;
+}
+.profile-identity h2,
+.profile-name {
+  margin: 0;
+  font:
+    500 24px/1.2 "Fraunces",
+    serif;
+}
+.profile-identity dl {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px 16px;
+}
+.profile-identity dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+.profile-identity dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1 1 220px;
+}
+.flag-list,
+.notes,
+.timeline,
+.facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.flag-list {
+  padding: 0 12px 12px;
+}
+.flag-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+  border-top: 1px solid var(--line-soft);
+}
+.flag-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+.flag-list small {
+  display: block;
+  color: var(--muted);
+}
+.facts {
+  padding: 0 18px 16px;
+}
+.facts li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.scorecard {
+  margin: 0;
+  padding: 0 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.scorecard > div {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.scorecard dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.scorecard dd {
+  margin: 6px 0 0;
+}
+.scorecard strong {
+  display: block;
+  font:
+    500 28px/1.1 "Fraunces",
+    serif;
+}
+.scorecard small {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.calendar-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.calendar-strip li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+.calendar-strip small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.calendar-strip button[aria-pressed="true"] {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.day-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  max-width: 360px;
+}
+.day-card .day-details {
+  margin-bottom: 0;
+}
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  padding: 0 18px 18px;
+}
+.bar-series {
+  margin: 0;
+  min-width: 0;
+}
+.bar-series figcaption {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.bar-series ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+}
+.bar-series li {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-align: center;
+}
+.bar-value {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.bar-track {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 72px;
+  border-bottom: 1px solid var(--line);
+}
+.bar-track i {
+  display: block;
+  width: 100%;
+  border-radius: 4px 4px 1px 1px;
+  background: #d9cdb8;
+}
+.bar-series li.latest .bar-track i {
+  background: var(--accent);
+}
+.bar-series small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.timeline > li,
+.notes > li {
+  display: grid;
+  gap: 6px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.timeline p,
+.notes p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.timeline-head,
+.step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.dismissed {
+  padding: 14px 0 0;
+}
+.dismissed summary {
+  padding: 0 18px 14px;
+  font-weight: 600;
+}
+
+.drawer .profile .panel {
+  border-radius: 14px;
+}
+
+.drawer .profile {
+  padding-top: 28px;
+}
