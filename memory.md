@@ -1,12 +1,13 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for V2 Phase 3 (Home)._
+_Last updated: 2026-11-27 for V2 Phase 4 (Attendance grid and Team table)._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **V2 Phase 4:** on `v2-phase-4-grid`, stacked on Phase 3 (PR #22). `/attendance` is the cycle grid, `/team` the Team table. The discrepancy queue stays at `/discrepancies` (linked from the grid) and the v1 roster view at `/roster`.
 - **V2 Phase 3 (Home):** on `v2-phase-3-home`, stacked on Phase 2 (PR #21). The v1 Today list moved to `/today` (command palette).
 - **V2 Phase 2 (data layer):** done on `v2-phase-2-data`, stacked on `v2-phase-1-design-system` (PR #20 approved, still open). This session took over from an interrupted agent: its uncommitted Phase 2 work was recovered, reviewed and finished, and nothing was discarded. Phases 3–8 follow on stacked branches.
-- **Tests on the Phase 3 branch:** 210 Vitest tests passed, one existing skip; 9 Playwright specs passed. Lint, typecheck and the isolated build pass.
+- **Tests on the Phase 4 branch:** 213 Vitest tests passed, one existing skip; 11 Playwright specs passed. Lint, typecheck and the isolated build pass.
 - **Installed app:** `server/dist` in this checkout is a junction into the live release. Never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
 - **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
@@ -17,6 +18,7 @@ _Last updated: 2026-11-27 for V2 Phase 3 (Home)._
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
+- **V2 Phase 4:** attendance grid (sticky names and days, plan outlines, late/missing marks, tooltip, day drawer, arrow-key navigation, row and column totals, line/status/flagged filters, cycle switcher, CSV) and Team table (sorting, column picker, density, saved views in owner settings, CSV, deltas against the previous cycle). `GET /v2/grid?cycle`, `GET /v2/team?cycle`.
 - **V2 Phase 3:** Home with greeting and generated summary, urgent strip, floor card, four KPIs against the cycle daily average, coaching ring, Needs you, week heatmap, queues today, yesterday's exceptions with Copy for EOD, 14-day lateness and shout-out (`v2/home.ts`, `views/Home.tsx`). One-line source freshness, live nav counts, `GET /v2/home` and `/v2/counts`. A synthetic 16-agent team (`fixtures/team.ts`, test port 3212) drives V2 screen tests; `SAVE_SCREENSHOTS=1` refreshes `docs/design/`.
 - **V2 Phase 2 (API only, no screens yet):**
   - Sources (off by default): line/queue tab with change history and weekly-template fallback; QA with headers-only inspection and a mapping that needs owner approval (`server/src/v2/sources.ts`).
@@ -69,6 +71,9 @@ _Last updated: 2026-11-27 for V2 Phase 3 (Home)._
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | Mid-cycle deltas compare with the same number of days of the previous cycle; complete cycles compare in full. Overtime and deducted days have no delta because they only exist as MTD totals. | A part cycle against a full one would show every number falling. | — |
+| 2026-11-27 | Team table columns come from the synced roster, daily and MTD fields (including MTD status counts). The Team View tab itself is not read. | Only whitelisted columns are mapped, and no Team View columns are approved beyond the code. | — |
+| 2026-11-27 | Saved Team views are stored with owner settings. | They are owner-entered data and belong in backups. | — |
 | 2026-11-27 | Home reports the latest recorded attendance day and names it when it is not yesterday. | Attendance arrives a day behind and must never read as today's. | — |
 | 2026-11-27 | The coaching ring counts at most the target per agent; several pace items collapse into one Needs you line; the summary counts due follow-ups, not pace. | Extra coachings for one agent do not cover another, and Home stays calm. | — |
 | 2026-11-27 | Break-exceed KPI and table show counts and the label, with no minutes. | The source has none. | — |
@@ -138,6 +143,7 @@ _Last updated: 2026-11-27 for V2 Phase 3 (Home)._
 | Q8 | "Behind pace" is done < 2 × elapsed ÷ total, so everyone at 0 is behind from day 1. Is that intended, or only once a whole coaching is due? | no | open |
 | Q9 | The paste has no break-exceed minutes. Is there a column with them? | no | open |
 | Q10 | Does a shout-out ("clean record") mean no lateness, missing time or unplanned absence, with planned leave allowed? | Phase 3 default | open |
+| Q11 | Does the Team View tab have any column the Team table lacks? Send its header row to approve new mappings. | no | open |
 
 ## 8. Review feedback
 - **PR #20 design approved with five fixes:** viewport-sticky sidebar and internal nav scroll, greeting-name initials, smaller phone KPI values without sparklines, Floor phone wordmark/logout in Settings, and bottom-nav safe-area clearance. Regression coverage checks all current pages at 390px. Phases 2?8 are authorized after this gate.
@@ -147,6 +153,9 @@ _Last updated: 2026-11-27 for V2 Phase 3 (Home)._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - V2 Phase 4 grid and Team table
+- Built both screens with unit and browser tests and 1440/390 screenshots.
 
 ### 2026-11-27 - V2 Phase 3 Home
 - Built Home to the v3 mockup with shared heat, queue and view-model modules, unit tests, browser tests and 1440/390 screenshots.
