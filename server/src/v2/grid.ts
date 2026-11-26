@@ -55,6 +55,21 @@ export function dayText(
   ];
 }
 
+export function gridCells(agent: V2Agent, today: string) {
+  return agent.calendar.map((day) => ({
+    date: day.date,
+    status: heatStatus(day.attendance, day.schedule?.status ?? null),
+    // Planned days that have not been reported are drawn as outlines.
+    planned: !day.attendance && day.date >= today,
+    late: day.attendance?.late || null,
+    missing: day.attendance?.missing || null,
+    breakExceeded: day.attendance?.breakExceeded ?? false,
+    absence: day.attendance?.absence ?? null,
+    details: dayText(day, today),
+  }));
+}
+export type GridCell = ReturnType<typeof gridCells>[number];
+
 export function gridView(data: DashboardData) {
   const { today, cycle } = data;
   const yesterday = reportDay(data);
@@ -71,15 +86,7 @@ export function gridView(data: DashboardData) {
         name: say.shortName(agent),
         line: agent.line ?? noLine,
         flags: needsAttention(agent),
-        cells: agent.calendar.map((day) => ({
-          date: day.date,
-          status: heatStatus(day.attendance, day.schedule?.status ?? null),
-          // Planned days that have not been reported are drawn as outlines.
-          planned: !day.attendance && day.date >= today,
-          late: day.attendance?.late || null,
-          missing: day.attendance?.missing || null,
-          details: dayText(day, today),
-        })),
+        cells: gridCells(agent, today),
         totals: {
           lateCount: agent.counts.lateCount,
           lateMinutes: agent.counts.lateMinutes,

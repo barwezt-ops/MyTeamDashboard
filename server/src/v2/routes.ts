@@ -19,6 +19,8 @@ import { counts, homeView } from "./home.js";
 import { gridView } from "./grid.js";
 import { teamView } from "./team.js";
 import { recentCycles } from "./cycle.js";
+import { profileView } from "./profile.js";
+import { discrepanciesOf } from "../db/repo.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -78,6 +80,22 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
       const previous = dashboardData(db, config, today(), data.prior.from);
       res.json({ ...teamView(data, previous), cycles });
     }),
+  );
+  router.get(
+    "/agents/:code",
+    endpoint(
+      { params: z.strictObject({ code }), query: cycleQuery },
+      ({ params, query }, _req, res) => {
+        const { data, cycles } = forCycle(query.cycle);
+        const view = profileView(
+          data,
+          params.code,
+          discrepanciesOf(db, "d.code=?", [params.code]),
+        );
+        if (!view) return notFound(res, "Agent in your team");
+        res.json({ ...view, cycles });
+      },
+    ),
   );
   router.get(
     "/settings",
