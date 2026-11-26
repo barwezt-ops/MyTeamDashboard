@@ -1,11 +1,12 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for V2 Phase 2 (data layer)._
+_Last updated: 2026-11-27 for V2 Phase 3 (Home)._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **V2 Phase 3 (Home):** on `v2-phase-3-home`, stacked on Phase 2 (PR #21). The v1 Today list moved to `/today` (command palette).
 - **V2 Phase 2 (data layer):** done on `v2-phase-2-data`, stacked on `v2-phase-1-design-system` (PR #20 approved, still open). This session took over from an interrupted agent: its uncommitted Phase 2 work was recovered, reviewed and finished, and nothing was discarded. Phases 3–8 follow on stacked branches.
-- **Tests on the Phase 2 branch:** 202 Vitest tests passed, one existing skip; 7 Playwright specs passed. Lint, typecheck and the isolated build pass.
+- **Tests on the Phase 3 branch:** 210 Vitest tests passed, one existing skip; 9 Playwright specs passed. Lint, typecheck and the isolated build pass.
 - **Installed app:** `server/dist` in this checkout is a junction into the live release. Never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
 - **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
@@ -16,6 +17,7 @@ _Last updated: 2026-11-27 for V2 Phase 2 (data layer)._
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
+- **V2 Phase 3:** Home with greeting and generated summary, urgent strip, floor card, four KPIs against the cycle daily average, coaching ring, Needs you, week heatmap, queues today, yesterday's exceptions with Copy for EOD, 14-day lateness and shout-out (`v2/home.ts`, `views/Home.tsx`). One-line source freshness, live nav counts, `GET /v2/home` and `/v2/counts`. A synthetic 16-agent team (`fixtures/team.ts`, test port 3212) drives V2 screen tests; `SAVE_SCREENSHOTS=1` refreshes `docs/design/`.
 - **V2 Phase 2 (API only, no screens yet):**
   - Sources (off by default): line/queue tab with change history and weekly-template fallback; QA with headers-only inspection and a mapping that needs owner approval (`server/src/v2/sources.ts`).
   - Owner records: coaching with checked evidence and follow-ups, private tagged notes, flag dismissals, settings; all in backups (`routes.ts`, `backup.ts`).
@@ -67,6 +69,9 @@ _Last updated: 2026-11-27 for V2 Phase 2 (data layer)._
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | Home reports the latest recorded attendance day and names it when it is not yesterday. | Attendance arrives a day behind and must never read as today's. | — |
+| 2026-11-27 | The coaching ring counts at most the target per agent; several pace items collapse into one Needs you line; the summary counts due follow-ups, not pace. | Extra coachings for one agent do not cover another, and Home stays calm. | — |
+| 2026-11-27 | Break-exceed KPI and table show counts and the label, with no minutes. | The source has none. | — |
 | 2026-11-27 | MTD `Lateness mins` is a duration (h:mm:ss) despite its header. The interrupted change that read it as plain minutes was reverted. | The Sheets API returns a day fraction equal to the sum of daily Lateness. Checked read-only on the installed database (aggregates only): 15 of 16 agents match. | Treat the number as minutes |
 | 2026-11-27 | A break exceed is a per-day flag from the `Exceeded` label. No break minutes are shown. | The column holds only that label or nothing. | Parse minutes (always zero on real rows) |
 | 2026-11-27 | Line/queue and QA syncs run after attendance and rules; their failure marks the run failed. | An optional tab must not hold back attendance. | Stop the run at the first failure |
@@ -142,6 +147,10 @@ _Last updated: 2026-11-27 for V2 Phase 2 (data layer)._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - V2 Phase 3 Home
+- Built Home to the v3 mockup with shared heat, queue and view-model modules, unit tests, browser tests and 1440/390 screenshots.
+- Made the older layout test tolerate sub-pixel scroll positions.
 
 ### 2026-11-27 - V2 Phase 2 data layer (handover)
 - Took over from an interrupted session. Recovered the unpushed Phase 2 work on `v2-phase-2-data` and backed it up before editing.
