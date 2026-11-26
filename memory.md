@@ -6,10 +6,10 @@ _Last updated: 2026-11-26 for Windows operation and browser attendance review._
 ## 1. Snapshot
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Verify browser attendance and the live column mapping before enabling D1–D4.
-- **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
+- **Verification:** Main includes the streaming attendance CSV tests. The browser review branch passed 178 unit tests with one skip and all four Playwright checks, plus lint, typecheck, and build.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Windows setup checkpoint:** The local dashboard runs under the Windows scheduled task. Roster and schedule have synced successfully. The approved 150 MB streaming CSV drop is deployed and attendance is disabled pending mapping review.
-- **Next task:** Verify the signed-in browser download and attendance dry run. Review the status mapping and Missing field before enabling attendance.
+- **Next task:** The signed-in Chrome download returned no CSV bytes within ten minutes. Continue with the deployed CSV drop while reviewing browser access. Verify the status mapping and Missing field before enabling attendance.
 
 ## 2. Features
 | Feature | Status | Where | Notes |
@@ -89,7 +89,8 @@ _Last updated: 2026-11-26 for Windows operation and browser attendance review._
 | 5 superseded PRs still open on the `travis-holt` fork | Clutter | Owner closes them |
 | Daily cron at 16:00 Cairo is a placeholder | May run before WFM updates attendance | Set once Q3 answered |
 | The dashboard syncs only while the PC is awake and the owner is signed in | The web app and scheduled jobs pause while the PC is unavailable | Startup and 15-minute catch-up cover the latest elapsed daily slot and today's backup. |
-| A Windows Group Policy can block PowerShell script files | The verification host had a restricted `MachinePolicy`, so Task Scheduler installation is pending a PC that allows the scripts | Use `Get-ExecutionPolicy -List` and ask the administrator to allow the scripts if needed. |
+| The owner's Windows Group Policy blocks PowerShell script files | The Windows installation uses the Node and `.cmd` entrypoints | Use the `.cmd` maintenance commands on this PC. |
+| Signed-in headless Chrome did not return the WFM CSV in ten minutes | No live browser header, status mapping, or attendance dry run was available | Keep the CSV drop deployed and attendance disabled until a live source and mapping pass review. |
 | Outbound networking and tailnet plan depend on owner setup | External IPv4 can incur charges and Tailscale Personal is for non-commercial use | Use the README IPv6 and IAP setup, verify an eligible tailnet, and check next-day sync and billing |
 | App updates require a temporary IPv4 window | GitHub pulls cannot run over the VM's normal IPv6-only internet connection | Attach IPv4, run the update, then detach it. Apply Ubuntu security updates in the same window if APT cannot refresh over IPv6. |
 
@@ -112,7 +113,7 @@ _Last updated: 2026-11-26 for Windows operation and browser attendance review._
 ## 9. Changelog (append-only, newest first)
 ### 2026-11-26 — Windows operation and browser attendance
 
-- Deployed the 150 MB streaming CSV drop on Windows and verified scheduled-task health. Added the review version of browser attendance, hourly Cairo working-hours scheduling, and Settings link updates. Attendance stays disabled pending live mapping review.
+- Deployed the 150 MB streaming CSV drop on Windows and verified scheduled-task health. Added the review version of browser attendance, hourly Cairo working-hours scheduling, and Settings link updates. The one signed-in Chrome attempt timed out without a CSV, and the temporary download folder was removed. Attendance stays disabled pending live mapping review.
 
 ### 2026-11-25 — Master month-name dates and live source checks
 - Added shared month-name date parsing with coverage for roster hire dates, last working days, and link diagnostic samples. Verified the dated schedule export and anchored range. Paused the Windows install for review.
