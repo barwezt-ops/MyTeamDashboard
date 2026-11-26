@@ -145,7 +145,7 @@ export function Roster({
                 <th>Tenure</th>
                 <th>DTL</th>
                 <th>Team Leader</th>
-                <th>Group</th>
+
                 <th>Status</th>
               </tr>
             </thead>
@@ -166,11 +166,6 @@ export function Roster({
                   <td>{tenure(agent.hireDate, today)}</td>
                   <td>{agent.dtl || "—"}</td>
                   <td>{agent.tl || "—"}</td>
-                  <td>
-                    <span className="group-tag">
-                      {agent.ownerGroup === "mine" ? "My team" : "Covered"}
-                    </span>
-                  </td>
                   <td>{agent.active ? "Active" : "Inactive"}</td>
                 </tr>
               ))}

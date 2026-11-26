@@ -124,7 +124,12 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
   }
   router.get(
     "/me",
-    endpoint({}, (_input, _req, res) => res.json(config.me)),
+    endpoint({}, (_input, _req, res) =>
+      res.json({
+        ...config.me,
+        coachingCycleStartDay: config.coachingCycleStartDay,
+      }),
+    ),
   );
   router.get(
     "/today",
@@ -453,6 +458,18 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         config.sources.attendance.paste ?? {};
       void _privatePasteId;
       const result: SyncStatus = {
+        attendanceThrough: db
+          .prepare(
+            "SELECT MAX(d.date) FROM attendance_days d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
+          )
+          .pluck()
+          .get() as string | null,
+        mtdSyncedOn: db
+          .prepare(
+            "SELECT MAX(d.sync_date) FROM attendance_mtd_snapshots d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
+          )
+          .pluck()
+          .get() as string | null,
         jobs: Object.fromEntries(
           jobs.map((job) => [
             job,

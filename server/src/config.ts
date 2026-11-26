@@ -108,6 +108,7 @@ export const configSchema = z
   .object({
     me: z.object({
       rosterName: z.string().trim().min(1),
+      firstName: z.string().trim().min(1).max(80).optional(),
       alsoCover: z.array(z.string().trim().min(1)),
       defaultScope: z.enum(["mine", "covered", "all"]),
     }),

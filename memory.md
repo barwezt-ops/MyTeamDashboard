@@ -1,18 +1,20 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-26 for the restricted attendance workbook and dry-run checkpoint._
+_Last updated: 2026-11-26 for V2 Phase 1 design review._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
-- **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. PR #18 was closed with its branch retained. The replacement attendance source is a small restricted workbook. Its three tabs passed the read-only header and row-count check. The new attendance source is pending dry-run review and activation.
+- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`. Stop for design approval before Phase 2. See `plan-v2.md` and `docs/design/phase-1-review.md`.
+- **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
-- **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
+- **Tests on V2 Phase 1 branch:** 181 Vitest tests passed, one existing skip; all five Playwright specs passed. Lint, typecheck and the isolated production build pass. Synthetic screenshots are saved under `docs/design/`.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
+- **V2 Phase 1:** Self-hosted fonts, editorial tokens, responsive forest sidebar and bottom navigation, Cairo greeting/cycle header, source freshness, Ctrl/Cmd K search, component styleguide, native dialogs and notifications. Owner-only UI scope; later screens show explicit phase placeholders.
 | Feature | Status | Where | Notes |
 |---|---|---|---|
 | Fetch sheets by public CSV link (`export` mode, `gviz` fallback) | done | `fetch/fetchCsv.ts`, `fetch/urls.ts` | HTML response ⇒ `SourceAccessError` ("link no longer public or moved"); retries on 5xx/429; 30 s timeout |
@@ -23,7 +25,7 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 | Status mapping | done | `parse/status.ts` | time ⇒ Scheduled; OFF, Annual→PTO, UPL, Sick, Casual (= unplanned/emergency), Present, Absent, On Hold/Not Hired (excluded), else Unknown |
 | Attendance parse (long + wide) | done, **disabled** | `parse/attendance.ts` | wide: match by code or unique normalised name, month+day matched within window (year may be wrong), unmatched warnings only for rows whose DTL column is the owner/covered TL |
 | Attendance dry run | done | `sync/attendancePreview.ts`, Settings | read-only; projected D1–D4 counts |
-| Restricted attendance paste | Disabled until current-cycle paste and owner approval | `fetch/attendancePaste.ts`, `sync/attendancePaste.ts` | Header-based reads, agent/date replacement, daily MTD snapshots, and hourly checks all day by default in Cairo. |
+| Restricted attendance paste | Enabled with owner approval | `fetch/attendancePaste.ts`, `sync/attendancePaste.ts` | Header-based reads, agent/date replacement, daily MTD snapshots, and hourly checks all day by default in Cairo. |
 | Rules D1–D7 | done (D1–D4 run only when attendance enabled) | `rules/` | D5 has stable id `code\|D5`; auto-clear only touches `open` rows |
 | Sync windows / replacement | done | `sync/service.ts`, `syncSchedule.ts`, `syncAttendance.ts` | window = today −35 / +14; replace only the dates the source covers (`coveredRange`); one Cairo date per run |
 | Cron and catch-up | done | `sync/cron.ts` | daily `0 16 * * *`, weekly `0 12 * * 0` (Sun), backup 02:00 Cairo. Startup and 15-minute checks cover the latest elapsed daily slot and today's backup. A successful daily or All must start at or after the slot to satisfy it. Automated retries wait at least one hour. Daily refreshes roster first if missing or >7 days old. |
@@ -53,6 +55,9 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
+- 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
+- 2026-11-26: Bundle Fontsource fonts; use muted small labels and darker warning tag text for contrast while keeping the supplied decorative tokens. Native dialogs provide modal focus behavior.
+- 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
 | 2026-11-26 | The owner pastes Attendance and MTD daily into a small restricted Google workbook. The dashboard reads it with the existing read-only Google sign-in. | Direct and browser-based reads of the original WFM workbook failed. | Automated reads of the original workbook. |
@@ -81,11 +86,12 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
 ## 6. Known issues & tech debt
+- V2 Home and data features await subsequent phases. Navigation count examples appear only on `/styleguide` until live flags/coaching data exists. The queue template has not been fetched or mapped; QA remains disconnected.
 
-- The verified paste contains the previous coaching cycle. Attendance stays disabled pending review and activation.
+- The owner approved importing the prior coaching cycle. Its MTD totals are saved under the Cairo sync date with the source cycle recorded.
 | Issue | Impact | Planned fix |
 |---|---|---|
-| Sidebar stops partway down long pages and on phone | Cosmetic | Make it full-height/sticky |
+| V2 review checkpoint | Phase 2 intentionally stopped | Owner reviews desktop and phone screenshots |
 | Check-a-link rejects multi-account links (`/spreadsheets/u/1/d/...`) | Minor friction | Accept and normalise `/u/N/` |
 | Restore preview says "updated", not "X resolved flags will reopen" | Could surprise | Clearer preview wording |
 | D5 reopen keeps the first-seen date | Optional | Owner to decide |
@@ -114,6 +120,15 @@ _Last updated: 2026-11-26 for the restricted attendance workbook and dry-run che
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-26 - V2 Phase 1 design system and app shell
+
+- Saved the supplied build plan and mockup unchanged. Added the reusable component layer, styleguide, shell navigation, private-config greeting, local fonts and owner-only UI scope. Kept existing v1 screens operational and later screens as placeholders.
+- Validation: 181 unit tests passed with one existing skip; five Playwright specs, lint, typecheck and isolated production build passed. Added unit coverage for Cairo/cycle labels, deterministic avatars, owner-team defaults and source freshness. Playwright covers the styleguide, keyboard dialogs/search, source failures, contrast, five widths and synthetic screenshots. Test builds use an isolated server output; the installed app was not restarted or synced.
+
+### 2026-11-26 — Attendance activated
+
+- Enabled the restricted Google attendance paste after explicit owner approval of the prior cycle. Ran the existing Attendance sync service once, verified successful attendance and rule logs, and restarted the dashboard successfully. Browser control was unavailable, so the service was invoked directly.
 
 - PR #19 review set attendance reads to hourly all day in Cairo and allowed overnight windows. Attendance replaces only pasted agent/date pairs. A paste with fewer than half the prior successful paste's matched Attendance codes fails before attendance or MTD writes.
 ### 2026-11-26 — Restricted attendance paste workbook

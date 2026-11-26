@@ -1,8 +1,9 @@
 {
   "me": {
     "rosterName": "Demo Lead",
-    "alsoCover": ["Cover Lead"],
-    "defaultScope": "covered"
+    "alsoCover": [],
+    "defaultScope": "mine",
+    "firstName": "Alex"
   },
   "dateOrder": "MDY",
   "timezone": "Africa/Cairo",

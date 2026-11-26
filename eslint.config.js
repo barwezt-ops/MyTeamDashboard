@@ -4,6 +4,8 @@ export default [
   {
     ignores: [
       "**/dist/**",
+      "server/dist.test/**",
+      ".runtime-restore/**",
       "coverage/**",
       "test-results/**",
       "playwright-report/**",

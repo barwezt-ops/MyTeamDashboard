@@ -140,6 +140,7 @@ export function Trends({
                       tick={{ fill: "var(--muted)", fontSize: 11 }}
                     />
                     <Tooltip
+                      itemStyle={{ color: "var(--text)" }}
                       cursor={{ fill: "var(--hover)" }}
                       contentStyle={{
                         background: "var(--panel)",
@@ -147,7 +148,12 @@ export function Trends({
                         color: "var(--text)",
                       }}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend
+                      wrapperStyle={{ fontSize: 12 }}
+                      formatter={(value) => (
+                        <span className="chart-label">{value}</span>
+                      )}
+                    />
                     {chartStatuses.map((status) => (
                       <Bar
                         key={status}

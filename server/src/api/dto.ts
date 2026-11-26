@@ -144,6 +144,8 @@ export interface SyncRun {
   error: string | null;
 }
 export interface SyncStatus {
+  attendanceThrough?: string | null;
+  mtdSyncedOn?: string | null;
   jobs: Record<
     string,
     { lastRun: SyncRun | null; lastSuccessAt: string | null }

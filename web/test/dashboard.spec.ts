@@ -50,15 +50,13 @@ test("sign in, review views, add an agent note, and copy the email table", async
       .locator(".stat")
       .filter({ hasText: "Not on schedule" })
       .locator("strong"),
-  ).toHaveText("1");
+  ).toHaveText("0");
   await expect(
     page.locator(".stat").filter({ hasText: "Unknown" }).locator("strong"),
   ).toHaveText("1");
   await expect(
-    page
-      .getByRole("row", { name: /Morgan/ })
-      .getByText("Not on schedule", { exact: true }),
-  ).toBeVisible();
+    page.getByRole("row", { name: /Morgan|Casey|Taylor/ }),
+  ).toHaveCount(0);
   await expect(
     page
       .getByRole("row", { name: /Riley/ })
@@ -93,16 +91,23 @@ test("sign in, review views, add an agent note, and copy the email table", async
   await theme(true);
   const navigation = page.getByRole("navigation", { name: "Dashboard" });
   for (const [view, heading] of [
-    ["Discrepancies", "Review queue"],
+    ["Attendance", "Review queue"],
     ["Trends", "Status by day"],
-    ["Roster", "Team list"],
+    ["Team", "Team list"],
     ["Settings", "Sync log"],
   ]) {
-    await navigation.getByRole("link", { name: view, exact: true }).click();
+    if (view === "Trends") {
+      await page.keyboard.press("Control+k");
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Trends", exact: true })
+        .click();
+    } else
+      await navigation.getByRole("link", { name: view, exact: true }).click();
     await expect(
       page.getByRole("heading", { name: heading, exact: true }),
     ).toBeVisible();
-    if (view === "Discrepancies") {
+    if (view === "Attendance") {
       const copy = page.getByRole("button", { name: "Copy as email table" });
       await expect(copy).toBeEnabled();
       await copy.click();

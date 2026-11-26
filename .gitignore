@@ -18,3 +18,6 @@ server/dist.next/
 # Owner-only notes with real names/IDs (never commit)
 *.private.md
 google-token.json
+
+server/dist.test/
+.runtime-restore/

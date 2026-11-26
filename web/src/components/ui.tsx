@@ -49,16 +49,21 @@ export function Section({
   children,
   action,
   className = "",
+  number,
 }: {
   title: string;
   children: ReactNode;
   action?: ReactNode;
   className?: string;
+  number?: string;
 }) {
   return (
     <section className={"panel " + className}>
       <header className="panel-heading">
-        <h2>{title}</h2>
+        <div className="panel-title">
+          {number && <span className="panel-number">{number}</span>}
+          <h2>{title}</h2>
+        </div>
         {action}
       </header>
       {children}
@@ -153,7 +158,12 @@ export function DataTable({
   cards?: boolean;
 }) {
   return (
-    <div className={cards ? "table-scroll card-table" : "table-scroll"}>
+    <div
+      className={cards ? "table-scroll card-table" : "table-scroll"}
+      tabIndex={0}
+      role="region"
+      aria-label={`${label} scroll area`}
+    >
       <table aria-label={label} role="table">
         {children}
       </table>
@@ -207,7 +217,7 @@ export function syncLabel(status: SyncStatus) {
   if (Object.values(status.jobs).some((job) => job.lastRun?.ok === false))
     return { tone: "bad", label: "Last sync failed" };
   if (status.attendanceStale)
-    return { tone: "bad", label: "Attendance paste is stale" };
+    return { tone: "waiting", label: "Attendance paste is stale" };
   const roster = status.jobs.roster?.lastSuccessAt;
   const last = status.jobs.schedule?.lastSuccessAt ?? roster;
   if (!last) return { tone: "waiting", label: "Awaiting first sync" };

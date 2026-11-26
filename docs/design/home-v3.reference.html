@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home v3, with personality</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(251,248,242,.8)}70%{box-shadow:0 0 0 8px rgba(251,248,242,0)}100%{box-shadow:0 0 0 0 rgba(251,248,242,0)}}
+</style>
+</helmet>
+<div style="background: #F4EFE6; color: #1F1B16; font-family: 'Instrument Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.4; min-height: 1180px; display: flex; flex-wrap: wrap">
+
+<nav aria-label="Main" style="flex: 0 0 216px; box-sizing: border-box; padding: 22px 14px; background: #1E3A32; color: #E9E2D3; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; align-items: baseline; gap: 6px; padding: 0 10px 26px"><span style="font-family: Fraunces, Georgia, serif; font-size: 26px; font-weight: 600; color: #FBF8F2; letter-spacing: -0.02em">Floor</span><span style="width: 7px; height: 7px; border-radius: 9px; background: #D9A441"></span></div>
+<sc-for list="{{nav}}" as="n" hint-placeholder-count="8">
+<a href="#" style="display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 8px; background: {{n.bg}}; color: {{n.fg}}; font-weight: {{n.w}}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{n.icon}}"></path></svg>
+<span>{{n.label}}</span><span style="margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 11px; padding: 0 6px; border-radius: 99px; background: {{n.badgeBg}}; color: {{n.badgeFg}}">{{n.badge}}</span>
+</a>
+</sc-for>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 10px 0; border-top: 1px solid #36574D">
+<span style="width: 32px; height: 32px; border-radius: 99px; background: #D9A441; color: #1E3A32; display: grid; place-items: center; font-weight: 700">A</span>
+<div><div style="color: #FBF8F2; font-weight: 600">Alex</div><div style="font-size: 11.5px; color: #B9C7BF">DTL</div></div>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 26px 28px 30px; display: flex; flex-direction: column; gap: 16px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px">
+<div style="flex: 1 1 480px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8A7E6C">Thursday 26 November · Cycle day 6 of 30</div>
+<h1 style="margin: 6px 0 4px; font-family: Fraunces, Georgia, serif; font-size: 40px; font-weight: 500; letter-spacing: -0.025em; line-height: 1.05">Good afternoon, Alex.</h1>
+<p style="margin: 0; font-family: Fraunces, Georgia, serif; font-style: italic; font-size: 17px; color: #5E5548">Two people need you before the 4 o'clock rush. Everyone else is on track.</p>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px">
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 38px; min-width: 210px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 99px; border: 1px solid #DDD2BF; background: #FBF8F2; color: #6B6153"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>Find an agent<span style="margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 10.5px">Ctrl K</span></button>
+<button type="button" style="height: 38px; padding: 0 18px; border-radius: 99px; border: 0; background: #1E3A32; color: #FBF8F2; font-weight: 600">Log coaching</button>
+</div>
+<div style="font-size: 11.5px; color: #6B6153"><span style="color: #2A7350">●</span> Attendance &amp; MTD through Wed 25 · QA synced 2h ago</div>
+</div>
+</header>
+
+<section aria-label="Urgent" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 11px 16px; border-radius: 12px; background: #9C3527; color: #FBF8F2">
+<span style="width: 9px; height: 9px; border-radius: 99px; background: #FBF8F2; animation: pulse 1.8s infinite"></span>
+<strong style="font-size: 13.5px">Needs you today</strong>
+<span style="flex: 1 1 400px; opacity: .95">Mohamed S. reached 4 lateness incidents (flag at 3) · Alaa O. had missing time on 3 of the last 5 days</span>
+<button type="button" style="height: 30px; padding: 0 14px; border-radius: 99px; border: 1px solid #FBF8F2; background: transparent; color: #FBF8F2; font-weight: 600">Open both</button>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+
+<section aria-label="On the floor today" style="flex: 4 1 320px; min-width: 0; height: 236px; box-sizing: border-box; padding: 20px 22px; border-radius: 16px; background: #1E3A32; color: #E9E2D3; display: flex; flex-direction: column">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #B9C7BF">On the floor today</div>
+<div style="display: flex; align-items: baseline; gap: 6px; margin-top: 6px"><span style="font-family: Fraunces, Georgia, serif; font-size: 76px; font-weight: 500; line-height: 0.95; color: #FBF8F2; letter-spacing: -0.03em">13</span><span style="font-family: Fraunces, Georgia, serif; font-size: 30px; color: #8FA79C">/ 16</span></div>
+<div style="display: flex; margin-top: 14px">
+<sc-for list="{{floor}}" as="f" hint-placeholder-count="13"><span title="{{f.n}}" style="width: 26px; height: 26px; margin-right: -6px; border-radius: 99px; border: 2px solid #1E3A32; background: {{f.bg}}; color: #1F1B16; display: grid; place-items: center; font-size: 10px; font-weight: 700">{{f.i}}</span></sc-for>
+</div>
+<div style="margin-top: auto; font-size: 12.5px; color: #C9D3CC">2 off · 1 on annual · <span style="color: #F0C27A">Inbound B is one short</span></div>
+</section>
+
+<section aria-label="Key numbers" style="flex: 5 1 400px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div style="height: 112px; box-sizing: border-box; padding: 14px 16px; border-radius: 14px; background: #FBF8F2; border: 1px solid #E5DBC9; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #6B6153"><span>{{k.label}}</span><span style="color: {{k.sc}}; font-weight: 600">{{k.delta}}</span></div>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: auto">
+<span style="font-family: Fraunces, Georgia, serif; font-size: 36px; font-weight: 500; letter-spacing: -0.02em; line-height: 1; color: {{k.vc}}">{{k.value}}</span>
+<span style="display: flex; align-items: flex-end; gap: 3px; height: 30px" aria-hidden="true"><sc-for list="{{k.bars}}" as="b" hint-placeholder-count="7"><span style="width: 6px; height: {{b.h}}; border-radius: 3px; background: {{b.c}}"></span></sc-for></span>
+</div>
+<div style="font-size: 11.5px; color: #8A7E6C; margin-top: 4px">{{k.sub}}</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-label="Coaching" style="flex: 3 1 240px; min-width: 0; height: 236px; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; display: flex; flex-direction: column; align-items: center; text-align: center">
+<div style="align-self: stretch; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #8A7E6C">Coaching KPI</div>
+<div style="position: relative; width: 122px; height: 122px; margin-top: 6px">
+<svg width="122" height="122" viewBox="0 0 122 122" role="img" aria-label="9 of 32 coachings done"><circle cx="61" cy="61" r="50" fill="none" stroke="#ECE3D3" stroke-width="10"></circle><circle cx="61" cy="61" r="50" fill="none" stroke="#2F5D50" stroke-width="10" stroke-linecap="round" stroke-dasharray="{{ring}}" transform="rotate(-90 61 61)"></circle><circle cx="61" cy="61" r="50" fill="none" stroke="#D9A441" stroke-width="10" stroke-dasharray="2 312" stroke-dashoffset="{{paceOffset}}" transform="rotate(-90 61 61)"></circle></svg>
+<div style="position: absolute; inset: 0; display: grid; place-items: center"><div><div style="font-family: Fraunces, Georgia, serif; font-size: 30px; font-weight: 500; line-height: 1">9<span style="font-size: 17px; color: #8A7E6C">/32</span></div><div style="font-size: 11px; color: #6B6153">done</div></div></div>
+</div>
+<div style="margin-top: 10px; font-size: 12.5px"><strong style="color: #A55A17">2 behind pace</strong> · 7 agents at 0</div>
+<div style="font-size: 11.5px; color: #8A7E6C">Gold tick = where you should be today</div>
+</section>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+
+<section aria-label="Needs you" style="flex: 5 1 420px; min-width: 0; height: 380px; display: flex; flex-direction: column; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; overflow: hidden">
+<div style="display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 10px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #9C3527">01</span><h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 500">Needs you</h2><span style="margin-left: auto; font-size: 11.5px; color: #6B6153">2 urgent · 6 open</span></div>
+<div style="overflow-y: auto; padding: 0 10px 10px">
+<sc-for list="{{needs}}" as="i" hint-placeholder-count="6">
+<div style="display: flex; gap: 12px; align-items: center; padding: 10px 8px; margin-bottom: 4px; border-radius: 10px; background: {{i.rowBg}}">
+<span style="flex: 0 0 34px; height: 34px; border-radius: 99px; background: {{i.avBg}}; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #1F1B16">{{i.ini}}</span>
+<div style="flex: 1 1 auto; min-width: 0"><div style="display: flex; align-items: center; gap: 8px"><strong>{{i.who}}</strong><span style="font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 99px; background: {{i.pillBg}}; color: {{i.pillFg}}">{{i.sev}}</span></div><div style="margin-top: 1px">{{i.reason}}</div><div style="font-size: 11.5px; color: #7A6F60; margin-top: 1px">{{i.detail}}</div></div>
+<button type="button" style="flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid {{i.btnBd}}; background: {{i.btnBg}}; color: {{i.btnFg}}; font-size: 12px; font-weight: 600">{{i.action}}</button>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="The week" style="flex: 4 1 340px; min-width: 0; height: 380px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; padding: 16px 18px">
+<div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #9C3527">02</span><h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 500">The week</h2><a href="#" style="margin-left: auto; font-size: 12px; color: #2F5D50; font-weight: 600">Full cycle →</a></div>
+<div style="display: flex; gap: 5px; padding-left: 100px; margin-bottom: 5px"><sc-for list="{{days}}" as="d" hint-placeholder-count="7"><span style="flex: 1 1 0; text-align: center; font-size: 10.5px; color: #8A7E6C">{{d}}</span></sc-for></div>
+<div style="display: flex; flex-direction: column; gap: 5px">
+<sc-for list="{{grid}}" as="g" hint-placeholder-count="10"><div style="display: flex; align-items: center; gap: 5px"><span style="flex: 0 0 95px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{g.n}}</span><sc-for list="{{g.cells}}" as="c" hint-placeholder-count="7"><span style="flex: 1 1 0; height: 18px; border-radius: 6px; background: {{c.bg}}"></span></sc-for></div></sc-for>
+</div>
+<div style="margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: #6B6153"><sc-for list="{{legend}}" as="l" hint-placeholder-count="6"><span style="display: flex; align-items: center; gap: 5px"><span style="width: 10px; height: 10px; border-radius: 4px; background: {{l.c}}"></span>{{l.t}}</span></sc-for></div>
+</section>
+
+<section aria-label="Queues" style="flex: 3 1 260px; min-width: 0; height: 380px; box-sizing: border-box; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; padding: 16px 18px; overflow-y: auto">
+<div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #9C3527">03</span><h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 500">Queues today</h2></div>
+<sc-for list="{{queues}}" as="q" hint-placeholder-count="3">
+<div style="padding: 12px 0; border-bottom: 1px solid #EEE6D8">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><strong style="font-size: 13.5px">{{q.name}}</strong><span style="font-size: 11.5px; font-weight: 600; color: {{q.cc}}">{{q.count}}</span></div>
+<div style="height: 6px; border-radius: 99px; background: #ECE3D3; margin: 7px 0 8px; overflow: hidden"><span style="display: block; height: 100%; width: {{q.pct}}; background: {{q.bar}}"></span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 5px"><sc-for list="{{q.agents}}" as="a" hint-placeholder-count="4"><span style="padding: 3px 8px; border-radius: 99px; font-size: 11.5px; background: {{a.bg}}; color: {{a.fg}}">{{a.n}}</span></sc-for></div>
+</div>
+</sc-for>
+</section>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+
+<section aria-label="Yesterday" style="flex: 6 1 520px; min-width: 0; height: 300px; display: flex; flex-direction: column; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; overflow: hidden">
+<div style="display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 10px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #9C3527">04</span><h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 500">Yesterday, in exceptions</h2><button type="button" style="margin-left: auto; height: 28px; padding: 0 12px; border-radius: 99px; border: 1px solid #DDD2BF; background: #F4EFE6; color: #1F1B16; font-size: 12px; font-weight: 600">Copy for EOD</button></div>
+<div style="overflow: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 600px">
+<thead><tr style="text-align: left; color: #8A7E6C; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase"><th style="padding: 6px 18px; font-weight: 600">Agent</th><th style="padding: 6px 8px; font-weight: 600">Queue</th><th style="padding: 6px 8px; font-weight: 600">Status</th><th style="padding: 6px 8px; font-weight: 600">Login</th><th style="padding: 6px 8px; font-weight: 600; text-align: right">Late</th><th style="padding: 6px 8px; font-weight: 600; text-align: right">Missing</th><th style="padding: 6px 18px; font-weight: 600; text-align: right">Break</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<tr style="border-top: 1px solid #EEE6D8"><td style="padding: 8px 18px"><span style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600"><span style="width: 22px; height: 22px; border-radius: 99px; background: {{r.av}}; display: grid; place-items: center; font-size: 9.5px; font-weight: 700">{{r.ini}}</span>{{r.n}}</span></td><td style="padding: 8px; color: #6B6153">{{r.q}}</td><td style="padding: 8px"><span style="padding: 2px 8px; border-radius: 99px; font-size: 11.5px; background: {{r.stBg}}; color: {{r.stFg}}">{{r.st}}</span></td><td style="padding: 8px; font-family: 'Geist Mono', monospace">{{r.li}}</td><td style="padding: 8px; text-align: right; font-family: 'Geist Mono', monospace; color: {{r.lc}}">{{r.late}}</td><td style="padding: 8px; text-align: right; font-family: 'Geist Mono', monospace; color: {{r.mc}}">{{r.miss}}</td><td style="padding: 8px 18px; text-align: right; font-family: 'Geist Mono', monospace; color: {{r.bc}}">{{r.brk}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+
+<section aria-label="Lateness" style="flex: 3 1 260px; min-width: 0; height: 300px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 16px; background: #FBF8F2; border: 1px solid #E5DBC9; padding: 16px 18px">
+<div style="display: flex; align-items: baseline; gap: 10px"><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #9C3527">05</span><h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 19px; font-weight: 500">Lateness</h2></div>
+<p style="margin: 4px 0 0; font-family: Fraunces, Georgia, serif; font-style: italic; color: #5E5548">Climbing this week. Worst day was yesterday, 62 minutes.</p>
+<div style="flex: 1 1 auto; position: relative; display: flex; align-items: flex-end; gap: 6px; padding-top: 12px; border-bottom: 1px solid #DDD2BF">
+<span style="position: absolute; left: 0; right: 0; bottom: 47%; border-top: 1px dashed #BFB29C"></span>
+<span style="position: absolute; right: 0; bottom: 48%; font-size: 10px; color: #8A7E6C; background: #FBF8F2; padding-left: 4px">avg 41m</span>
+<sc-for list="{{trend}}" as="b" hint-placeholder-count="14"><span style="flex: 1 1 0; height: {{b.h}}; border-radius: 4px 4px 1px 1px; background: {{b.c}}"></span></sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 10.5px; color: #8A7E6C; padding-top: 5px"><span>12 Nov</span><span>25 Nov</span></div>
+</section>
+
+<section aria-label="Worth a shout-out" style="flex: 3 1 260px; min-width: 0; height: 300px; box-sizing: border-box; display: flex; flex-direction: column; border-radius: 16px; background: #F3E2BE; padding: 18px">
+<div style="display: flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="#B7791F" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z"></path></svg><span style="font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #7A5212">Worth a shout-out</span></div>
+<p style="margin: 10px 0 12px; font-family: Fraunces, Georgia, serif; font-size: 21px; line-height: 1.25; color: #3D2C10">Five people haven't missed a minute all cycle.</p>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="5"><div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #3D2C10"><span style="width: 22px; height: 22px; border-radius: 99px; background: #FBF3E2; display: grid; place-items: center; font-size: 9.5px; font-weight: 700">{{s.i}}</span>{{s.n}}</div></sc-for>
+</div>
+<button type="button" style="margin-top: auto; height: 34px; border-radius: 99px; border: 0; background: #3D2C10; color: #F3E2BE; font-weight: 600">Copy shout-out</button>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = { good:'#2A7350', goodBg:'#E2EEE5', warn:'#A55A17', warnBg:'#F6E7D6', bad:'#9C3527', badBg:'#F7E3DE', info:'#2B4C7E', infoBg:'#E2E8F1', muted:'#6B6153', text:'#1F1B16', track:'#E6DCCB', accent:'#2F5D50', s2:'#F1EADD', bd:'#DDD2BF', on:'#FBF8F2' };
+    const pal = ['#E4C9A8','#C9DFD0','#C3D0E6','#EBC3B6','#D8CFE8','#E9DDA9','#BFDAD6'];
+    const ini = (n) => n.split(' ').map((p) => p[0]).join('').replace('.', '').slice(0,2);
+    const av = (n) => pal[[...n].reduce((s,ch) => s + ch.charCodeAt(0), 0) % pal.length];
+    const icons = ['M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z','M4 4h16v16H4zM4 10h16M10 4v16','M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z','M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z','M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7z','M4 6h16M4 12h16M4 18h10','M7 3h8l4 4v14H7zM11 12h6M11 16h6','M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1'];
+    const nav = [['Home','2'],['Attendance',''],['Team',''],['Coaching','23'],['Quality',''],['Queues',''],['Reports',''],['Settings','']].map(([label,badge],i) => ({ label, badge, icon: icons[i], bg: i===0 ? '#F4EFE6' : 'transparent', fg: i===0 ? '#1E3A32' : '#D6DED8', w: i===0 ? 600 : 500, badgeBg: !badge ? 'transparent' : (i===0 ? C.bad : '#36574D'), badgeFg: i===0 ? C.on : '#E9E2D3' }));
+    const people = ['Mohamed S.','Alaa O.','Ziad Y.','Nour H.','Karim T.','Omer G.','Mariam K.','Youssef A.','Hana R.','Lina F.','Taher E.','Sara M.','Omar B.','Rana D.','Adel W.','Mona Z.'];
+    const floor = people.slice(0,13).map((n) => ({ n, i: ini(n), bg: av(n) }));
+    const bars = (vals, color) => { const m = Math.max(...vals); return vals.map((v,j) => ({ h: Math.max(4, Math.round(v/m*30)) + 'px', c: j===vals.length-1 ? color : C.track })); };
+    const kpis = [
+      ['Late yesterday','3','62 min across the team','▲ 1',C.warn,C.warn,[2,1,3,2,1,2,3]],
+      ['Missing time yesterday','1h 34m','2 agents','▲ 2×',C.bad,C.bad,[40,35,52,30,45,48,94]],
+      ['Break exceeds','4','about the usual','—',C.muted,C.text,[3,5,4,2,4,5,4]],
+      ['QA average','92.4%','last cycle 91.2%','▲ 1.2',C.good,C.text,[90,91,90,92,91,92,92.4]]
+    ].map(([label,value,sub,delta,sc,vc,v]) => ({ label, value, sub, delta, sc, vc, bars: bars(v, sc===C.muted ? C.accent : sc) }));
+    const circ = 2 * Math.PI * 50;
+    const ring = (circ * 9 / 32).toFixed(1) + ' ' + circ.toFixed(1);
+    const paceOffset = (-(circ * 11 / 32) + 1).toFixed(1);
+    const sev = { High:[C.bad,C.on,'URGENT'], Med:[C.warnBg,C.warn,'SOON'], Low:[C.s2,C.muted,'LATER'] };
+    const needs = [
+      ['High','Mohamed S.','4 lateness incidents this cycle','Flag at 3 · 38 min total · latest yesterday, 16 min','Coach'],
+      ['High','Alaa O.','Missing time on 3 of the last 5 days','1h 12m total · twice right after an OFF day','Coach'],
+      ['Med','Ziad Y.','Follow-up due today','From the 19 Nov coaching · agreed: logged in by 15:40','Review'],
+      ['Med','Nour H.','Break exceeded 3 days running','+6, +4 and +9 min','Note'],
+      ['Low','Omer G.','No QA evaluation in 14 days','Last score 88% on 12 Nov','View']
+    ].map(([s,who,reason,detail,action]) => ({ sev: sev[s][2], who, ini: ini(who), avBg: av(who), reason, detail, action, pillBg: sev[s][0], pillFg: sev[s][1], rowBg: s==='High' ? C.badBg : 'transparent', btnBg: s==='High' ? C.bad : C.on, btnFg: s==='High' ? C.on : C.text, btnBd: s==='High' ? C.bad : C.bd }));
+    const cell = { P:'#CFE2D4', L:'#EBB98A', M:'#D98B7D', O:'#ECE5D8', V:'#C2D0E5', A:'#9C3527' };
+    const days = ['Thu','Fri','Sat','Sun','Mon','Tue','Wed'];
+    const grid = [['Mohamed S.','PLOOLPL'],['Alaa O.','PMOOMPM'],['Ziad Y.','PPOOPLP'],['Nour H.','PPPOOPP'],['Karim T.','LPOOPPL'],['Omer G.','PPOOPPP'],['Mariam K.','PPPOOPP'],['Sara M.','PPOOPPV'],['Youssef A.','PPOOPPP'],['Hana R.','PPPOOPL'],['Lina F.','OPPPOOP'],['Omar B.','PPOOVVV']].map(([n,s]) => ({ n, cells: s.split('').map((k) => ({ bg: cell[k] })) }));
+    const legend = [['Present',cell.P],['Late',cell.L],['Missing',cell.M],['Off',cell.O],['Leave',cell.V],['Absent',cell.A]].map(([t,c]) => ({ t, c }));
+    const chip = (n, state) => state==='on' ? { n, bg: C.goodBg, fg: '#1F4D36' } : { n: n + (state==='annual' ? ' · annual' : ' · ' + state), bg: C.s2, fg: C.muted };
+    const queues = [
+      { name:'Inbound A', count:'4 of 5', cc: C.muted, pct:'80%', bar: C.accent, agents:[chip('Mohamed S.','on'),chip('Mariam K.','on'),chip('Youssef A.','on'),chip('Lina F.','on'),chip('Sara M.','sick')] },
+      { name:'Inbound B', count:'3 of 4 · one short', cc: C.warn, pct:'75%', bar: '#D08A3C', agents:[chip('Alaa O.','on'),chip('Karim T.','on'),chip('Ziad Y.','on'),chip('Omar B.','annual')] },
+      { name:'Callbacks', count:'3 of 4', cc: C.muted, pct:'75%', bar: C.accent, agents:[chip('Nour H.','on'),chip('Hana R.','on'),chip('Omer G.','on'),chip('Taher E.','off')] }
+    ];
+    const d = '—';
+    const st = { Present:[C.goodBg,C.good], Sick:[C.infoBg,C.info] };
+    const rows = [['Mohamed S.','Inbound A','Present','4:01 PM','16m',d,d],['Alaa O.','Inbound B','Present','3:44 PM',d,'32m','+5m'],['Karim T.','Inbound B','Present','3:08 PM','8m','8m',d],['Hana R.','Callbacks','Present','3:52 PM','7m',d,'+4m'],['Nour H.','Callbacks','Present','3:58 PM',d,d,'+9m'],['Sara M.','Inbound A','Sick',d,d,d,d]].map(([n,q,s,li,late,miss,brk]) => ({ n, ini: ini(n), av: av(n), q, st:s, li, late, miss, brk, stBg: st[s][0], stFg: st[s][1], lc: late===d ? '#B3A894' : C.warn, mc: miss===d ? '#B3A894' : C.bad, bc: brk===d ? '#B3A894' : C.warn }));
+    const tv = [30,44,12,0,52,38,61,25,40,0,0,47,58,62];
+    const trend = tv.map((v,j) => ({ h: Math.max(2, Math.round(v/70*100)) + '%', c: j===tv.length-1 ? C.bad : (v > 41 ? '#E3A56C' : '#D9CDB8') }));
+    const stars = ['Mariam K.','Youssef A.','Lina F.','Omar B.','Rana D.'].map((n) => ({ n, i: ini(n) }));
+    return { nav, floor, kpis, ring, paceOffset, needs, days, grid, legend, queues, rows, trend, stars };
+  }
+}
+</script>
+</body>
+</html>

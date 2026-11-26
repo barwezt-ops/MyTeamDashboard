@@ -2,3 +2,10 @@ package-lock.json
 plan.md
 memory.md
 .windows-runtime/
+
+# Preserve supplied design documents byte for byte.
+plan-v2.md
+docs/design/home-v3.reference.html
+
+server/dist.test/
+.runtime-restore/

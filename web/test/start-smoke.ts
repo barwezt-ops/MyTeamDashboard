@@ -4,11 +4,11 @@ import {
   performanceToday,
   seedPerformanceFixture,
 } from "../../fixtures/performance.js";
-import { loadConfig } from "../../server/dist/config.js";
-import { openDb } from "../../server/dist/db/db.js";
-import { createSync } from "../../server/dist/sync/service.js";
-import { readEnv } from "../../server/dist/env.js";
-import { createApp, startServer } from "../../server/dist/index.js";
+import { loadConfig } from "../../server/dist.test/config.js";
+import { openDb } from "../../server/dist.test/db/db.js";
+import { createSync } from "../../server/dist.test/sync/service.js";
+import { readEnv } from "../../server/dist.test/env.js";
+import { createApp, startServer } from "../../server/dist.test/index.js";
 
 process.env.PORT = "3210";
 process.env.DATA_DIR = ":memory:";

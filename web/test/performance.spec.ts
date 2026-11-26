@@ -17,11 +17,15 @@ test("large synthetic roster supports searching and tab navigation", async ({
   await expect(agents.locator("tbody tr")).toHaveCount(1);
 
   const nav = page.getByRole("navigation");
-  await nav.getByRole("link", { name: "Trends", exact: true }).click();
+  await page.keyboard.press("Control+k");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Trends", exact: true })
+    .click();
   await expect(
     page.getByRole("table", { name: "Agent trend counts" }).locator("tbody tr"),
   ).toHaveCount(200);
-  await nav.getByRole("link", { name: "Discrepancies", exact: true }).click();
+  await nav.getByRole("link", { name: "Attendance", exact: true }).click();
   const queue = page.getByRole("table", { name: "Discrepancies" });
   await expect(queue.locator("tbody tr")).toHaveCount(400);
   await page.getByRole("textbox", { name: "Search agents" }).fill("FAKE-199");
