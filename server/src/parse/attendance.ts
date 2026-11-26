@@ -5,6 +5,16 @@ import { clean, codeOf, labelOf, nameOf, parseDate } from "./normalize.js";
 import type { Window } from "./schedule.js";
 import { parseStatus } from "./status.js";
 
+export function attendanceTeam(agents: Agent[]) {
+  const codes = new Set(agents.map((agent) => agent.code));
+  const names = new Map<string, string | null>();
+  for (const agent of agents) {
+    const name = nameOf(agent.fullName);
+    if (name) names.set(name, names.has(name) ? null : agent.code);
+  }
+  return { codes, names };
+}
+
 export function parseAttendance(
   rows: string[][],
   config: Config,
@@ -12,12 +22,7 @@ export function parseAttendance(
   window: Window,
 ) {
   const source = config.sources.attendance;
-  const codes = new Set(agents.map((agent) => agent.code));
-  const names = new Map<string, string | null>();
-  for (const agent of agents) {
-    const name = nameOf(agent.fullName);
-    if (name) names.set(name, names.has(name) ? null : agent.code);
-  }
+  const { codes, names } = attendanceTeam(agents);
   const records = new Map<string, AttendanceDay>();
   const missingByDay = new Map<string, Set<string>>();
   const unmatched = new Set<string>();

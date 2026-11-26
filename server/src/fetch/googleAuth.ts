@@ -18,6 +18,7 @@ import { SourceAccessError, readBody } from "./fetchCsv.js";
 const exec = promisify(execFile);
 const tokenName = "google-token.json";
 const scope = "https://www.googleapis.com/auth/spreadsheets.readonly";
+const driveScope = "https://www.googleapis.com/auth/drive.readonly";
 export const loginRequired = "Run npm run google-login";
 const loginTimeout = 5 * 60_000;
 
@@ -96,7 +97,15 @@ async function exchange(fields: Record<string, string>, request: typeof fetch) {
         : "Google sign-in failed. Check the Desktop OAuth client settings.";
     throw new SourceAccessError(message, response.status);
   }
-  if (result?.scope && result.scope !== scope)
+  const granted =
+    typeof result?.scope === "string"
+      ? result.scope.split(/\s+/).filter(Boolean)
+      : [];
+  if (
+    granted.length &&
+    (!granted.includes(scope) ||
+      granted.some((value) => value !== scope && value !== driveScope))
+  )
     throw new SourceAccessError(
       "Google returned permissions outside the configured read-only scope",
     );
@@ -195,6 +204,7 @@ export async function googleLogin(
   dataDir: string,
   open = openBrowser,
   request = fetch,
+  withDrive = false,
 ) {
   const { client_id } = credentials();
   const verifier = randomBytes(32).toString("base64url");
@@ -215,7 +225,7 @@ export async function googleLogin(
       client_id,
       redirect_uri,
       state,
-      scope,
+      scope: withDrive ? scope + " " + driveScope : scope,
       response_type: "code",
       code_challenge: challenge,
       code_challenge_method: "S256",
@@ -292,6 +302,14 @@ export async function googleLogin(
     if (typeof result?.refresh_token !== "string" || !result.refresh_token)
       throw new Error(
         "Google did not return a refresh token. " + loginRequired,
+      );
+    if (
+      withDrive &&
+      (typeof result.scope !== "string" ||
+        !result.scope.split(/\s+/).includes(driveScope))
+    )
+      throw new Error(
+        "Google did not grant the requested read-only Drive permission.",
       );
     await saveToken(dataDir, result.refresh_token);
   } finally {

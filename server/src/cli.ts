@@ -24,7 +24,12 @@ async function hashPassword() {
 try {
   if (process.argv[2] === "hash-password") await hashPassword();
   else if (process.argv[2] === "google-login") {
-    await googleLogin(readDataDir());
+    await googleLogin(
+      readDataDir(),
+      undefined,
+      undefined,
+      process.argv.includes("--drive-readonly"),
+    );
     console.log("Google sign-in saved.");
   } else if (process.argv[2] === "google-logout") {
     await googleLogout(readDataDir());
