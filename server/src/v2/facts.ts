@@ -1,0 +1,64 @@
+// One recorded attendance day, reduced to the facts the dashboard reports.
+import type { AttendanceDay, Status } from "../api/dto.js";
+import { labelOf } from "../parse/normalize.js";
+import { minutes } from "./templates.js";
+
+export type DayFacts = {
+  date: string;
+  status: Status;
+  raw: string;
+  /** Minutes late, or null when the source does not report it. */
+  late: number | null;
+  /** Missing minutes after compensation, or null when not reported. */
+  missing: number | null;
+  /** The source marks an exceeded break with a label. It gives no minutes. */
+  breakExceeded: boolean;
+  absence: "NCNS" | "AWOL" | null;
+  shift: string | null;
+  login: string | null;
+  logout: string | null;
+};
+
+// The paste repeats the status label in time cells on days off.
+const clock = (value: unknown) =>
+  typeof value === "string" && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(value)
+    ? value.slice(0, 5).padStart(5, "0")
+    : null;
+
+export function dayFacts(
+  row: AttendanceDay,
+  details: Record<string, unknown> | undefined,
+  breakLabel: string,
+): DayFacts {
+  const raw = labelOf(row.raw);
+  return {
+    date: row.date,
+    status: row.status,
+    raw: row.raw,
+    late: minutes(details?.lateness),
+    missing: minutes(row.missing),
+    breakExceeded:
+      labelOf(String(details?.exceeded ?? "")) === labelOf(breakLabel),
+    absence: raw === "ncns" ? "NCNS" : raw === "awol" ? "AWOL" : null,
+    shift: clock(details?.scheduledShift),
+    login: clock(details?.login),
+    logout: clock(details?.logout),
+  };
+}
+
+export const isLate = (day: DayFacts) => (day.late ?? 0) > 0;
+export const isMissing = (day: DayFacts) => (day.missing ?? 0) > 0;
+const unplanned: Status[] = [
+  "Sick",
+  "Casual",
+  "UPL",
+  "Absent",
+  "1st Half UPL",
+  "2nd Half UPL",
+  "1st Half Forced UPL",
+  "2nd Half Forced UPL",
+];
+export const isUnplanned = (day: DayFacts) => unplanned.includes(day.status);
+
+export const sum = (days: DayFacts[], key: "late" | "missing") =>
+  days.reduce((total, day) => total + (day[key] ?? 0), 0);
