@@ -16,6 +16,9 @@ import {
 } from "./settings.js";
 import { dashboardData } from "./data.js";
 import { counts, homeView } from "./home.js";
+import { gridView } from "./grid.js";
+import { teamView } from "./team.js";
+import { recentCycles } from "./cycle.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -51,6 +54,30 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
   router.get(
     "/counts",
     endpoint({}, (_input, _req, res) => res.json(counts(current()))),
+  );
+  const cycleQuery = z.strictObject({ cycle: day.optional() });
+  /** Data for a chosen cycle, with the list for the cycle switcher. */
+  const forCycle = (cycle = today()) => {
+    const data = dashboardData(db, config, today(), cycle);
+    return {
+      data,
+      cycles: recentCycles(today(), data.settings.cycleStartDay, 6),
+    };
+  };
+  router.get(
+    "/grid",
+    endpoint({ query: cycleQuery }, ({ query }, _req, res) => {
+      const { data, cycles } = forCycle(query.cycle);
+      res.json({ ...gridView(data), cycles });
+    }),
+  );
+  router.get(
+    "/team",
+    endpoint({ query: cycleQuery }, ({ query }, _req, res) => {
+      const { data, cycles } = forCycle(query.cycle);
+      const previous = dashboardData(db, config, today(), data.prior.from);
+      res.json({ ...teamView(data, previous), cycles });
+    }),
   );
   router.get(
     "/settings",

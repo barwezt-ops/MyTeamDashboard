@@ -137,6 +137,22 @@ export function shoutOut(names: string[], from: string, to: string) {
 export const behindPace = (count: number) =>
   `${plural(count, "agent")} behind coaching pace`;
 
+export function attendanceSummary(totals: {
+  lateDays: number;
+  lateMinutes: number;
+  missingDays: number;
+  reported: number;
+}) {
+  if (!totals.reported) return "No attendance reported for this cycle yet.";
+  const late = totals.lateDays
+    ? `${plural(totals.lateDays, "late day")}, ${spokenMinutes(totals.lateMinutes)} in total`
+    : "No late days";
+  const missing = totals.missingDays
+    ? `${plural(totals.missingDays, "day")} with missing time`
+    : "no missing time";
+  return `${late}; ${missing}.`;
+}
+
 export function shortDate(date: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",

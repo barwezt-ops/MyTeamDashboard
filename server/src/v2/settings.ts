@@ -20,6 +20,21 @@ const fields = z.strictObject({
     .record(z.string().min(1).max(100), z.number().int().nonnegative())
     .default({}),
   reportTemplate: z.string().max(20000).default(""),
+  /** Saved Team table views. */
+  views: z
+    .array(
+      z.strictObject({
+        name: z.string().trim().min(1).max(40),
+        columns: z.array(z.string().max(80)).max(100),
+        sort: z.string().max(80),
+        descending: z.boolean(),
+        line: z.string().max(100),
+        flagged: z.boolean(),
+        compact: z.boolean(),
+      }),
+    )
+    .max(20)
+    .default([]),
 });
 export const settingsSchema = fields.refine(
   (s) => (s.missingDays === null) === (s.missingWindowDays === null),
