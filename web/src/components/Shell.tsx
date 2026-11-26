@@ -13,16 +13,10 @@ import {
 } from "lucide-react";
 import type { Agent, SyncStatus } from "../../../server/src/api/dto";
 import { useApi } from "../api";
-import { cairoHeader } from "../design";
-import {
-  Empty,
-  ErrorNotice,
-  Loading,
-  PageHeader,
-  Section,
-  syncLabel,
-} from "./ui";
-import { Eyebrow, Modal } from "./design";
+import { cairoHeader, freshness } from "../design";
+import { Empty, ErrorNotice, Loading, PageHeader, Section } from "./ui";
+import { Eyebrow, Modal, Summary } from "./design";
+import type { PageHead } from "../v2/context";
 
 export const navigation = [
   { to: "/", label: "Home", Icon: Home },
@@ -38,12 +32,14 @@ export function ShellHeader({
   firstName,
   cycleStartDay,
   home,
+  head,
   status,
   search,
 }: {
   firstName: string;
   cycleStartDay: number;
   home: boolean;
+  head: PageHead;
   status: ReturnType<typeof useApi<SyncStatus>>;
   search: () => void;
 }) {
@@ -53,12 +49,14 @@ export function ShellHeader({
     return () => window.clearInterval(timer);
   }, []);
   const header = cairoHeader(now, firstName, cycleStartDay);
-  const sync = status.data ? syncLabel(status.data) : null;
+  const fresh = status.data ? freshness(status.data, now.getTime()) : null;
+  const title = home ? header.greeting : head.title;
   return (
     <header className="shell-header">
       <div>
         <Eyebrow>{header.eyebrow}</Eyebrow>
-        {home && <h1>{header.greeting}</h1>}
+        {title && <h1>{title}</h1>}
+        {head.summary && <Summary>{head.summary}</Summary>}
       </div>
       <div className="shell-actions">
         <div className="button-row">
@@ -70,28 +68,15 @@ export function ShellHeader({
             Log coaching
           </Link>
         </div>
-        <div
-          className={`freshness ${status.error ? "bad" : (sync?.tone ?? "waiting")}`}
+        <Link
+          to="/settings"
+          className={`freshness ${status.error ? "bad" : (fresh?.tone ?? "waiting")}`}
         >
-          <a href="/settings">
-            ●{" "}
-            {sync?.label ??
-              (status.error
-                ? "Sync status unavailable"
-                : "Checking source freshness…")}
-          </a>
-          <span>
-            Attendance{" "}
-            {status.data?.attendanceThrough
-              ? `through ${status.data.attendanceThrough}`
-              : "not imported"}
-            {" · "}MTD{" "}
-            {status.data?.mtdSyncedOn
-              ? `synced ${status.data.mtdSyncedOn}`
-              : "not imported"}{" "}
-            · QA not connected
-          </span>
-        </div>
+          <i aria-hidden="true">●</i>{" "}
+          {status.error
+            ? "Sync status unavailable"
+            : (fresh?.text ?? "Checking source freshness…")}
+        </Link>
       </div>
     </header>
   );
@@ -111,6 +96,7 @@ export function CommandPalette({
   const screens = [
     ...navigation,
     { to: "/styleguide", label: "Styleguide" },
+    { to: "/today", label: "Today list" },
     { to: "/discrepancies", label: "Review discrepancies" },
     { to: "/trends", label: "Trends" },
     { to: "/coaching", label: "Log coaching" },
