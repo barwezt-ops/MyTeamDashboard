@@ -73,6 +73,9 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
     .getByRole("navigation")
     .getByRole("link", { name: "Attendance" })
     .press("Enter");
+  await page
+    .getByRole("link", { name: "Review discrepancies →" })
+    .press("Enter");
   const queue = page.getByRole("table", { name: "Discrepancies" });
   await expect(queue.getByRole("row").first()).toHaveCSS("display", "grid");
   await expect(

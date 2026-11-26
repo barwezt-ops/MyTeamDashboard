@@ -98,7 +98,7 @@ test("sign in, review views, add an agent note, and copy the email table", async
   for (const [view, heading] of [
     ["Attendance", "Review queue"],
     ["Trends", "Status by day"],
-    ["Team", "Team list"],
+    ["Team", "Team"],
     ["Settings", "Sync log"],
   ]) {
     if (view === "Trends") {
@@ -107,6 +107,9 @@ test("sign in, review views, add an agent note, and copy the email table", async
         .getByRole("dialog")
         .getByRole("button", { name: "Trends", exact: true })
         .click();
+    } else if (view === "Attendance") {
+      await navigation.getByRole("link", { name: view, exact: true }).click();
+      await page.getByRole("link", { name: "Review discrepancies →" }).click();
     } else
       await navigation.getByRole("link", { name: view, exact: true }).click();
     await expect(
