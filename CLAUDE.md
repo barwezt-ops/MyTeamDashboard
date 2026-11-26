@@ -40,11 +40,11 @@ You are working on a private-use team dashboard: a Node/Express + SQLite service
 
 ## Hard rules (don't break these)
 
-1. Never write to the source sheets. Sources are read-only, via public CSV export or, for sources marked access: google, the Google Sheets API with the owner's read-only sign-in. No Apps Script, no service accounts, no API keys.
+1. Never write to the source sheets. Sources are read-only, via public CSV export, the Google Sheets API with the owner's read-only sign-in (`access: google`), or a local CSV drop (`access: file`). No Apps Script, no service accounts, no API keys.
 2. **No real data in git, ever.** No real names, agent codes, phone numbers, emails, sheet IDs, CSVs, SQLite files, notes or env values. Fixtures are fake (`Demo Lead`, `Cover Lead`, codes `99xxx`). Real config lives in gitignored `config/sources.local.json` or the `DASHBOARD_SOURCE_CONFIG` env var.
 3. **No patient data** exists in the sources and none may ever be stored.
 4. **Join on agent code, never on name.** Names differ between sheets.
-5. **Whitelisted columns only.** Phone, email, laptop, "American Name" columns are never read; the config refuses to map headers matching `/phone|email|laptop|american/i`.
+5. **Whitelisted columns only.** The config refuses to map phone, email, laptop, "American Name", comment and allowance headers (`/phone|email|laptop|american|comment|allow/i`). Medical and Internet per-day allowance fields are also refused.
 6. **Config over code.** Sheet IDs, GIDs, column letters, schedule anchor, cron times, status labels, date order — all in config.
 7. **No invented business rules.** `thresholds` ships empty; only the owner (via TL/SOP) sets numbers. Same rules for every agent, no per-agent exceptions.
 8. **Fail loudly, never wipe on failure.** A failed sync logs to `sync_log`, shows on Settings/the sync badge, and leaves existing data untouched. Syncs only replace the dates the source actually covers.

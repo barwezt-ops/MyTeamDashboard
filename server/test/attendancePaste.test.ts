@@ -1,0 +1,223 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { expect, it, vi } from "vitest";
+import { loadConfig } from "../src/config.js";
+import { openDb } from "../src/db/db.js";
+import { readAttendancePasteTabs } from "../src/fetch/attendancePaste.js";
+import { columnAt, indexOf } from "../src/parse/columns.js";
+import { coachingCycle } from "../src/parse/normalize.js";
+import { attendancePasteStatusMap } from "../src/parse/status.js";
+import {
+  attendancePasteStale,
+  prepareAttendancePaste,
+  storeAttendancePaste,
+} from "../src/sync/attendancePaste.js";
+import { sampleMaster } from "./sample.js";
+
+it("reads only approved fields as serial values and stops before data reads on patient headers", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "team-attendance-paste-"));
+  const header = (columns: Record<string, string>) => {
+    const values: string[] = [];
+    for (const [column, label] of Object.entries(columns))
+      values[indexOf(column)] = label;
+    return values;
+  };
+  const attendance = header({
+    A: "Code",
+    B: "Name",
+    C: "Team Leader",
+    G: "Date",
+    H: "Scheduled Shift",
+    I: "Status",
+    J: "Login Time",
+    K: "Logout Time",
+    Q: "Lateness",
+    AH: "Exceeded",
+    AQ: "NCNS Streak",
+    AW: "Missing After Compensation",
+    AX: "TL Comment",
+  });
+  const mtd = header({
+    A: "Team Leader",
+    B: "Employee ID",
+    C: "Agent Name",
+    F: "Lateness mins",
+    G: "Lateness Incidents",
+    H: "Public Holiday",
+    AI: "Total deducted days",
+    AQ: "Status",
+    AM: "Comment",
+    AT: "Medical allowance",
+  });
+  const calls: string[][] = [];
+  const request: typeof fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.hostname === "oauth2.googleapis.com")
+      return Response.json({ access_token: "test-access" });
+    expect(url.searchParams.get("valueRenderOption")).toBe("UNFORMATTED_VALUE");
+    expect(url.searchParams.get("dateTimeRenderOption")).toBe("SERIAL_NUMBER");
+    const ranges = url.searchParams.getAll("ranges");
+    calls.push(ranges);
+    return Response.json({
+      valueRanges: ranges.map((range) => {
+        if (range === "'Attendance'!1:1") return { values: [attendance] };
+        if (range === "'MTD'!4:4") return { values: [mtd] };
+        if (range === "'MTD'!D1:E3")
+          return { values: [["Total Missing Hours", "Total OT Hours"]] };
+        if (range === "'Team View'!1:1") return { values: [["Code"]] };
+        const [, start, end] = /!([A-Z]+)\d+:([A-Z]+)$/.exec(range)!;
+        const row = [];
+        for (let i = indexOf(start); i <= indexOf(end); i++) {
+          const column = columnAt(i);
+          expect(["AX", "AM", "AT", "L", "M"]).not.toContain(column);
+          row.push(
+            column === "G" ? 46_000 : column === "AW" ? 1 / 24 : "99001",
+          );
+        }
+        return { values: [row] };
+      }),
+    });
+  };
+  try {
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_ID", "test-id");
+    vi.stubEnv("GOOGLE_OAUTH_CLIENT_SECRET", "test-secret");
+    writeFileSync(
+      join(directory, "google-token.json"),
+      JSON.stringify({ refresh_token: "test-refresh" }),
+    );
+    const [day, snapshot] = await readAttendancePasteTabs(
+      "FakePaste",
+      directory,
+      ["Attendance", "MTD"],
+      false,
+      request,
+    );
+    expect(day.rows[0]).toMatchObject({
+      code: "99001",
+      date: 46_000,
+      missing: 1 / 24,
+    });
+    expect(day.rows[0]).not.toHaveProperty("comment");
+    expect(snapshot.headers).toContainEqual({
+      column: "D",
+      header: "Total Missing Hours",
+    });
+    const check = await readAttendancePasteTabs(
+      "FakePaste",
+      directory,
+      ["Attendance", "MTD", "Team View"],
+      true,
+      request,
+    );
+    expect(check.map((tab) => tab.rows.length)).toEqual([1, 1, 1]);
+    expect(calls.at(-1)).toEqual([
+      "'Attendance'!A2:A",
+      "'MTD'!B5:B",
+      "'Team View'!A2:A",
+    ]);
+    attendance[indexOf("AX")] = "Patient record";
+    const before = calls.length;
+    await expect(
+      readAttendancePasteTabs(
+        "FakePaste",
+        directory,
+        ["Attendance", "MTD"],
+        false,
+        request,
+      ),
+    ).rejects.toThrow("Possible patient data");
+    expect(calls).toHaveLength(before + 1);
+  } finally {
+    vi.unstubAllEnvs();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+it("replaces only pasted dates, keeps daily MTD snapshots and detects unchanged pastes", () => {
+  const db = openDb(":memory:");
+  try {
+    const agents = sampleMaster().agents.slice(0, 1);
+    const [{ code }] = agents;
+    const config = loadConfig();
+    config.statusMap = { ...config.statusMap, ...attendancePasteStatusMap };
+    const rows = [
+      {
+        code,
+        date: "21 October 2026",
+        status: "1st Half Ann",
+        login: 0.5,
+        missing: 0,
+      },
+      {
+        code,
+        date: (Date.UTC(2026, 9, 23) - Date.UTC(1899, 11, 30)) / 86_400_000,
+        status: "Dropped",
+        missing: 1 / 48,
+      },
+      { code: "99999", date: "invalid", status: "Unknown" },
+    ];
+    const snapshots = [
+      { code, status: "Maternity", ot: 1.25, "count:maternity": 1 },
+    ];
+    const seed = db.prepare(
+      "INSERT INTO attendance_days (code,date,raw) VALUES (?,?,?)",
+    );
+    seed.run(code, "2026-10-21", "Replace");
+    seed.run(code, "2026-10-22", "Keep");
+    const paste = prepareAttendancePaste(rows, snapshots, config, agents);
+    expect(paste.otherRows).toBe(1);
+    expect(paste.records.map((row) => [row.status, row.missing])).toEqual([
+      ["1st Half Annual", "00:00:00"],
+      ["Inactive", "00:30:00"],
+    ]);
+    expect(paste.details[0].fields.login).toBe("12:00:00");
+    expect(paste.snapshots[0].fields).toMatchObject({
+      mappedStatus: "PTO",
+      totalOTHours: "30:00:00",
+      counts: { maternity: 1 },
+    });
+    expect(
+      storeAttendancePaste(db, paste, "2026-11-26", "2026-11-26T09:00:00Z", 21),
+    ).toBe(true);
+    expect(
+      storeAttendancePaste(db, paste, "2026-11-27", "2026-11-27T09:01:00Z", 21),
+    ).toBe(false);
+    expect(attendancePasteStale(db, new Date("2026-11-27T09:00:00Z"))).toBe(
+      false,
+    );
+    expect(attendancePasteStale(db, new Date("2026-11-27T09:01:00Z"))).toBe(
+      true,
+    );
+    expect(() =>
+      prepareAttendancePaste(rows, [{ code, ot: "#REF!" }], config, agents),
+    ).toThrow("calculation errors");
+    expect(
+      db.prepare("SELECT raw FROM attendance_days ORDER BY date").pluck().all(),
+    ).toEqual(["1st Half Ann", "Keep", "Dropped"]);
+    expect(
+      db
+        .prepare(
+          "SELECT sync_date, cycle_start, cycle_end FROM attendance_mtd_snapshots ORDER BY sync_date",
+        )
+        .all(),
+    ).toEqual([
+      {
+        sync_date: "2026-11-26",
+        cycle_start: "2026-10-21",
+        cycle_end: "2026-11-20",
+      },
+      {
+        sync_date: "2026-11-27",
+        cycle_start: "2026-10-21",
+        cycle_end: "2026-11-20",
+      },
+    ]);
+    expect(coachingCycle("2027-01-20", 21)).toEqual({
+      from: "2026-12-21",
+      to: "2027-01-20",
+    });
+  } finally {
+    db.close();
+  }
+});

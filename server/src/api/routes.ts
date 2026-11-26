@@ -449,6 +449,9 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
       ];
       const keys = ["master", "schedule", "attendance"] as SourceKey[];
       const date = sync.today();
+      const { sheetId: _privatePasteId, ...pasteSettings } =
+        config.sources.attendance.paste ?? {};
+      void _privatePasteId;
       const result: SyncStatus = {
         jobs: Object.fromEntries(
           jobs.map((job) => [
@@ -459,7 +462,13 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         sources: keys.map((key) => {
           const source = config.sources[key];
           const url =
-            source.sheetId && source.access !== "file"
+            source.sheetId &&
+            source.access !== "file" &&
+            !(
+              key === "attendance" &&
+              source.access === "google" &&
+              config.sources.attendance.paste
+            )
               ? "https://docs.google.com/spreadsheets/d/" +
                 source.sheetId +
                 "/edit#gid=" +
@@ -473,10 +482,23 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
           };
         }),
         running: sync.active,
+        attendancePaste: sync.attendancePasteEnabled,
+        attendanceStale: sync.attendanceStale(),
         attendanceCsvUpload: config.sources.attendance.access === "file",
         runs: recentRuns(db),
         timezone: config.timezone,
-        config,
+        config: {
+          ...config,
+          sources: {
+            ...config.sources,
+            attendance: {
+              ...config.sources.attendance,
+              paste: config.sources.attendance.paste
+                ? pasteSettings
+                : undefined,
+            },
+          },
+        },
         date,
         window: sync.window(date),
       };
@@ -501,8 +523,16 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
   router.post(
     "/sync",
     endpoint(
-      { query: z.strictObject({ job: z.enum(["roster", "daily", "all"]) }) },
+      {
+        query: z.strictObject({
+          job: z.enum(["roster", "daily", "all", "attendance"]),
+        }),
+      },
       ({ query: { job } }, _req, res) => {
+        if (job === "attendance" && !sync.attendancePasteEnabled) {
+          res.status(409).json({ error: "Attendance paste sync is disabled" });
+          return;
+        }
         if (!sync.start(job)) {
           res.status(409).json({ error: "A sync is already running" });
           return;

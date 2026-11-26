@@ -52,18 +52,14 @@ export function openDb(directory: string): Db {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     const version = db.pragma("user_version", { simple: true });
-    if (version === 0)
-      db.transaction(() => {
-        db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
-        db.pragma("user_version = 2");
-      })();
-    else if (version === 1)
-      db.transaction(() => {
-        migrateD5(db);
-        db.pragma("user_version = 2");
-      })();
-    else if (version !== 2)
+    if (version !== 0 && version !== 1 && version !== 2)
       throw new Error("Unsupported database schema version");
+    // The paste tables are additive. Keep v2 readable by the prior Windows release on rollback.
+    db.transaction(() => {
+      if (version === 1) migrateD5(db);
+      db.exec(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
+      if (version !== 2) db.pragma("user_version = 2");
+    })();
     return db;
   } catch (error) {
     db.close();

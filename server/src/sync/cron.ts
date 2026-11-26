@@ -82,6 +82,11 @@ export function startLiveJobs(
   const options = { timezone, suppressMissedWarning: true };
   const backupPattern = "0 2 * * *";
   const dailyOffsets = cronOffsets(config.jobs.daily);
+  const paste =
+    config.sources.attendance.access === "google" &&
+    config.sources.attendance.enabled
+      ? config.sources.attendance.paste
+      : undefined;
   let bootstrapAttempted = false;
 
   function canRetry(job: "daily" | "backup", time: Date) {
@@ -125,10 +130,30 @@ export function startLiveJobs(
           undefined)
     )
       return sync.start("daily");
+    if (paste) {
+      const slot = Math.floor(timestamp / hour) * hour;
+      const hourInCairo = Number(
+        new Intl.DateTimeFormat("en-GB", {
+          hour: "2-digit",
+          hourCycle: "h23",
+          timeZone: timezone,
+        }).format(time),
+      );
+      const last = lastRun(db, "attendance");
+      if (
+        hourInCairo >= paste.startHour &&
+        hourInCairo < paste.endHour &&
+        (!last || Date.parse(last.startedAt) < slot)
+      )
+        return sync.start("attendance");
+    }
   }
 
   const backupOffsets = cronOffsets(backupPattern);
   const daily = cron.schedule(config.jobs.daily, () => void check(), options);
+  const attendance = paste
+    ? cron.schedule("0 * * * *", () => void check(), options)
+    : undefined;
   const backup = cron.schedule(backupPattern, () => void check(), options);
   const weekly = cron.schedule(
     config.jobs.weekly,
@@ -140,7 +165,8 @@ export function startLiveJobs(
     check,
     stop() {
       clearInterval(timer);
-      for (const task of [daily, backup, weekly]) void task.destroy();
+      for (const task of [daily, backup, weekly, attendance])
+        if (task) void task.destroy();
     },
   };
 }

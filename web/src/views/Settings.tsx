@@ -33,6 +33,9 @@ export function Settings({
     return <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>;
   if (!status.data) return <Loading />;
   const data = status.data;
+  const jobs: Job[] = data.attendancePaste
+    ? ["roster", "daily", "attendance", "all"]
+    : ["roster", "daily", "all"];
   const time = (stamp: string | null) =>
     stamp
       ? new Intl.DateTimeFormat("en-GB", {
@@ -64,7 +67,7 @@ export function Settings({
         action={<span className="muted">Cairo time</span>}
       >
         <div className="button-row panel-body">
-          {(["roster", "daily", "all"] as const).map((job) => (
+          {jobs.map((job) => (
             <button
               className={job === "all" ? "primary" : "secondary"}
               key={job}
@@ -94,7 +97,15 @@ export function Settings({
               title={source.label}
               action={
                 source.enabled ? (
-                  result(latest)
+                  source.job === "attendance" &&
+                  data.attendanceStale &&
+                  latest?.ok !== false ? (
+                    <span className="sync-badge bad">
+                      Attendance paste is stale
+                    </span>
+                  ) : (
+                    result(latest)
+                  )
                 ) : (
                   <span className="group-tag">Disabled</span>
                 )

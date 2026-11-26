@@ -408,3 +408,14 @@ On the machine that has the database, run `npm run backup` to save a copy. Run `
 Set `sources.attendance.access` to `"file"` and verify the column mapping against the export. Once the roster has synced, use a UTF-8 CSV up to 150 MB directly from **File → Download → Comma-separated values (.csv)**. Leave the original column order intact. Stop if any header suggests patient data.
 
 Use **Settings → Upload attendance CSV** to stream the file and save only the team's mapped cells to the inbox. You can also drop the export into `%LOCALAPPDATA%\TeamDashboard\inbox\attendance\`. The daily job and catch-up read the latest file by modification time. After a successful import, the app saves a filtered copy in `processed` and removes the inbox file. It keeps 14 processed files and can reuse the latest one. A rejected drop remains in the inbox for correction. A dry run reads the input without consuming the drop.
+
+### Read the restricted attendance paste workbook
+
+Put the workbook ID in `sources.attendance.paste.sheetId` in your private `config/sources.local.json`. The workbook should have an **Attendance** tab with headers in row 1 and an **MTD** tab with headers in row 4. The link check also reports **Team View**. Keep attendance disabled while you verify the source against the existing roster.
+
+```text
+npm run test-link -- --paste-tabs
+npm run sync -- --job=attendance --dry-run --paste
+```
+
+After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly from `paste.startHour` inclusive to `paste.endHour` exclusive, defaulting to 09:00–18:00 Cairo time. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.

@@ -78,6 +78,16 @@ export function plusDays(date: string, count: number) {
     .toISOString()
     .slice(0, 10);
 }
+
+export function coachingCycle(date: string, startDay: number) {
+  const point = new Date(date + "T00:00:00Z");
+  const month = point.getUTCMonth() - (point.getUTCDate() < startDay ? 1 : 0);
+  const iso = (offset: number, day: number) =>
+    new Date(Date.UTC(point.getUTCFullYear(), month + offset, day))
+      .toISOString()
+      .slice(0, 10);
+  return { from: iso(0, startDay), to: iso(1, startDay - 1) };
+}
 export const weekday = (date: string) => new Date(date).getUTCDay();
 export const weekdays = [
   "Sunday",

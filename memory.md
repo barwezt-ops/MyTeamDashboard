@@ -1,9 +1,10 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoint._
+_Last updated: 2026-11-26 for the restricted attendance workbook and dry-run checkpoint._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. PR #18 was closed with its branch retained. The replacement attendance source is a small restricted workbook. Its three tabs passed the read-only header and row-count check. The new attendance source is pending dry-run review and activation.
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
 - **Tests on main:** 130 Vitest tests, 4 Playwright specs (dashboard flow, 390 px mobile + keyboard + failed-load recovery, 200-agent performance, schema from build artifacts). Lint, typecheck, build clean.
@@ -22,6 +23,7 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 | Status mapping | done | `parse/status.ts` | time ⇒ Scheduled; OFF, Annual→PTO, UPL, Sick, Casual (= unplanned/emergency), Present, Absent, On Hold/Not Hired (excluded), else Unknown |
 | Attendance parse (long + wide) | done, **disabled** | `parse/attendance.ts` | wide: match by code or unique normalised name, month+day matched within window (year may be wrong), unmatched warnings only for rows whose DTL column is the owner/covered TL |
 | Attendance dry run | done | `sync/attendancePreview.ts`, Settings | read-only; projected D1–D4 counts |
+| Restricted attendance paste | review pending | `fetch/attendancePaste.ts`, `sync/attendancePaste.ts` | Header-based Attendance and MTD reads, exact-date history replacement, daily MTD snapshots, and hourly working-hours checks in Cairo. |
 | Rules D1–D7 | done (D1–D4 run only when attendance enabled) | `rules/` | D5 has stable id `code\|D5`; auto-clear only touches `open` rows |
 | Sync windows / replacement | done | `sync/service.ts`, `syncSchedule.ts`, `syncAttendance.ts` | window = today −35 / +14; replace only the dates the source covers (`coveredRange`); one Cairo date per run |
 | Cron and catch-up | done | `sync/cron.ts` | daily `0 16 * * *`, weekly `0 12 * * 0` (Sun), backup 02:00 Cairo. Startup and 15-minute checks cover the latest elapsed daily slot and today's backup. A successful daily or All must start at or after the slot to satisfy it. Automated retries wait at least one hour. Daily refreshes roster first if missing or >7 days old. |
@@ -53,6 +55,8 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 ## 5. Decisions log (append-only)
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-26 | The owner pastes Attendance and MTD daily into a small restricted Google workbook. The dashboard reads it with the existing read-only Google sign-in. | Direct and browser-based reads of the original WFM workbook failed. | Automated reads of the original workbook. |
+| 2026-11-26 | The coaching cycle starts on the 21st and ends on the 20th. Attendance history comes from daily Attendance rows. MTD is snapshotted by Cairo sync date and agent code. | Match the cycle used by WFM. | — |
 | 2026-11-20 | Read sheets via public CSV export, no auth | Sheets open in incognito; Apps Script failed ("too large") and isn't allowed; viewer access only | Apps Script web app; Sheets API with OAuth (admin may block) |
 | 2026-11-20 | Join on agent code, never name | TL/agent names differ between master and schedule | Name matching |
 | 2026-11-20 | Schedule dates by anchor (col F = 2026-10-21) | Header day names break after col AA | Reading header dates |
@@ -77,6 +81,8 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
 ## 6. Known issues & tech debt
+
+- The verified paste contains the previous coaching cycle. Attendance stays disabled pending review and activation.
 | Issue | Impact | Planned fix |
 |---|---|---|
 | Sidebar stops partway down long pages and on phone | Cosmetic | Make it full-height/sticky |
@@ -108,6 +114,11 @@ _Last updated: 2026-11-25 for the month-name date fix and Windows setup checkpoi
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+### 2026-11-26 — Restricted attendance paste workbook
+
+- Replaced the proposed browser-session download with a small owner-maintained workbook. Verified all three tabs and ran an attendance preview with the existing read-only sign-in.
+- Added configurable hourly sync and a stale badge. The sync stores daily history and MTD snapshots from whitelisted fields joined by agent code.
+
 ### 2026-11-25 — Master month-name dates and live source checks
 - Added shared month-name date parsing with coverage for roster hire dates, last working days, and link diagnostic samples. Verified the dated schedule export and anchored range. Paused the Windows install for review.
 

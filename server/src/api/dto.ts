@@ -1,3 +1,13 @@
+export const halfDayStatuses = [
+  "1st Half Annual",
+  "2nd Half Annual",
+  "1st Half UPL",
+  "2nd Half UPL",
+  "1st Half Forced Annual",
+  "2nd Half Forced Annual",
+  "1st Half Forced UPL",
+  "2nd Half Forced UPL",
+] as const;
 export const statuses = [
   "Scheduled",
   "Off Day",
@@ -9,13 +19,15 @@ export const statuses = [
   "Absent",
   "On Hold",
   "Not Hired",
+  "Inactive",
+  ...halfDayStatuses,
   "Unknown",
 ] as const;
 export type Status = (typeof statuses)[number];
 export type Code = string;
 export type Scope = "mine" | "covered" | "all";
 export type RuleId = "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "D7";
-export type Job = "roster" | "daily" | "all";
+export type Job = "roster" | "daily" | "all" | "attendance";
 export interface Agent {
   code: Code;
   firstName: string;
@@ -145,6 +157,8 @@ export interface SyncStatus {
   runs: SyncRun[];
   running: Job | null;
   attendanceCsvUpload: boolean;
+  attendancePaste?: boolean;
+  attendanceStale?: boolean;
   timezone: string;
   config: unknown;
   date: string;

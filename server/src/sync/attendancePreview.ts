@@ -14,8 +14,24 @@ export function summarizeAttendance(
   today: string,
   range: Window,
 ) {
+  return summarizeParsedAttendance(
+    db,
+    parseAttendance(rows, config, agentsOf(db), range),
+    config,
+    today,
+    range,
+  );
+}
+
+export function summarizeParsedAttendance(
+  db: Db,
+  parsed: ReturnType<typeof parseAttendance>,
+  config: Config,
+  today: string,
+  range: Window,
+  exactDates = false,
+) {
   const agents = agentsOf(db);
-  const parsed = parseAttendance(rows, config, agents, range);
   const {
     records,
     dates,
@@ -27,12 +43,15 @@ export function summarizeAttendance(
   } = parsed;
   const recordDates = records.map((row) => row.date).sort();
   const cover = records.length ? coveredRange(dates, range) : null;
+  const coveredDates = new Set(dates);
   const ruleRange = { from: range.from, to: today };
   const previous = attendanceOf(db, ruleRange);
   const next = cover
     ? [
-        ...previous.filter(
-          (row) => row.date < cover.from || row.date > cover.to,
+        ...previous.filter((row) =>
+          exactDates
+            ? !coveredDates.has(row.date)
+            : row.date < cover.from || row.date > cover.to,
         ),
         ...records.filter((row) => row.date <= today),
       ]
