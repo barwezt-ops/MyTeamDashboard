@@ -5,6 +5,7 @@ import { z } from "zod";
 import { statuses } from "./api/dto.js";
 import { parseDate } from "./parse/normalize.js";
 import { indexOf } from "./parse/columns.js";
+import { attendancePasteStatusMap } from "./parse/status.js";
 
 export const accessModes = ["public", "google", "file"] as const;
 
@@ -71,6 +72,17 @@ const schedule = source.extend({
 });
 const attendance = source.extend({
   enabled: z.boolean(),
+  paste: z
+    .object({
+      sheetId: z.string().regex(/^[\w-]+$/),
+      startHour: z.number().int().min(0).max(23).default(0),
+      endHour: z.number().int().min(0).max(24).default(24),
+    })
+    .refine(
+      (value) => value.startHour !== value.endHour,
+      "Set different attendance start and end hours",
+    )
+    .optional(),
   layout: z.enum(["long", "wide"]),
   long: z.object({
     columns: z
@@ -112,6 +124,7 @@ export const configSchema = z
       daily: z.string().refine(cron.validate, "Invalid cron expression"),
       weekly: z.string().refine(cron.validate, "Invalid cron expression"),
     }),
+    coachingCycleStartDay: z.number().int().min(1).max(28).default(21),
     syncWindow: z.object({
       pastDays: z.number().int().nonnegative(),
       futureDays: z.number().int().nonnegative(),
@@ -129,6 +142,12 @@ export const configSchema = z
   .superRefine((config, ctx) => {
     for (const key of ["master", "schedule", "attendance"] as const) {
       const item = config.sources[key];
+      if (
+        key === "attendance" &&
+        config.sources.attendance.paste &&
+        item.access === "google"
+      )
+        continue;
       if (item.access === "file") continue;
       const tabField =
         item.access === "google" || item.mode === "gviz" ? "tab" : "gid";
@@ -147,6 +166,16 @@ export const configSchema = z
         });
     }
     const { schedule, attendance } = config.sources;
+    if (
+      attendance.paste &&
+      attendance.access === "google" &&
+      (attendance.layout !== "long" || attendance.headerRows !== 1)
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["sources", "attendance"],
+        message: "The Attendance paste uses long layout with one header row",
+      });
     if (
       schedule.access === "google" &&
       (!schedule.stopColumn ||
@@ -194,12 +223,22 @@ export function loadConfig(
         ? JSON.parse(process.env.DASHBOARD_SOURCE_CONFIG)
         : JSON.parse(readFileSync(file, "utf8"));
     const config = configSchema.parse(raw);
+    if (
+      config.sources.attendance.paste &&
+      config.sources.attendance.access === "google"
+    )
+      config.statusMap = { ...attendancePasteStatusMap, ...config.statusMap };
     if (mode === "live" && !checkLink) {
       for (const key of ["master", "schedule", "attendance"] as const) {
         if (key === "attendance" && !config.sources.attendance.enabled)
           continue;
         if (
           config.sources[key].access !== "file" &&
+          !(
+            key === "attendance" &&
+            config.sources.attendance.access === "google" &&
+            config.sources.attendance.paste
+          ) &&
           !config.sources[key].sheetId
         )
           throw new Error(

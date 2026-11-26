@@ -22,7 +22,16 @@ import { runRules } from "../rules/index.js";
 import { jobRunner } from "./runJob.js";
 import { rosterChanges } from "./syncRoster.js";
 import { replaceSchedule } from "./syncSchedule.js";
-import { summarizeAttendance } from "./attendancePreview.js";
+import {
+  summarizeAttendance,
+  summarizeParsedAttendance,
+} from "./attendancePreview.js";
+import {
+  attendancePastePreview,
+  attendancePasteStale,
+  loadAttendancePaste,
+  storeAttendancePaste,
+} from "./attendancePaste.js";
 import { coveredRange, replaceAttendance } from "./syncAttendance.js";
 
 export function createSync(
@@ -33,6 +42,10 @@ export function createSync(
   dataDir = ":memory:",
 ) {
   const runner = jobRunner(db, now, mode === "live");
+  const usesPaste =
+    mode === "live" &&
+    config.sources.attendance.access === "google" &&
+    !!config.sources.attendance.paste;
   const today = () => localDate(config.timezone, now());
   const window = (date = today()): Window => ({
     from: plusDays(date, -config.syncWindow.pastDays),
@@ -116,8 +129,23 @@ export function createSync(
       })();
       return { rowsRead: rows.length, rowsKept: records.length, warnings };
     });
-  const attendance = (range: Window) =>
+  const attendance = (date: string, range: Window) =>
     runner.runStep("attendance", async () => {
+      if (usesPaste) {
+        const paste = await loadAttendancePaste(config, dataDir, agentsOf(db));
+        const changed = storeAttendancePaste(
+          db,
+          paste,
+          date,
+          now().toISOString(),
+          config.coachingCycleStartDay,
+        );
+        return {
+          rowsRead: paste.rowsRead,
+          rowsKept: paste.records.length,
+          warnings: changed ? [] : ["no change"],
+        };
+      }
       const { rows, rowsRead, archive } = await load("attendance");
       const { records, matchedRows, warnings, dates, invalidDateRows } =
         parseAttendance(rows, config, agentsOf(db), range);
@@ -185,6 +213,13 @@ export function createSync(
       const range = window(date);
       if (job === "roster")
         return (await roster(date)) && (await rules(date, range));
+      if (job === "attendance")
+        return (
+          usesPaste &&
+          config.sources.attendance.enabled &&
+          (await attendance(date, range)) &&
+          (await rules(date, range))
+        );
       const success = lastSuccess(db, "roster");
       if (
         job === "all" ||
@@ -194,7 +229,11 @@ export function createSync(
         if (!(await roster(date))) return false;
       }
       if (!(await schedule(range))) return false;
-      if (config.sources.attendance.enabled && !(await attendance(range)))
+      if (
+        config.sources.attendance.enabled &&
+        (!usesPaste || job === "all") &&
+        !(await attendance(date, range))
+      )
         return false;
       return rules(date, range);
     });
@@ -204,6 +243,23 @@ export function createSync(
     if (!agentsOf(db).length)
       throw new Error("Sync the roster before the dry run");
     const source = config.sources.attendance;
+    if (usesPaste) {
+      const date = today(),
+        range = window(date);
+      const paste = await loadAttendancePaste(config, dataDir, agentsOf(db));
+      const summary = attendancePastePreview(paste, config, date);
+      return db.transaction(() => ({
+        ...summarizeParsedAttendance(
+          db,
+          { ...summary, records: paste.records, dates: paste.dates },
+          config,
+          date,
+          range,
+          true,
+        ),
+        ...summary,
+      }))();
+    }
     if (mode === "live" && source.access !== "file" && !source.sheetId)
       throw new Error("Configure an attendance source before the dry run");
     const { rows } = await load("attendance", false).catch((error: unknown) => {
@@ -225,6 +281,11 @@ export function createSync(
       return previewPending;
     },
     start,
+    attendancePasteEnabled: usesPaste && config.sources.attendance.enabled,
+    attendanceStale: () =>
+      usesPaste &&
+      config.sources.attendance.enabled &&
+      attendancePasteStale(db, now()),
     today,
     window,
     get active() {

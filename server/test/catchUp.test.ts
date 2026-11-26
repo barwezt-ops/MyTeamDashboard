@@ -31,6 +31,50 @@ async function fetchFixture(url: Parameters<typeof globalThis.fetch>[0]) {
   );
 }
 
+it("runs attendance once per Cairo working-hour slot and avoids an active sync", async () => {
+  const config = liveConfig();
+  Object.assign(config.sources.attendance, {
+    access: "google",
+    enabled: true,
+    paste: { sheetId: "FakePaste", startHour: 12, endHour: 2 },
+  });
+  const db = openDb(":memory:");
+  let time = new Date("2026-11-26T11:59:00+02:00");
+  const now = () => time;
+  const log = db.prepare(
+    "INSERT INTO sync_log (job,started_at,finished_at,ok) VALUES (?,?,?,1)",
+  );
+  const stamp = now().toISOString();
+  log.run("daily", stamp, stamp);
+  log.run("roster", stamp, stamp);
+  const sync = createSync(db, config, "live", now);
+  const jobs = startLiveJobs(db, ":memory:", config, sync, now);
+  const active = vi.spyOn(sync, "active", "get");
+  const start = vi.spyOn(sync, "start").mockImplementation((job) => {
+    const time = now().toISOString();
+    log.run(job, time, time);
+    return Promise.resolve(true);
+  });
+  try {
+    expect(jobs.check()).toBeUndefined();
+    time = new Date("2026-11-26T12:00:00+02:00");
+    active.mockReturnValue("all");
+    expect(jobs.check()).toBeUndefined();
+    active.mockReturnValue(null);
+    expect(await jobs.check()).toBe(true);
+    expect(jobs.check()).toBeUndefined();
+    log.run("daily", "2026-11-26T14:00:00Z", "2026-11-26T14:00:00Z");
+    time = new Date("2026-11-27T01:15:00+02:00");
+    expect(await jobs.check()).toBe(true);
+    time = new Date("2026-11-27T02:00:00+02:00");
+    expect(jobs.check()).toBeUndefined();
+    expect(start.mock.calls).toEqual([["attendance"], ["attendance"]]);
+  } finally {
+    jobs.stop();
+    db.close();
+  }
+});
+
 it.each([
   ["10:00", "16:05", true, 21],
   ["16:00", "16:30", false, 21],

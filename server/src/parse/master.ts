@@ -4,7 +4,9 @@ import { checkColumns, indexOf, pick } from "./columns.js";
 import { codeOf, labelOf, parseDate } from "./normalize.js";
 
 export const sensitiveHeader = (header: string) =>
-  /phone|email|laptop|american/i.test(header);
+  /phone|email|laptop|american|comment|allow|wfm\s+commen\b|medical\s+per\s+day|internet\s+per\s+day/i.test(
+    header,
+  );
 
 export function masterHeaderMismatches(rows: string[][], config: Config) {
   const { columns, headerRows, expectHeaders } = config.sources.master;

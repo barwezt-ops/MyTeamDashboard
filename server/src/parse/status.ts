@@ -1,5 +1,38 @@
 import type { Status } from "../api/dto.js";
 import { labelOf } from "./normalize.js";
+export const attendancePasteStatusMap: Record<string, Status> = {
+  "active - site": "Present",
+  "active - remote": "Present",
+  off: "Off Day",
+  "public holiday": "Off Day",
+  dropped: "Inactive",
+  resigned: "Inactive",
+  terminated: "Inactive",
+  "not hired": "Not Hired",
+  "on hold": "On Hold",
+  sick: "Sick",
+  casual: "Casual",
+  annual: "PTO",
+  upl: "UPL",
+  awol: "Absent",
+  ncns: "Absent",
+  maternity: "PTO",
+  "marriage leave": "PTO",
+  "forced upl": "UPL",
+  "forced annual": "PTO",
+  "1st half ann": "1st Half Annual",
+  "1st half annual": "1st Half Annual",
+  "2nd half ann": "2nd Half Annual",
+  "2nd half annual": "2nd Half Annual",
+  "1st half upl": "1st Half UPL",
+  "2nd half upl": "2nd Half UPL",
+  "1st half forced ann": "1st Half Forced Annual",
+  "1st half forced annual": "1st Half Forced Annual",
+  "2nd half forced ann": "2nd Half Forced Annual",
+  "2nd half forced annual": "2nd Half Forced Annual",
+  "1st half forced upl": "1st Half Forced UPL",
+  "2nd half forced upl": "2nd Half Forced UPL",
+};
 export function parseStatus(
   raw: string,
   map: Record<string, Status>,
@@ -27,4 +60,4 @@ export function parseStatus(
   };
 }
 export const excluded = (status: Status | undefined) =>
-  status === "On Hold" || status === "Not Hired";
+  status === "On Hold" || status === "Not Hired" || status === "Inactive";

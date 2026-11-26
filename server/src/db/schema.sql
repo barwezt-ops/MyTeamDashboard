@@ -34,3 +34,15 @@ CREATE INDEX IF NOT EXISTS idx_sched_date ON schedule_days(date);
 CREATE INDEX IF NOT EXISTS idx_att_date ON attendance_days(date);
 CREATE INDEX IF NOT EXISTS idx_disc_state ON discrepancies(state, date);
 CREATE TABLE IF NOT EXISTS schedule_members (code TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS attendance_paste_details (
+  code TEXT NOT NULL, date TEXT NOT NULL, fields TEXT NOT NULL, PRIMARY KEY (date, code)
+);
+CREATE TABLE IF NOT EXISTS attendance_mtd_snapshots (
+  sync_date TEXT NOT NULL, code TEXT NOT NULL, cycle_start TEXT NOT NULL, cycle_end TEXT NOT NULL,
+  fields TEXT NOT NULL, PRIMARY KEY (sync_date, code)
+);
+CREATE INDEX IF NOT EXISTS idx_mtd_cycle ON attendance_mtd_snapshots(cycle_start, code, sync_date);
+CREATE TABLE IF NOT EXISTS attendance_paste_state (
+  id INTEGER PRIMARY KEY CHECK (id=1), fingerprint TEXT NOT NULL, last_changed_at TEXT NOT NULL,
+  team_code_count INTEGER
+);

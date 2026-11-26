@@ -5,6 +5,7 @@ import { agentsOf, attendanceOf, scheduleOf } from "../db/repo.js";
 import { parseAttendance } from "../parse/attendance.js";
 import type { Window } from "../parse/schedule.js";
 import { attendanceFindings } from "../rules/index.js";
+import { dayKey } from "../rules/context.js";
 import { coveredRange } from "./syncAttendance.js";
 
 export function summarizeAttendance(
@@ -14,8 +15,24 @@ export function summarizeAttendance(
   today: string,
   range: Window,
 ) {
+  return summarizeParsedAttendance(
+    db,
+    parseAttendance(rows, config, agentsOf(db), range),
+    config,
+    today,
+    range,
+  );
+}
+
+export function summarizeParsedAttendance(
+  db: Db,
+  parsed: ReturnType<typeof parseAttendance>,
+  config: Config,
+  today: string,
+  range: Window,
+  exactDates = false,
+) {
   const agents = agentsOf(db);
-  const parsed = parseAttendance(rows, config, agents, range);
   const {
     records,
     dates,
@@ -27,12 +44,17 @@ export function summarizeAttendance(
   } = parsed;
   const recordDates = records.map((row) => row.date).sort();
   const cover = records.length ? coveredRange(dates, range) : null;
+  const coveredPairs = new Set(
+    records.map((row) => dayKey(row.code, row.date)),
+  );
   const ruleRange = { from: range.from, to: today };
   const previous = attendanceOf(db, ruleRange);
   const next = cover
     ? [
-        ...previous.filter(
-          (row) => row.date < cover.from || row.date > cover.to,
+        ...previous.filter((row) =>
+          exactDates
+            ? !coveredPairs.has(dayKey(row.code, row.date))
+            : row.date < cover.from || row.date > cover.to,
         ),
         ...records.filter((row) => row.date <= today),
       ]

@@ -5,6 +5,24 @@ import { expect, it, vi } from "vitest";
 import { configSchema, loadConfig } from "../src/config.js";
 import { openDb } from "../src/db/db.js";
 
+it("defaults paste reads to all day and accepts windows that cross midnight", () => {
+  const config = loadConfig();
+  const attendance = config.sources.attendance;
+  expect(
+    configSchema.parse({
+      ...config,
+      sources: {
+        ...config.sources,
+        attendance: { ...attendance, paste: { sheetId: "FakePaste" } },
+      },
+    }).sources.attendance.paste,
+  ).toEqual({ sheetId: "FakePaste", startHour: 0, endHour: 24 });
+  attendance.paste = { sheetId: "FakePaste", startHour: 12, endHour: 2 };
+  expect(configSchema.parse(config).sources.attendance.paste).toEqual(
+    attendance.paste,
+  );
+});
+
 it("uses DASHBOARD_CONFIG_FILE for live sync and link checks", () => {
   const directory = mkdtempSync(join(tmpdir(), "team-dashboard-config-"));
   try {

@@ -6,6 +6,7 @@
   },
   "dateOrder": "MDY",
   "timezone": "Africa/Cairo",
+  "coachingCycleStartDay": 21,
   "jobs": {
     "daily": "0 16 * * *",
     "weekly": "0 12 * * 0"

@@ -8,6 +8,8 @@ import { checkSheetLink, sourceKeys } from "./fetch/checkLink.js";
 import { createSync } from "./sync/service.js";
 import { createInterface } from "node:readline/promises";
 import { googleLogin, googleLogout } from "./fetch/googleAuth.js";
+import { pasteTabs, readAttendancePasteTabs } from "./fetch/attendancePaste.js";
+import { attendancePasteStatusMap } from "./parse/status.js";
 
 async function hashPassword() {
   const input = createInterface({ input: process.stdin, terminal: false });
@@ -34,6 +36,30 @@ try {
   } else if (process.argv[2] === "google-logout") {
     await googleLogout(readDataDir());
     console.log("Google sign-in removed.");
+  } else if (
+    process.argv[2] === "test-link" &&
+    process.argv[3] === "--paste-tabs"
+  ) {
+    const paste = loadConfig(undefined, "live", true).sources.attendance.paste;
+    if (!paste)
+      throw new Error("Configure the private attendance paste workbook.");
+    const tabs = await readAttendancePasteTabs(
+      paste.sheetId,
+      readDataDir(),
+      [...pasteTabs],
+      true,
+    );
+    console.log(
+      JSON.stringify(
+        tabs.map(({ tab, headers, rows }) => ({
+          tab,
+          headers,
+          rowCount: rows.length,
+        })),
+        null,
+        2,
+      ),
+    );
   } else if (process.argv[2] === "test-link") {
     const link = process.argv[3];
     if (!link) throw new Error("Pass a Google Sheets view link");
@@ -98,6 +124,14 @@ try {
       );
     const env = readEnv();
     const config = loadConfig(undefined, env.SOURCE_MODE);
+    if (dryRun && process.argv.includes("--paste")) {
+      if (env.SOURCE_MODE !== "live" || !config.sources.attendance.paste)
+        throw new Error(
+          "Configure the private attendance paste workbook in live mode.",
+        );
+      config.sources.attendance.access = "google";
+      config.statusMap = { ...attendancePasteStatusMap, ...config.statusMap };
+    }
     const db = dryRun
       ? openExistingDbReadOnly(env.DATA_DIR)
       : openDb(env.DATA_DIR);
@@ -109,9 +143,11 @@ try {
         undefined,
         env.DATA_DIR,
       );
-      if (dryRun)
-        console.log(JSON.stringify(await sync.previewAttendance(), null, 2));
-      else if (job === "roster" || job === "daily" || job === "all") {
+      if (dryRun) {
+        const report = await sync.previewAttendance();
+        if (process.argv.includes("--paste")) delete report.flaggedFirstNames;
+        console.log(JSON.stringify(report, null, 2));
+      } else if (job === "roster" || job === "daily" || job === "all") {
         if (!(await sync.start(job))) process.exitCode = 1;
       }
     } finally {

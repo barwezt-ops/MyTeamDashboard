@@ -48,7 +48,7 @@ export function jobRunner(db: Db, now: () => Date, trackDaily = false) {
       let dailyId: number | bigint | undefined;
       return Promise.resolve()
         .then(() => {
-          if (trackDaily && job !== "roster") {
+          if (trackDaily && (job === "daily" || job === "all")) {
             dailyId = db
               .prepare(
                 "INSERT INTO sync_log (job,started_at) VALUES ('daily',?)",

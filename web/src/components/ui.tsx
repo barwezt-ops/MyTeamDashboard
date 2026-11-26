@@ -206,6 +206,8 @@ export function syncLabel(status: SyncStatus) {
     return { tone: "waiting", label: "Syncing " + status.running };
   if (Object.values(status.jobs).some((job) => job.lastRun?.ok === false))
     return { tone: "bad", label: "Last sync failed" };
+  if (status.attendanceStale)
+    return { tone: "bad", label: "Attendance paste is stale" };
   const roster = status.jobs.roster?.lastSuccessAt;
   const last = status.jobs.schedule?.lastSuccessAt ?? roster;
   if (!last) return { tone: "waiting", label: "Awaiting first sync" };
