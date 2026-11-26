@@ -8,7 +8,7 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import {
   navigation,
   ShellHeader,
@@ -116,27 +116,22 @@ function Dashboard({
         <div className="sidebar-bottom">
           <div className="user">
             <span className="avatar">
-              {user.rosterName
-                .split(/\s+/)
-                .map((part) => part[0])
-                .slice(0, 2)
-                .join("")}
+              {(user.firstName ?? user.rosterName.split(/\s+/)[0])
+                .slice(0, 1)
+                .toUpperCase()}
             </span>
             <span className="user-name">
               {user.firstName ?? user.rosterName.split(/\s+/)[0]}
             </span>
           </div>
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            onClick={logout}
-          >
-            <LogOut size={17} />
-          </button>
         </div>
       </aside>
       <div className="workspace">
         <div className="shell-tools">
+          <Link className="phone-brand" to="/">
+            Floor
+            <span aria-hidden="true" />
+          </Link>
           <button
             className="icon-button theme-button"
             aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
@@ -221,7 +216,10 @@ function Dashboard({
                 path="/reports"
                 element={<PendingScreen title="Reports" phase={8} />}
               />
-              <Route path="/settings" element={<Settings status={status} />} />
+              <Route
+                path="/settings"
+                element={<Settings status={status} logout={logout} />}
+              />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

@@ -24,8 +24,10 @@ function result(run: SyncRun | null | undefined) {
 }
 export function Settings({
   status,
+  logout,
 }: {
   status: { data?: SyncStatus; error?: string; reload: () => void };
+  logout: () => void;
 }) {
   const [request, setRequest] = useState<Job | null>(null);
   const [error, setError] = useState("");
@@ -61,7 +63,11 @@ export function Settings({
       <PageHeader
         title="Settings"
         description="Check source health and manage synchronization."
-      />
+      >
+        <button className="secondary" onClick={logout}>
+          Sign out
+        </button>
+      </PageHeader>
       <Section
         title="Sync now"
         action={<span className="muted">Cairo time</span>}

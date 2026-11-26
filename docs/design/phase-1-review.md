@@ -12,7 +12,7 @@ Open `/styleguide` after signing in. All component examples are synthetic. The H
 - Queues placeholder: [desktop](phase-1-queues-1440.png), [phone](phase-1-queues-390.png)
 - Reports placeholder: [desktop](phase-1-reports-1440.png), [phone](phase-1-reports-390.png)
 
-**Validation:** 181 unit tests passed, one existing skip; all five Playwright specs passed. Lint, typecheck and the isolated production build pass.
+**Validation:** 181 unit tests passed, one existing skip; all six Playwright specs passed. Lint, typecheck and the isolated production build pass.
 
 The reference and `plan-v2.md` are preserved byte for byte. Fonts are bundled locally with Fontsource; there are no runtime font requests to Google.
 
@@ -33,4 +33,6 @@ npm run smoke -- --workers=1
 
 Playwright builds the server into `server/dist.test` and the frontend into `web/dist`, then runs with in-memory fixture databases on ports 3210 and 3211. This keeps review builds out of the installed Windows release even when `server/dist` is a deployment junction. The build checks, browser flows, screenshots, local font requests, keyboard controls, contrast and page overflow are verified without live source access. Layout checks cover 1440, 1280, 1024, 768 and 390px.
 
-**Checkpoint:** Phase 2 is stopped pending the owner's design review. No PR is merged and no deployment is requested.
+**Review approved with five fixes:** sticky viewport sidebar with internal nav scrolling; initials from the greeting name; 28px phone KPI values with hidden sparklines at 420px and below; Floor in the phone header with logout in Settings; safe-area-aware clearance above the bottom nav. A browser regression test verifies tile overflow and the final content edge on every current page at 390px. Screenshots above are refreshed after these fixes.
+
+**Checkpoint:** The owner approved continuing Phases 2?8 on stacked branches, one PR per phase, without merging. No deployment is requested.

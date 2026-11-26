@@ -4,11 +4,11 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
-- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. Stop for design approval before Phase 2. See `plan-v2.md` and `docs/design/phase-1-review.md`.
+- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
-- **Tests on V2 Phase 1 branch:** 181 Vitest tests passed, one existing skip; all five Playwright specs passed. Lint, typecheck and the isolated production build pass. Synthetic screenshots are saved under `docs/design/`.
+- **Tests on V2 Phase 1 branch:** 181 Vitest tests passed, one existing skip; all six Playwright specs passed. Lint, typecheck and the isolated production build pass. Synthetic screenshots are saved under `docs/design/`.
 - **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
 - **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
@@ -114,6 +114,7 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 | Q6 | STL sign-off before anyone else uses the live dashboard | go-live | open |
 
 ## 8. Review feedback
+- **PR #20 design approved with five fixes:** viewport-sticky sidebar and internal nav scroll, greeting-name initials, smaller phone KPI values without sparklines, Floor phone wordmark/logout in Settings, and bottom-nav safe-area clearance. Regression coverage checks all current pages at 390px. Phases 2?8 are authorized after this gate.
 - **PR #1 review (2026-11-21): request changes → fixed → approved.** Must-fix: covered-range replacement, stable D5 id, AM/PM. Should-fix: scope unmatched wide-attendance warnings to team leads, any column letter + `expectHeaders` + refuse sensitive headers, `dateOrder`. Nits: "Not on schedule" separate from Unknown; copy schema.sql into dist. All addressed in 8 commits with tests.
 - **B–F review (2026-11-22): all approved.** Should-fix (done 2026-11-23): log nightly backup to `sync_log`. Nits open: see §6.
 - **PR #10 review (2026-11-24): fixes ready for review.** Compare successful runs with the scheduled Cairo slot, restore first-boot All, and adopt the secure-cookie fallback for loopback Tailscale hosts. Regression tests cover manual and scheduled runs, sleep/resume, bootstrap success and failure, and Windows, VM, and public-bind login behavior.
@@ -121,10 +122,13 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 
 ## 9. Changelog (append-only, newest first)
 
+### 2026-11-26 - Phase 1 approved review fixes
+- Addressed all five design notes, refreshed the synthetic desktop/phone screenshots, and added a browser regression test for sticky navigation, initials, KPI overflow, logout placement and the last content edge on each page. Six browser specs passed.
+
 ### 2026-11-26 - V2 Phase 1 design system and app shell
 
 - Saved the supplied build plan and mockup unchanged. Added the reusable component layer, styleguide, shell navigation, private-config greeting, local fonts and owner-only UI scope. Kept existing v1 screens operational and later screens as placeholders.
-- Validation: 181 unit tests passed with one existing skip; five Playwright specs, lint, typecheck and isolated production build passed. Added unit coverage for Cairo/cycle labels, deterministic avatars, owner-team defaults and source freshness. Playwright covers the styleguide, keyboard dialogs/search, source failures, contrast, five widths and synthetic screenshots. Test builds use an isolated server output; the installed app was not restarted or synced.
+- Validation: 181 unit tests passed with one existing skip; six Playwright specs, lint, typecheck and isolated production build passed. Added unit coverage for Cairo/cycle labels, deterministic avatars, owner-team defaults and source freshness. Playwright covers the styleguide, keyboard dialogs/search, source failures, contrast, five widths and synthetic screenshots. Test builds use an isolated server output; the installed app was not restarted or synced.
 
 ### 2026-11-26 — Attendance activated
 
