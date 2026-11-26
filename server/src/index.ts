@@ -3,11 +3,11 @@ import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { ZodError, z } from "zod";
+import { ZodError } from "zod";
 import { loadConfig, type Config } from "./config.js";
 import { bindHost, readEnv, type Env } from "./env.js";
 import { openDb, type Db } from "./db/db.js";
-import { lastDashboardSyncAt } from "./db/repo.js";
+import { agentsOf, lastDashboardSyncAt } from "./db/repo.js";
 import { auth } from "./auth.js";
 import { endpoint } from "./api/request.js";
 import { checkLinkRoutes } from "./api/checkLink.js";
@@ -64,37 +64,43 @@ export function createApp(env: Env, config: Config, db: Db, sync: SyncService) {
   app.post("/api/logout", login.logout);
   app.use("/api/backup", backupRoutes(db));
   app.use("/api/check-link", checkLinkRoutes(config, env.DATA_DIR));
-  app.post(
-    "/api/attendance/upload",
-    express.raw({
-      type: "application/octet-stream",
-      limit: csvLimit,
-      inflate: false,
-    }),
-    endpoint(
-      { body: z.instanceof(Buffer, { error: "Choose an attendance CSV." }) },
-      ({ body }, _req, res, next) => {
-        if (
-          env.SOURCE_MODE !== "live" ||
-          config.sources.attendance.access !== "file"
-        ) {
-          res.status(409).json({
-            error:
-              "Set attendance access to file in the live source configuration.",
-          });
-          return;
-        }
-        try {
-          uploadAttendanceCsv(body, config, env.DATA_DIR);
-          res.sendStatus(204);
-        } catch (error) {
-          if (error instanceof SourceAccessError)
-            res.status(422).json({ error: error.message });
-          else next(error);
-        }
-      },
-    ),
-  );
+  app.post("/api/attendance/upload", async (req, res, next) => {
+    if (
+      env.SOURCE_MODE !== "live" ||
+      config.sources.attendance.access !== "file"
+    ) {
+      res.status(409).json({
+        error:
+          "Set attendance access to file in the live source configuration.",
+      });
+      return;
+    }
+    if (
+      !req.is("application/octet-stream") ||
+      ![undefined, "identity"].includes(req.get("Content-Encoding"))
+    ) {
+      res.status(415).json({ error: "Choose an uncompressed attendance CSV." });
+      return;
+    }
+    if (Number(req.get("Content-Length")) > csvLimit) {
+      res.status(413).json({ error: "The attendance CSV exceeds 150 MB." });
+      return;
+    }
+    try {
+      await uploadAttendanceCsv(
+        req.iterator({ destroyOnReturn: false }),
+        config,
+        env.DATA_DIR,
+        agentsOf(db),
+      );
+      res.sendStatus(204);
+    } catch (error) {
+      req.resume();
+      if (error instanceof SourceAccessError)
+        res.status(error.status ?? 422).json({ error: error.message });
+      else next(error);
+    }
+  });
   app.use("/api", createRoutes(db, config, sync));
   app.use(express.static(webDist, { index: false }));
   app.get("*", (req, res) => {

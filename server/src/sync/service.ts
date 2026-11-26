@@ -40,7 +40,12 @@ export function createSync(
   });
   async function load(source: SourceKey, log = true) {
     const settings = config.sources[source];
-    const result: { rows: string[][]; bytes?: number; archive?: () => void } =
+    const result: {
+      rows: string[][];
+      rowsRead?: number;
+      bytes?: number;
+      archive?: () => void;
+    } =
       mode === "fixture"
         ? readFixture(
             source,
@@ -52,14 +57,14 @@ export function createSync(
         : settings.access === "google"
           ? await fetchGoogleRows(config, source, dataDir)
           : settings.access === "file"
-            ? loadSourceFile(config, source, dataDir)
+            ? await loadSourceFile(config, source, dataDir, agentsOf(db))
             : await fetchCsv(sourceUrl(settings));
     if (log)
       console.log(
         source +
           ": " +
           (result.bytes === undefined ? "" : result.bytes + " bytes, ") +
-          result.rows.length +
+          (result.rowsRead ?? result.rows.length) +
           " rows",
       );
     return result;
@@ -113,7 +118,7 @@ export function createSync(
     });
   const attendance = (range: Window) =>
     runner.runStep("attendance", async () => {
-      const { rows, archive } = await load("attendance");
+      const { rows, rowsRead, archive } = await load("attendance");
       const { records, matchedRows, warnings, dates, invalidDateRows } =
         parseAttendance(rows, config, agentsOf(db), range);
       if (archive && invalidDateRows)
@@ -128,7 +133,7 @@ export function createSync(
         archive?.();
       })();
       return {
-        rowsRead: rows.length,
+        rowsRead: rowsRead ?? rows.length,
         rowsKept: records.length,
         warnings:
           config.sources.attendance.access === "public"
