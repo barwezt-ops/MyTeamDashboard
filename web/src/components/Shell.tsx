@@ -21,7 +21,7 @@ import type { PageHead } from "../v2/context";
 export const navigation = [
   { to: "/", label: "Home", Icon: Home },
   { to: "/attendance", label: "Attendance", Icon: CalendarDays },
-  { to: "/roster", label: "Team", Icon: UsersRound },
+  { to: "/team", label: "Team", Icon: UsersRound },
   { to: "/coaching", label: "Coaching", Icon: MessageSquare },
   { to: "/quality", label: "Quality", Icon: Star },
   { to: "/queues", label: "Queues", Icon: ListFilter },
@@ -97,6 +97,7 @@ export function CommandPalette({
     ...navigation,
     { to: "/styleguide", label: "Styleguide" },
     { to: "/today", label: "Today list" },
+    { to: "/roster", label: "Roster changes" },
     { to: "/discrepancies", label: "Review discrepancies" },
     { to: "/trends", label: "Trends" },
     { to: "/coaching", label: "Log coaching" },

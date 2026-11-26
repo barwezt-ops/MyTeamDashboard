@@ -5,6 +5,7 @@ import { Avatar } from "../components/design";
 import { useShared } from "./context";
 import { message } from "../api";
 import { copyTable, type Table } from "./copy";
+import { shortDate } from "../../../server/src/v2/templates";
 
 export function Person({ name, code }: { name: string; code: string }) {
   const { openAgent } = useShared();
@@ -20,6 +21,31 @@ export function Person({ name, code }: { name: string; code: string }) {
       </span>
       {name}
     </button>
+  );
+}
+
+/** Newest first. Choosing a cycle reloads the screen for it. */
+export function CycleSelect({
+  cycles,
+  value,
+  onChange,
+}: {
+  cycles: { from: string; to: string }[];
+  value: string;
+  onChange: (from: string) => void;
+}) {
+  return (
+    <label>
+      <span>Cycle</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        {cycles.map((cycle, i) => (
+          <option key={cycle.from} value={cycle.from}>
+            {shortDate(cycle.from)} to {shortDate(cycle.to)}
+            {i ? "" : " (current)"}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

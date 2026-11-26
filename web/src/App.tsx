@@ -24,6 +24,8 @@ import {
 } from "./components/Shell";
 import { Styleguide } from "./views/Styleguide";
 import { Home } from "./views/Home";
+import { Attendance } from "./views/Attendance";
+import { Team } from "./views/Team";
 import { Toast } from "./components/design";
 import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
@@ -263,12 +265,8 @@ function Dashboard({
                   }
                 />
                 <Route path="/agent/:code" element={<Agent today={today} />} />
-                <Route
-                  path="/attendance"
-                  element={
-                    <Discrepancies scope={scope} openAgent={openAgent} />
-                  }
-                />
+                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/team" element={<Team />} />
                 <Route path="/styleguide" element={<Styleguide />} />
                 <Route
                   path="/coaching"

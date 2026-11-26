@@ -433,3 +433,339 @@ td.bad {
   padding-top: 7px;
   padding-bottom: 7px;
 }
+
+/* Toolbars and menus */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+  min-width: 0;
+}
+.toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
+}
+.toolbar label.check,
+label.check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text);
+  min-height: 34px;
+}
+.toolbar select,
+.toolbar input:not([type="checkbox"]) {
+  min-height: 34px;
+  max-width: 100%;
+  font-size: 13px;
+}
+.toolbar form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+.toolbar-end {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+}
+.menu {
+  position: relative;
+}
+.menu > summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+}
+.menu > summary::-webkit-details-marker {
+  display: none;
+}
+.menu > fieldset {
+  position: absolute;
+  right: 0;
+  z-index: 6;
+  width: 220px;
+  max-height: 320px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: 14px;
+}
+.screen-size {
+  height: 520px;
+}
+
+/* Attendance grid */
+.grid-scroll {
+  overflow: auto;
+  max-height: 640px;
+}
+.attendance-grid {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.attendance-grid th,
+.attendance-grid td {
+  padding: 4px 2px;
+  text-align: center;
+  border-bottom: 1px solid var(--line-soft);
+}
+.attendance-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  font-size: 10.5px;
+  letter-spacing: 0;
+  vertical-align: bottom;
+  padding-bottom: 6px;
+}
+.attendance-grid thead th span,
+.attendance-grid thead th b {
+  display: block;
+}
+.attendance-grid .grid-name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  text-align: left;
+  padding: 4px 12px 4px 18px;
+  min-width: 140px;
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font-size: 12px;
+}
+.attendance-grid thead .grid-name {
+  z-index: 3;
+}
+.attendance-grid .is-yesterday {
+  background: var(--surface-2);
+}
+.attendance-grid thead th.is-yesterday {
+  box-shadow: inset 0 3px 0 var(--gold);
+}
+.attendance-grid thead th.is-today b {
+  text-decoration: underline;
+}
+.attendance-grid td.dimmed .grid-cell {
+  opacity: 0.2;
+}
+.grid-cell {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  border-radius: 6px;
+}
+.grid-cell > span,
+.grid-cell .heat-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.grid-cell.is-planned .heat-cell {
+  background: transparent;
+  border-width: 1.5px;
+}
+.grid-cell.is-planned .heat-3 {
+  border-color: var(--line);
+  border-style: dashed;
+}
+.grid-cell.is-planned .heat-4 {
+  border-color: var(--info);
+}
+.mark {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  pointer-events: none;
+}
+.mark.late {
+  top: 0;
+  right: 0;
+  border-width: 0 8px 8px 0;
+  border-color: transparent #7a3d0c transparent transparent;
+  border-top-right-radius: 4px;
+}
+.mark.missing {
+  bottom: 0;
+  right: 0;
+  border-width: 0 0 8px 8px;
+  border-color: transparent transparent #5e1d14 transparent;
+  border-bottom-right-radius: 4px;
+}
+.grid-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.grid-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.grid-legend .mark {
+  position: static;
+}
+.attendance-grid td.total {
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.attendance-grid tfoot th,
+.attendance-grid tfoot td {
+  position: sticky;
+  background: var(--surface);
+  font-size: 11px;
+  height: 26px;
+}
+.attendance-grid tfoot .foot-first > * {
+  bottom: 26px;
+  border-top: 1px solid var(--line);
+}
+.attendance-grid tfoot .foot-second > * {
+  bottom: 0;
+}
+.attendance-grid tfoot .grid-name {
+  z-index: 2;
+}
+.grid-tip {
+  position: fixed;
+  z-index: 8;
+  width: 260px;
+  padding: 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--control-border);
+  border-radius: 10px;
+  pointer-events: none;
+  font-size: 12px;
+}
+.day-details {
+  margin: 8px 0 16px;
+  display: grid;
+  gap: 4px;
+}
+.day-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.day-details dt {
+  color: var(--muted);
+}
+.day-details dd {
+  margin: 0;
+  text-align: right;
+}
+.grid-tip .day-details {
+  margin-bottom: 0;
+}
+.day-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.day-status .heat-cell {
+  width: 24px;
+}
+
+/* Team table */
+.sort-button {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+.delta {
+  /* Keeps the hidden direction text inside the scrolling table. */
+  position: relative;
+  display: block;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.delta.good {
+  color: var(--good);
+}
+.delta.warn {
+  color: var(--warn-text);
+}
+tr.clickable {
+  cursor: pointer;
+}
+tr.clickable:hover td {
+  background: var(--surface-2);
+}
+tr.inactive td {
+  color: var(--muted);
+}
+td .table-person a {
+  font-weight: 600;
+}
+td.numeric {
+  white-space: nowrap;
+}
+tbody.compact td {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+tbody.compact .delta {
+  display: inline;
+  margin-left: 6px;
+}
+
+.menu > summary.secondary {
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 600;
+}
+table[aria-label="Team"] td {
+  white-space: nowrap;
+}
+table[aria-label="Team"] :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+table[aria-label="Team"] thead th:first-child {
+  z-index: 2;
+}
+@media (max-width: 767px) {
+  table[aria-label="Team"] td:first-child .severity,
+  table[aria-label="Team"] td:first-child .avatar {
+    display: none;
+  }
+}
