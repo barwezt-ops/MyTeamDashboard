@@ -4,7 +4,7 @@ _Last updated: 2026-11-26 for V2 Phase 1 design review._
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
-- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`. Stop for design approval before Phase 2. See `plan-v2.md` and `docs/design/phase-1-review.md`.
+- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. Stop for design approval before Phase 2. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
 - **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
