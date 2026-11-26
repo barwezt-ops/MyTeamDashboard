@@ -1,3 +1,5 @@
+import { readSettings } from "../v2/settings.js";
+import { v2Routes } from "../v2/routes.js";
 import { Router } from "express";
 import { z } from "zod";
 import type { Db } from "../db/db.js";
@@ -88,6 +90,7 @@ function summary(agent: Agent) {
 }
 export function createRoutes(db: Db, config: Config, sync: SyncService) {
   const router = Router();
+  router.use("/v2", v2Routes(db, config, sync.today));
   const findAgent = (code: string) =>
     agentsOf(db).find((agent) => agent.code === code);
   function filtered(query: z.output<typeof filters>) {
@@ -127,7 +130,8 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     endpoint({}, (_input, _req, res) =>
       res.json({
         ...config.me,
-        coachingCycleStartDay: config.coachingCycleStartDay,
+        coachingCycleStartDay: readSettings(db, config.coachingCycleStartDay)
+          .cycleStartDay,
       }),
     ),
   );
@@ -451,6 +455,8 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         "rules",
         "backup",
         "daily",
+        "lineQueue",
+        "qa",
       ];
       const keys = ["master", "schedule", "attendance"] as SourceKey[];
       const date = sync.today();
@@ -476,28 +482,48 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
             { lastRun: lastRun(db, job), lastSuccessAt: lastSuccess(db, job) },
           ]),
         ),
-        sources: keys.map((key) => {
-          const source = config.sources[key];
-          const url =
-            source.sheetId &&
-            source.access !== "file" &&
-            !(
-              key === "attendance" &&
-              source.access === "google" &&
-              config.sources.attendance.paste
-            )
-              ? "https://docs.google.com/spreadsheets/d/" +
-                source.sheetId +
-                "/edit#gid=" +
-                source.gid
-              : null;
-          return {
-            job: key === "master" ? "roster" : key,
-            label: source.label,
-            url,
-            enabled: key !== "attendance" || config.sources.attendance.enabled,
-          };
-        }),
+        sources: [
+          ...keys.map((key) => {
+            const source = config.sources[key];
+            const url =
+              source.sheetId &&
+              source.access !== "file" &&
+              !(
+                key === "attendance" &&
+                source.access === "google" &&
+                config.sources.attendance.paste
+              )
+                ? "https://docs.google.com/spreadsheets/d/" +
+                  source.sheetId +
+                  "/edit#gid=" +
+                  source.gid
+                : null;
+            return {
+              job: key === "master" ? "roster" : key,
+              label: source.label,
+              url,
+              enabled:
+                key !== "attendance" || config.sources.attendance.enabled,
+            };
+          }),
+          ...(["lineQueue", "qa"] as const).flatMap((key) => {
+            const source = config.sources[key];
+            return source?.enabled
+              ? [
+                  {
+                    job: key,
+                    label: source.label,
+                    url:
+                      "https://docs.google.com/spreadsheets/d/" +
+                      source.sheetId +
+                      "/edit#gid=" +
+                      source.gid,
+                    enabled: true,
+                  },
+                ]
+              : [];
+          }),
+        ],
         running: sync.active,
         attendancePaste: sync.attendancePasteEnabled,
         attendanceStale: sync.attendanceStale(),

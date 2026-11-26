@@ -4,6 +4,7 @@ import { api, message } from "../api";
 import { ErrorNotice, Section } from "../components/ui";
 
 const sections = {
+  owner: "Coaching, follow-ups, private notes, dismissals, settings and lines",
   notes: "Notes",
   rosterSnapshots: "Roster snapshots",
   rosterEvents: "Roster events",
@@ -80,7 +81,9 @@ export function Backups() {
             </p>
             <p>
               Confirming replaces notes and roster history and reapplies the
-              saved discrepancy states and TL comments.
+              saved discrepancy states and TL comments. V2 backups also replace
+              coaching records, follow-ups, private notes, dismissals, settings
+              and line history; older backups preserve those records.
             </p>
             <ul>
               {(Object.keys(sections) as (keyof typeof sections)[]).map(
