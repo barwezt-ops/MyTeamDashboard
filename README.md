@@ -105,6 +105,26 @@ Environment keys live in `.env.example`. The optional `DASHBOARD_SOURCE_CONFIG` 
 
 The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and discrepancy sync runs at 16:00 Cairo. The app refreshes the roster first when its last successful sync is more than seven days old.
 
+## V2 sources: line/queue tab and QA
+
+Both are optional, off by default and read by public CSV link. Put real sheet and tab IDs only in your private `config/sources.local.json`.
+
+**Line/queue tab.** Check the headers first, then set `sources.lineQueue` with `enabled: true`, `sheetId` and `gid`. The tab needs `Code`, `Line`, `Account` and one column per weekday (`Monday` or `Mon`). If it labels the first three differently, set `headers: { "code": "…", "line": "…", "account": "…" }`. Only those columns are kept, for your team. Each change of line, account or weekly template is added to history. The weekly template is used only when the dated schedule has no entry (no row or a blank cell).
+
+```text
+npm run test-link -- '<view-link>' --source=lineQueue
+```
+
+**QA sheet.** Run the check, which prints headers and a row count only. Stop there. If the report says `stop`, the sheet has headers that look like patient or caller data.
+
+```text
+npm run test-link -- '<view-link>' --source=qa
+```
+
+Mapping needs your approval. Only agent code, evaluation date, score (%) and form can be mapped: set `columns: { "code", "date", "score", "form" }` to the exact header names, then `mappingApproved: true` and `enabled: true`. Use `--header-row=N` on the check if headers are not on row 1.
+
+A failure in either source is reported as a failed sync, after attendance and the discrepancy rules have already run.
+
 ## Free VM deploy (optional, needs a card)
 
 ### 1. Create the project and budget
