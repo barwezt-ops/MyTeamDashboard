@@ -60,7 +60,7 @@ export function homeSummary(input: {
       : "Nothing urgent and nothing due. The team is on track.";
   const first = `${people(urgent)} ${urgent === 1 ? "needs" : "need"} you${rush ? ` before the ${spokenTime(rush)} rush` : " today"}.`;
   return soon
-    ? `${first} ${people(soon)} more ${soon === 1 ? "has" : "have"} something due soon.`
+    ? `${first} ${sentenceCase(numberWord(soon))} more ${soon === 1 ? "person has" : "people have"} something due soon.`
     : `${first} Everyone else is on track.`;
 }
 
@@ -107,6 +107,35 @@ export function coachingPace(done: number, due: number, daysLeft: number) {
     perDay <= 1 ? "one a day or fewer" : `about ${Math.ceil(perDay)} a day`
   }.`;
 }
+
+/** "Avery S." keeps rows short without losing who is meant. */
+export function shortName(agent: { fullName: string; firstName: string }) {
+  const parts = agent.fullName.trim().split(/\s+/);
+  const first = agent.firstName || parts[0] || "";
+  return parts.length > 1 ? `${first} ${parts[parts.length - 1][0]}.` : first;
+}
+
+/** "4:01 PM" from a 24-hour "16:01". */
+export function clockTime(time: string | null) {
+  if (!time) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${hour < 12 ? "AM" : "PM"}`;
+}
+
+export function weekCaption(exceptions: number, days: number) {
+  return exceptions
+    ? `${plural(exceptions, "late, missing or absent day")} in the last ${days} days.`
+    : `No late, missing or absent days in the last ${days} days.`;
+}
+
+export function shoutOut(names: string[], from: string, to: string) {
+  return names.length
+    ? `Shout-out: ${names.join(", ")}. No lateness, missing time or unplanned absence from ${shortDate(from)} to ${shortDate(to)}.`
+    : "";
+}
+
+export const behindPace = (count: number) =>
+  `${plural(count, "agent")} behind coaching pace`;
 
 export function shortDate(date: string) {
   return new Intl.DateTimeFormat("en-GB", {

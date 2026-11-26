@@ -140,7 +140,7 @@ describe("generated sentences", () => {
     ];
     expect(sentences).toEqual([
       "Two people need you before the 4 o'clock rush. Everyone else is on track.",
-      "One person needs you before the 3:45 rush. Three people more have something due soon.",
+      "One person needs you before the 3:45 rush. Three more people have something due soon.",
       "Nothing urgent. One person has something due soon.",
       "Nothing urgent and nothing due. The team is on track.",
       "Climbing this week. Worst day was yesterday, 62 minutes.",

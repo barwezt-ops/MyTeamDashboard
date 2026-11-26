@@ -16,6 +16,8 @@ export type Flag = {
   severity: Severity;
   reason: string;
   detail: string;
+  /** What follows the agent's name in the urgent strip. */
+  clause?: string;
   /** Changes whenever the facts do. Sent back when dismissing. */
   token: string;
   action: "Coach" | "Review" | "View";
@@ -69,7 +71,17 @@ export function candidateFlags(input: FlagInput): Candidate[] {
     reason: string,
     detail: string,
     facts: string[],
-  ) => flags.push({ kind, severity, action, reason, detail, facts });
+    clause?: string,
+  ) =>
+    flags.push({
+      kind,
+      severity,
+      action,
+      reason,
+      detail,
+      facts,
+      ...(severity === "URGENT" && clause ? { clause } : {}),
+    });
 
   for (const item of input.followUps) {
     const overdue = item.date < today;
@@ -108,6 +120,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
         ...numbered("incident", counts.lateCount),
         ...late.map((day) => `${day.date}:${Math.round(day.late!)}`),
       ],
+      `reached ${plural(counts.lateCount, "lateness incident")} (flag at ${settings.latenessIncidents})`,
     );
   }
   const missing = cycle.filter(isMissing);
@@ -124,6 +137,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       `${duration(counts.missingMinutes)} missing this cycle`,
       `Flag at ${duration(settings.missingMinutes)}`,
       missingFacts(missing),
+      `has ${duration(counts.missingMinutes)} missing this cycle`,
     );
   if (settings.missingDays !== null && settings.missingWindowDays !== null) {
     // Attendance arrives for the previous day, so the window ends yesterday.
@@ -139,6 +153,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
         `Missing time on ${recent.length} of the last ${settings.missingWindowDays} days`,
         `${duration(recent.reduce((s, day) => s + day.missing!, 0))} total · flag at ${settings.missingDays}`,
         missingFacts(recent),
+        `had missing time on ${recent.length} of the last ${settings.missingWindowDays} days`,
       );
   }
   const streak = breakStreak(days);
@@ -153,6 +168,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       `Break exceeded ${streak.length} days running`,
       `Flag at ${settings.breakConsecutive}`,
       streak.map((day) => day.date),
+      `exceeded breaks ${streak.length} days running`,
     );
   const absent = cycle.filter((day) => day.absence);
   if (absent.length) {
@@ -166,6 +182,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       absent.map((day) => `${day.absence} ${shortDate(day.date)}`).join(" · ") +
         (urgent ? ` · flag at ${settings.absentDays}` : ""),
       absent.map((day) => `${day.date}:${day.absence}`),
+      `has ${plural(absent.length, "NCNS/AWOL day")} this cycle`,
     );
   }
   if (
@@ -180,6 +197,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       `QA cycle average ${qa.average.toFixed(1)}%`,
       `Flag below ${settings.qaBelow}%`,
       qa.evaluations.map((row) => `${row.date}:${row.score}`),
+      `has a QA average of ${qa.average.toFixed(1)}% (flag below ${settings.qaBelow}%)`,
     );
   if (
     qa.connected &&
@@ -195,6 +213,7 @@ export function candidateFlags(input: FlagInput): Candidate[] {
         ? `Last evaluation ${shortDate(qa.latest.date)}`
         : "No evaluations recorded",
       [qa.latest?.date ?? "never"],
+      `has had no QA evaluation in ${settings.noQaDays} days`,
     );
   const { done, expected } = input.coaching;
   const target = settings.coachingTarget;

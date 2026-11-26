@@ -15,6 +15,7 @@ import {
   settingsSchema,
 } from "./settings.js";
 import { dashboardData } from "./data.js";
+import { counts, homeView } from "./home.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -41,6 +42,15 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
       ({ query }, _req, res) =>
         res.json(dashboardData(db, config, today(), query.cycle)),
     ),
+  );
+  const current = () => dashboardData(db, config, today());
+  router.get(
+    "/home",
+    endpoint({}, (_input, _req, res) => res.json(homeView(current()))),
+  );
+  router.get(
+    "/counts",
+    endpoint({}, (_input, _req, res) => res.json(counts(current()))),
   );
   router.get(
     "/settings",
