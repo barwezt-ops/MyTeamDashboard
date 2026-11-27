@@ -133,14 +133,16 @@ export function ProgressRing({
           r="50"
           strokeDasharray={`${circumference * ratio(done)} ${circumference}`}
         />
-        <circle
-          className="ring-pace"
-          cx="61"
-          cy="61"
-          r="50"
-          strokeDasharray={`2 ${circumference - 2}`}
-          strokeDashoffset={-circumference * ratio(expected)}
-        />
+        {expected > 0 && (
+          <circle
+            className="ring-pace"
+            cx="61"
+            cy="61"
+            r="50"
+            strokeDasharray={`2 ${circumference - 2}`}
+            strokeDashoffset={-circumference * ratio(expected)}
+          />
+        )}
       </svg>
       <div aria-hidden="true">
         <strong>

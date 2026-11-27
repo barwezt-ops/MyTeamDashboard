@@ -2,7 +2,12 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import type { Column, TeamView } from "../../../server/src/v2/team";
 import type { V2Settings } from "../../../server/src/v2/settings";
-import { duration, shortDate } from "../../../server/src/v2/templates";
+import {
+  breakOver,
+  clockTime,
+  duration,
+  fullDate,
+} from "../../../server/src/v2/templates";
 import { api, message } from "../api";
 import { Avatar, SegmentedControl, Severity } from "../components/design";
 import { DataTable, Empty, ErrorNotice, Section } from "../components/ui";
@@ -17,8 +22,10 @@ type Saved = V2Settings["views"][number];
 const text = (column: Column, value: Row["values"][string] | undefined) => {
   if (value === null || value === undefined) return "—";
   if (column.kind === "duration") return duration(Number(value));
+  if (column.kind === "time") return clockTime(String(value))!;
+  if (column.kind === "break") return breakOver(Number(value));
   if (column.kind === "percent") return `${Number(value).toFixed(1)}%`;
-  if (column.kind === "date") return shortDate(String(value));
+  if (column.kind === "date") return fullDate(String(value));
   return String(value);
 };
 
@@ -190,6 +197,8 @@ function Table({ view }: { view: Team }) {
                 rows: rows.map((row) =>
                   columns.map((column) => {
                     const value = row.values[column.key];
+                    if (column.kind === "break" && typeof value === "number")
+                      return breakOver(value);
                     return value === null || value === undefined
                       ? ""
                       : String(
@@ -365,7 +374,7 @@ export function Team() {
           onChange={(from) => setParams({ cycle: from })}
         />
         <span className="toolbar-end">
-          <Link className="panel-link" to="/roster">
+          <Link className="panel-link" to="/reports#roster-changes">
             Roster changes →
           </Link>
         </span>

@@ -173,11 +173,7 @@ export function coachingView(data: DashboardData) {
     totals,
     daysToFinish,
     pace: say.coachingPace(totals.done, totals.total, daysToFinish),
-    summary: `${totals.done} of ${totals.total} done this cycle. ${
-      totals.behind
-        ? `${say.plural(totals.behind, "agent")} behind pace.`
-        : "Everyone is on pace."
-    }`,
+    summary: `${totals.done} of ${totals.total} done this cycle. ${say.coachingStanding(totals)}`,
     agents,
     followUps: followUps(data),
     history: rows,
@@ -238,9 +234,18 @@ export function prepView(data: DashboardData, code: string) {
     section(
       "Break exceeds",
       breaks.length
-        ? `Exceeded on ${say.plural(breaks.length, "day")}.`
+        ? [
+            `Exceeded on ${say.plural(breaks.length, "day")}`,
+            say.overInTotal(sum(breaks, "breakMinutes")),
+          ]
+            .filter(Boolean)
+            .join(", ") + "."
         : "No exceeded break recorded.",
-      dayLines(breaks, () => "exceeded"),
+      dayLines(breaks, (day) =>
+        day.breakMinutes
+          ? `${say.breakOver(day.breakMinutes)} over`
+          : "exceeded",
+      ),
     ),
     section(
       "Quality",
@@ -297,7 +302,7 @@ export function prepView(data: DashboardData, code: string) {
         label: `${say.shortDate(day.date)}: ${[
           isLate(day) ? `late ${say.duration(day.late)}` : "",
           isMissing(day) ? `missing ${say.duration(day.missing)}` : "",
-          day.breakExceeded ? "break exceeded" : "",
+          day.breakExceeded ? say.breakIncident(day.breakMinutes) : "",
           day.absence ?? "",
         ]
           .filter(Boolean)
