@@ -6,7 +6,7 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
 }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let interrupt = true;
-  await page.route(/\/api\/today(?:\?|$)/, (route) => {
+  await page.route(/\/api\/v2\/grid(?:\?|$)/, (route) => {
     if (!interrupt) return route.continue();
     return route.fulfill({
       status: 503,
@@ -17,7 +17,7 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).press("Enter");
   await expect(page.locator(".sidebar")).toBeVisible();
-  await page.goto("/today");
+  await page.goto("/attendance");
   await expect(page.getByRole("alert")).toHaveText(
     "Fixture connection interrupted",
   );
@@ -35,12 +35,17 @@ test("390 px layouts, keyboard controls, and recovery from a failed load", async
     });
   }
 
-  const agents = page.getByRole("table", { name: "Agents" });
-  await expect(agents.getByRole("row").first()).toHaveCSS("display", "grid");
-  await expect(page.getByLabel("Sort agents")).toBeVisible();
-  await screenshot("today");
+  const grid = page.getByRole("region", { name: "Attendance grid" });
+  await expect(grid.locator("tbody tr").first()).toBeVisible();
+  await screenshot("attendance");
+  await page.getByRole("link", { name: "Trends", exact: true }).press("Enter");
+  await expect(
+    page.getByRole("table", { name: "Agent trend counts" }),
+  ).toBeVisible();
+  await screenshot("attendance-trends");
+  await page.getByRole("link", { name: "Grid", exact: true }).press("Enter");
 
-  const agent = agents.getByRole("button", { name: "Riley", exact: true });
+  const agent = grid.getByRole("button", { name: "Open Riley S." });
   await agent.press("Enter");
   const drawer = page.getByRole("dialog", { name: "Agent profile" });
   await expect(

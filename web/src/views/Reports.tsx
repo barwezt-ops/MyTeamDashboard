@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import type {
   attendanceEmail,
   cycleSummary,
@@ -241,6 +241,11 @@ export function Reports() {
     "/v2/reports" + (params.size ? "?" + params : ""),
   );
   const view = result.data;
+  const { hash } = useLocation();
+  const loaded = !!view;
+  useEffect(() => {
+    if (loaded && hash) document.querySelector(hash)?.scrollIntoView();
+  }, [loaded, hash]);
   useHead("Reports", "Copy it or take it as a CSV. Nothing is sent anywhere.");
   if (!view)
     return result.error ? (
@@ -355,6 +360,7 @@ export function Reports() {
         )}
       </Section>
       <Mpr key={view.cycle.from} data={view} />
+      <div id="roster-changes" />
       <Section
         title="Roster changes"
         number="05"
@@ -374,11 +380,6 @@ export function Reports() {
         ) : (
           <Empty>No new hires, leavers or moves in this cycle.</Empty>
         )}
-        <div className="panel-body">
-          <Link className="panel-link" to="/roster">
-            Full roster view →
-          </Link>
-        </div>
       </Section>
     </>
   );

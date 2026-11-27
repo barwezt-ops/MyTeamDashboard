@@ -374,7 +374,7 @@ export function Team() {
           onChange={(from) => setParams({ cycle: from })}
         />
         <span className="toolbar-end">
-          <Link className="panel-link" to="/roster">
+          <Link className="panel-link" to="/reports#roster-changes">
             Roster changes →
           </Link>
         </span>

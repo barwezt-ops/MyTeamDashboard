@@ -99,10 +99,8 @@ export function CommandPalette({
   const screens = [
     ...navigation,
     { to: "/styleguide", label: "Styleguide" },
-    { to: "/today", label: "Today list" },
-    { to: "/roster", label: "Roster changes" },
+    { to: "/attendance?view=trends", label: "Attendance trends" },
     { to: "/discrepancies", label: "Review discrepancies" },
-    { to: "/trends", label: "Trends" },
     { to: "/coaching?view=log", label: "Log coaching" },
   ].filter((item) => matches(item.label));
   const people =

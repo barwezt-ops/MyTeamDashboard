@@ -130,7 +130,7 @@ A failure in either source is reported as a failed sync, after attendance and th
 | Screen     | What it answers                                                              |
 | ---------- | ---------------------------------------------------------------------------- |
 | Home       | Yesterday's results next to today's plan, and who needs you                  |
-| Attendance | Every agent and day of a cycle, with CSV export                              |
+| Attendance | Every agent and day of a cycle with CSV export, and date-range trends        |
 | Team       | One row per agent, sortable, with saved views and changes against last cycle |
 | Coaching   | Pace, prep sheets, the coaching log, follow-ups, history and fairness counts |
 | Quality    | QA scores, once the QA sheet is mapped                                       |

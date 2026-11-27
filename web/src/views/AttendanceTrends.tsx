@@ -1,5 +1,6 @@
+// Counts over a chosen date range: leave and absence by type, every status by
+// day, and each agent's totals with their discrepancies.
 import { useState } from "react";
-import { ArrowDownUp } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -13,7 +14,6 @@ import {
 import {
   statuses,
   trendStatuses,
-  type Scope,
   type TrendStatus,
   type TrendsData,
 } from "../../../server/src/api/dto";
@@ -21,43 +21,34 @@ import {
   trendRange,
   type TrendPeriod,
 } from "../../../server/src/api/trendRange";
-import { query, useApi } from "../api";
-import {
-  DataTable,
-  Empty,
-  ErrorNotice,
-  Loading,
-  PageHeader,
-  Section,
-  StatCard,
-} from "../components/ui";
+import { shortDate } from "../../../server/src/v2/templates";
+import { query } from "../api";
+import { SegmentedControl } from "../components/design";
+import { DataTable, Empty, ErrorNotice, Section } from "../components/ui";
 import { statusColors } from "../theme";
-const presets = [
+import { useView } from "../v2/context";
+import { Person, Skeleton } from "../v2/parts";
+
+const presets: [TrendPeriod, string][] = [
   ["7", "Last 7 days"],
   ["30", "Last 30 days"],
   ["90", "Last 90 days"],
   ["month", "Month to date"],
-] as const;
+];
 type Sort = "name" | "discrepancies" | TrendStatus;
 
-export function Trends({
-  scope,
-  today,
-  openAgent,
-}: {
-  scope: Scope;
-  today: string;
-  openAgent: (code: string) => void;
-}) {
+export default function AttendanceTrends({ today }: { today: string }) {
   const [period, setPeriod] = useState<TrendPeriod>("30");
   const [sort, setSort] = useState<{ field: Sort; direction: number }>({
     field: "name",
     direction: 1,
   });
-  const result = useApi<TrendsData>(
-    "/trends" + query({ scope, ...trendRange(today, period) }),
+  const range = trendRange(today, period);
+  const result = useView<TrendsData>(
+    "/trends" + query({ scope: "mine", ...range }),
   );
-  const rows = (result.data?.agents ?? []).slice().sort((a, b) => {
+  const data = result.data;
+  const rows = (data?.agents ?? []).slice().sort((a, b) => {
     const { field, direction } = sort;
     if (field === "name")
       return a.firstName.localeCompare(b.firstName) * direction;
@@ -68,71 +59,88 @@ export function Trends({
       a.firstName.localeCompare(b.firstName)
     );
   });
-  const sortButton = (field: Sort, label: string) => (
-    <button
-      className="sort"
-      onClick={() =>
-        setSort((old) => ({
-          field,
-          direction:
-            old.field === field ? -old.direction : field === "name" ? 1 : -1,
-        }))
+  const header = (field: Sort, label: string) => (
+    <th
+      key={field}
+      className={field === "name" ? "" : "numeric"}
+      aria-sort={
+        sort.field !== field
+          ? "none"
+          : sort.direction > 0
+            ? "ascending"
+            : "descending"
       }
     >
-      {label}
-      <ArrowDownUp size={13} />
-    </button>
+      <button
+        type="button"
+        className="sort-button"
+        onClick={() =>
+          setSort((old) => ({
+            field,
+            direction:
+              old.field === field ? -old.direction : field === "name" ? 1 : -1,
+          }))
+        }
+      >
+        {label}
+        <span aria-hidden="true">
+          {sort.field !== field ? "" : sort.direction > 0 ? " ↑" : " ↓"}
+        </span>
+      </button>
+    </th>
   );
-  const chartStatuses = statuses.filter((status) =>
-    result.data?.daily.some((row) => row[status] > 0),
+  const charted = statuses.filter((status) =>
+    data?.daily.some((row) => row[status] > 0),
   );
+  const flagged = rows.some((row) => row.badges.length > 0);
   return (
     <>
-      <PageHeader
-        title="Trends"
-        description="Daily attendance and schedule counts."
-      />
-      <div className="presets" aria-label="Date range">
-        {presets.map(([value, label]) => (
-          <button
-            className={"secondary " + (period === value ? "active" : "")}
-            key={value}
-            aria-pressed={period === value}
-            onClick={() => setPeriod(value)}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="toolbar">
+        <SegmentedControl
+          label="Date range"
+          value={presets.find(([value]) => value === period)![1]}
+          options={presets.map(([, label]) => label)}
+          onChange={(label) =>
+            setPeriod(presets.find(([, name]) => name === label)![0])
+          }
+        />
+        <span className="toolbar-end panel-note">
+          {shortDate(range.from)} to {shortDate(range.to)}
+        </span>
       </div>
       {result.error && (
         <ErrorNotice retry={result.reload}>{result.error}</ErrorNotice>
       )}
-      {!result.data && !result.error && <Loading />}
-      {result.data && (
+      {!data && !result.error && (
+        <Skeleton className="screen-size" label="trends" />
+      )}
+      {data && (
         <>
-          <div className="stats">
-            {trendStatuses.map((label) => (
-              <StatCard
-                key={label}
-                label={label}
-                count={result.data!.totals[label]}
-                tone={statusColors[label]}
-              />
-            ))}
-          </div>
+          <Section title="Leave and absence">
+            <dl className="scorecard">
+              {trendStatuses.map((status) => (
+                <div key={status}>
+                  <dt>{status}</dt>
+                  <dd>
+                    <strong>{data.totals[status]}</strong>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
           <Section title="Status by day">
-            {chartStatuses.length ? (
+            {charted.length ? (
               <div className="chart">
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart
-                    data={result.data.daily}
+                    data={data.daily}
                     margin={{ left: -18, right: 12, top: 8, bottom: 0 }}
                   >
                     <CartesianGrid vertical={false} stroke="var(--border)" />
                     <XAxis
                       dataKey="date"
                       minTickGap={20}
-                      tickFormatter={(value: string) => value.slice(5)}
+                      tickFormatter={shortDate}
                       tick={{ fill: "var(--muted)", fontSize: 11 }}
                     />
                     <YAxis
@@ -140,6 +148,7 @@ export function Trends({
                       tick={{ fill: "var(--muted)", fontSize: 11 }}
                     />
                     <Tooltip
+                      labelFormatter={(value) => shortDate(String(value))}
                       itemStyle={{ color: "var(--text)" }}
                       cursor={{ fill: "var(--hover)" }}
                       contentStyle={{
@@ -154,7 +163,7 @@ export function Trends({
                         <span className="chart-label">{value}</span>
                       )}
                     />
-                    {chartStatuses.map((status) => (
+                    {charted.map((status) => (
                       <Bar
                         key={status}
                         dataKey={status}
@@ -169,41 +178,37 @@ export function Trends({
               <Empty>No status data for this range.</Empty>
             )}
           </Section>
-          <Section title="Per-agent totals">
+          <Section title="Totals by agent">
             {rows.length ? (
               <DataTable label="Agent trend counts">
                 <thead>
                   <tr>
-                    <th>{sortButton("name", "Name")}</th>
-                    {trendStatuses.map((status) => (
-                      <th key={status}>{sortButton(status, status)}</th>
-                    ))}
-                    <th>{sortButton("discrepancies", "Discrepancies")}</th>
-                    {rows.some((row) => row.badges.length > 0) && (
-                      <th>Thresholds</th>
-                    )}
+                    {header("name", "Name")}
+                    {trendStatuses.map((status) => header(status, status))}
+                    {header("discrepancies", "Discrepancies")}
+                    {flagged && <th>Thresholds</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => (
                     <tr key={row.code}>
-                      <td>
-                        <button
-                          className="agent-link"
-                          onClick={() => openAgent(row.code)}
-                        >
-                          {row.firstName || row.code}
-                        </button>{" "}
-                        <span className="muted mono">{row.code}</span>
+                      <td className="nowrap">
+                        <Person
+                          name={row.firstName || row.code}
+                          code={row.code}
+                        />{" "}
+                        <span className="quiet mono">{row.code}</span>
                       </td>
                       {trendStatuses.map((status) => (
-                        <td key={status}>{row.counts[status]}</td>
+                        <td key={status} className="numeric mono">
+                          {row.counts[status]}
+                        </td>
                       ))}
-                      <td>{row.discrepancies}</td>
-                      {rows.some((item) => item.badges.length > 0) && (
+                      <td className="numeric mono">{row.discrepancies}</td>
+                      {flagged && (
                         <td>
                           {row.badges.map((badge) => (
-                            <span key={badge.status} className="group-tag">
+                            <span key={badge.status} className="tag warn">
                               {badge.status} · {badge.count} in {badge.days}{" "}
                               days
                             </span>
@@ -215,9 +220,9 @@ export function Trends({
                 </tbody>
               </DataTable>
             ) : (
-              <Empty>No agents in this scope.</Empty>
+              <Empty>No agents in your team.</Empty>
             )}
-            <p className="panel-foot">
+            <p className="panel-intro">
               Counts only. Thresholds come from TL/SOP.
             </p>
           </Section>

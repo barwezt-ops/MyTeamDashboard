@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -19,6 +21,9 @@ import { Empty, Section } from "../components/ui";
 import { useHead, useShared, useView } from "../v2/context";
 import { downloadCsv } from "../v2/copy";
 import { CycleSelect, Person, Skeleton, LoadError } from "../v2/parts";
+
+// The chart library loads only when Trends is opened.
+const Trends = lazy(() => import("./AttendanceTrends"));
 
 type Grid = GridView & { cycles: { from: string; to: string }[] };
 type Row = Grid["rows"][number];
@@ -334,8 +339,31 @@ export function Attendance() {
     ) : (
       <Skeleton className="screen-size" label="attendance grid" />
     );
+  const trends = params.get("view") === "trends";
+  const tabs = (
+    <nav className="tabs" aria-label="Attendance sections">
+      <Link to="/attendance" aria-current={trends ? undefined : "page"}>
+        Grid
+      </Link>
+      <Link to="?view=trends" aria-current={trends ? "page" : undefined}>
+        Trends
+      </Link>
+    </nav>
+  );
+  if (trends)
+    return (
+      <>
+        {tabs}
+        <Suspense
+          fallback={<Skeleton className="screen-size" label="trends" />}
+        >
+          <Trends today={view.today} />
+        </Suspense>
+      </>
+    );
   return (
     <>
+      {tabs}
       <div className="toolbar">
         <CycleSelect
           cycles={view.cycles}
