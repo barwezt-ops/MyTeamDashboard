@@ -66,6 +66,29 @@ test("attendance grid: tooltip, drawer, keyboard, filters and export", async ({
   clean();
 });
 
+test("attendance trends: ranges, totals, chart and agent counts", async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  const clean = await openTeam(page, "/attendance");
+  await page.getByRole("link", { name: "Trends", exact: true }).click();
+  const table = page.getByRole("table", { name: "Agent trend counts" });
+  await expect(table.locator("tbody tr")).toHaveCount(16);
+  await expect(
+    page.getByRole("heading", { name: "Status by day" }),
+  ).toBeVisible();
+  await expect(page.getByText("28 Oct to 26 Nov")).toBeVisible();
+  await reviewScreen(page, info, "phase-4-attendance-trends");
+  await page.getByRole("button", { name: "Month to date" }).click();
+  await expect(page.getByText("1 Nov to 26 Nov")).toBeVisible();
+  await table.getByRole("button", { name: "Sick", exact: true }).click();
+  await expect(
+    table.getByRole("columnheader", { name: "Sick", exact: true }),
+  ).toHaveAttribute("aria-sort", "descending");
+  await expect(table.locator("tbody tr").first()).toContainText("99106");
+  clean();
+});
+
 const teamViewColumns = [
   "Code",
   "Name",
