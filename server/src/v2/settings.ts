@@ -21,6 +21,18 @@ const fields = z.strictObject({
     .record(z.string().min(1).max(100), z.number().int().nonnegative())
     .default({}),
   reportTemplate: z.string().max(20000).default(""),
+  /** Hours for automatic attendance reads; empty uses the config file. */
+  attendanceHours: z
+    .strictObject({
+      start: z.number().int().min(0).max(23),
+      end: z.number().int().min(0).max(24),
+    })
+    .refine(
+      (hours) => hours.start !== hours.end,
+      "Set different attendance start and end hours",
+    )
+    .nullable()
+    .default(null),
   /** Saved Team table views. */
   views: z
     .array(
