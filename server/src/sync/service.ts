@@ -1,7 +1,9 @@
+import { readSettings } from "../v2/settings.js";
+import { syncQueues, syncQa } from "../v2/sources.js";
 import type { Config, SourceKey } from "../config.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/db.js";
-import type { Job } from "../api/dto.js";
+import { mtdMismatchWarning, type Job } from "../api/dto.js";
 import {
   agentsOf,
   attendanceOf,
@@ -30,6 +32,7 @@ import {
   attendancePastePreview,
   attendancePasteStale,
   loadAttendancePaste,
+  mtdDailyMismatch,
   storeAttendancePaste,
 } from "./attendancePaste.js";
 import { coveredRange, replaceAttendance } from "./syncAttendance.js";
@@ -133,17 +136,36 @@ export function createSync(
     runner.runStep("attendance", async () => {
       if (usesPaste) {
         const paste = await loadAttendancePaste(config, dataDir, agentsOf(db));
+        const { cycleStartDay } = readSettings(
+          db,
+          config.coachingCycleStartDay,
+        );
         const changed = storeAttendancePaste(
           db,
           paste,
           date,
           now().toISOString(),
-          config.coachingCycleStartDay,
+          cycleStartDay,
+        );
+        const mismatch = mtdDailyMismatch(
+          db,
+          paste,
+          cycleStartDay,
+          new Set(
+            agentsOf(db)
+              .filter((agent) => agent.ownerGroup === "mine")
+              .map((agent) => agent.code),
+          ),
         );
         return {
           rowsRead: paste.rowsRead,
           rowsKept: paste.records.length,
-          warnings: changed ? [] : ["no change"],
+          warnings: [
+            ...(changed ? [] : ["no change"]),
+            ...(mismatch.length
+              ? [mtdMismatchWarning + mismatch.join(",")]
+              : []),
+          ],
         };
       }
       const { rows, rowsRead, archive } = await load("attendance");
@@ -235,8 +257,22 @@ export function createSync(
         !(await attendance(date, range))
       )
         return false;
-      return rules(date, range);
+      const ruled = await rules(date, range);
+      // Optional sources run last so a failure there never holds back
+      // attendance or the rules. The run is still reported as failed.
+      const optional = await optionalSources();
+      return ruled && optional;
     });
+  }
+  async function optionalSources() {
+    let ok = true;
+    if (config.sources.lineQueue?.enabled)
+      ok = await runner.runStep("lineQueue", () =>
+        syncQueues(db, config, mode, now()),
+      );
+    if (config.sources.qa?.enabled)
+      ok = (await runner.runStep("qa", () => syncQa(db, config, mode))) && ok;
+    return ok;
   }
   let previewPending: ReturnType<typeof previewAttendance> | undefined;
   async function previewAttendance() {
@@ -247,7 +283,15 @@ export function createSync(
       const date = today(),
         range = window(date);
       const paste = await loadAttendancePaste(config, dataDir, agentsOf(db));
-      const summary = attendancePastePreview(paste, config, date);
+      const summary = attendancePastePreview(
+        paste,
+        {
+          ...config,
+          coachingCycleStartDay: readSettings(db, config.coachingCycleStartDay)
+            .cycleStartDay,
+        },
+        date,
+      );
       return db.transaction(() => ({
         ...summarizeParsedAttendance(
           db,

@@ -114,7 +114,7 @@ The look is warm editorial: paper backgrounds, serif headlines, a forest-green i
 ### A. App shell
 - **Sidebar** (forest, 216px): "Floor" wordmark with a gold dot; nav for Home, Attendance, Team, Coaching, Quality, Queues, Reports, Settings, with count badges (Home = urgent count, Coaching = coachings due); owner chip at the bottom. Collapses to icons under 1024px and becomes a bottom bar on a phone.
 - **Page header:** eyebrow (date · cycle day X of N), Fraunces title, italic summary line, search (Ctrl K), primary action.
-- **Freshness line** on every page, for example: "● Attendance & MTD through Wed 25 · QA synced 2h ago". Amber if a source is stale, red if a sync failed (this links to Settings).
+- **Freshness line** on every page, for example: "● Attendance & MTD through 25 Nov · QA synced 2h ago". Amber if a source is stale, red if a sync failed (this links to Settings).
 - **Ctrl K command palette:** jump to any agent or screen, plus actions (log coaching, copy EOD).
 
 ### B. Home (match Home v3 exactly)
@@ -206,11 +206,11 @@ Sources and sync status (with Sync now), thresholds, cycle start day, attendance
 ## 5. Flags, severity and generated text
 
 - **URGENT** means a threshold the owner has set was crossed. The only one set today is **3 or more lateness incidents in the current cycle**. Every other threshold ships **empty** and is configurable in Settings: missing time per cycle, missing-time days in the last N, consecutive break-exceeds, QA below X, no QA eval in N days.
-- **Ask the owner** before treating NCNS/AWOL as urgent. Don't decide that yourself.
-- **SOON:** follow-ups due today or overdue, and coaching behind pace. Expected-by-today = 2 × elapsed cycle days ÷ total cycle days, per agent; this comes from the owner's KPI.
+- **NCNS/AWOL** is URGENT from the first day in a cycle (owner decision, section 8). It is an owner setting (`absentDays = 1`), not a shipped default.
+- **SOON:** follow-ups due today or overdue, and coaching behind pace. Expected-by-today = floor(target × elapsed cycle days ÷ total cycle days), per agent, so with a target of 2 the first coaching is due mid-cycle and the second at cycle end. SOON only when done is below that.
 - **LATER:** factual patterns and informational items.
 - **Dismissing:** a flag can be dismissed with a reason. That's stored as owner data and the flag comes back only if new facts arrive.
-- **Generated sentences** (summary lines, captions, prep facts) come from tested templates using real numbers. Examples: "Two people need you before the 4 o'clock rush. Everyone else is on track." / "Climbing this week. Worst day was yesterday, 62 minutes." / "Five people haven't missed a minute all cycle." They must never mention health, motives or personal life, and never use an LLM at runtime.
+- **Generated sentences** (summary lines, captions, prep facts) come from tested templates using real numbers. Examples: "Two people need you before the 4 o'clock rush. Everyone else is on track." / "Climbing this week. Worst day was yesterday, 62 minutes." / "Five people have perfect attendance this cycle." They must never mention health, motives or personal life, and never use an LLM at runtime.
 
 ## 6. Phases
 
@@ -232,3 +232,32 @@ After phase 1 is approved, carry on through phases 2–8 without waiting. Stop e
 - Fixtures and the styleguide use fake names only (like the mockup). Real names, codes and sheet IDs stay in gitignored config and the local database.
 - No patient data, ever. If any header from any source looks like patient or caller data, stop and report it.
 - Coaching notes and private notes are sensitive. They're stored locally, included in backups, never logged and never exported unless the owner asks.
+
+## 8. Owner decisions after the PR review (2026-11-27)
+
+These replace anything earlier in this document that disagrees.
+
+**Rules**
+1. NCNS/AWOL is URGENT from the first day in a cycle: `absentDays = 1` in the owner's settings.
+2. Coaching pace: expected = floor(target × elapsed days ÷ total days). An agent is behind only when a whole coaching is due, and SOON only when done < expected. The ring's gold tick and summary sentences follow.
+3. Perfect attendance (shout-out) ends with lateness, missing time, UPL (including forced UPL), casual, NCNS or AWOL. Annual leave/PTO, sick, public holidays and off days are allowed. Half days count as their base type.
+4. The older Today, Trends and Roster screens are retired. What only Trends offered lives in V2. The discrepancy review stays.
+
+**Data**
+5. Break minutes come from the Attendance tab's "Duration Of break Exceeding" column and show wherever breaks appear. "Exceeded" stays the flag signal.
+6. Each attendance sync compares every agent's MTD lateness with the sum of their daily lateness. Differences show "MTD and daily rows disagree for N agent(s): the paste may be missing rows" on the freshness line and in Settings, with names. Warn only; never change data.
+7. The Team table offers every column of the sheet's Team View tab, hidden by default where crowded.
+
+**Reports** (layouts live in local settings, never hard-coded with company names)
+
+8. The end-of-day copy never includes agent names; it writes "Agent" / "Agents". The full layout is the owner's Settings template.
+9. Attendance email table: Code, Name, Team Leader, Account, Date, Missing, TL Comment (left blank; workforce comment columns are never read), copied as an HTML table with a dark-blue header, white bold text and black borders. Default subject: "Attendance | {account} | {D Month YYYY}", with the account from owner settings.
+10. Escalation draft: What happened / Impact / What I've already done / What I need. Coaching documentation: Date / What happened / What was said / Agreed next step / Follow-up date. MPR prep stays as built, with its layout a Settings template.
+11. The status map is read-only in Settings, highlighting statuses seen but not mapped. Editing can wait.
+
+**Interface**
+
+12. Home's "Yesterday, in exceptions" has no horizontal scroll at 1280px and wider.
+13. The shout-out card shows up to 4 names and "and N more" (expandable). Nothing is cut off.
+14. One date format everywhere ("12 Jan 2025", "26 Nov"). No ISO dates in the interface.
+15. The forest sidebar covers the screen at the bottom of long pages, held by a layout test.

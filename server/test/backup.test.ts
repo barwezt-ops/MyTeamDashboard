@@ -60,7 +60,11 @@ describe("backups", () => {
       "DELETE FROM notes; DELETE FROM roster_snapshots; DELETE FROM roster_events; DELETE FROM discrepancies;",
     );
     const preview = previewBackup(db, backup);
-    expect(Object.values(preview.changes)).toEqual(
+    expect(
+      Object.entries(preview.changes)
+        .filter(([key]) => key !== "owner")
+        .map(([, value]) => value),
+    ).toEqual(
       Array.from({ length: 4 }, () => ({ added: 1, updated: 0, removed: 0 })),
     );
     restoreBackup(db, backup, preview.token);

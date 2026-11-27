@@ -243,15 +243,19 @@ kbd {
 .freshness {
   font-size: 11.5px;
   color: var(--muted);
-  display: grid;
-  gap: 4px;
   text-align: right;
 }
-.freshness.bad a {
+.freshness i {
+  font-style: normal;
+  color: var(--good);
+}
+.freshness.bad,
+.freshness.bad i {
   color: var(--bad);
 }
-.freshness.waiting a {
-  color: var(--warn);
+.freshness.waiting,
+.freshness.waiting i {
+  color: var(--warn-text);
 }
 .page-header p,
 .summary {
@@ -681,6 +685,10 @@ td {
 .heat-6 {
   background: transparent;
   border-color: var(--muted);
+}
+.heat-none {
+  background: transparent;
+  border: 1px dashed var(--line);
 }
 .heat-legend {
   display: flex;

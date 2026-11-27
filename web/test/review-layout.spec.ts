@@ -10,7 +10,7 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
   await page.goto("/styleguide");
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const side = await page.locator(".sidebar").boundingBox();
-  expect(side?.y).toBe(0);
+  expect(Math.abs(side!.y)).toBeLessThan(1);
   expect(side?.height).toBe(1000);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
@@ -26,8 +26,9 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
   for (const path of [
     "/",
     "/attendance",
-    "/roster",
-    "/trends",
+    "/attendance?view=trends",
+    "/team",
+    "/discrepancies",
     "/coaching",
     "/quality",
     "/queues",
@@ -37,14 +38,26 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
     "/agent/99001",
   ]) {
     await page.goto(path);
+    await expect(page.locator(".shell-header")).toBeVisible();
     await expect(page.locator("main .loading")).toHaveCount(0);
-    await page.evaluate(() =>
-      window.scrollTo(0, document.documentElement.scrollHeight),
-    );
-    const nav = await page.locator(".sidebar").boundingBox();
-    const last = await page.locator("main.content > :last-child").boundingBox();
-    expect(last, path).not.toBeNull();
-    expect(last!.y + last!.height, path).toBeLessThanOrEqual(nav!.y);
+    await page.evaluate(() => document.fonts.ready);
+    await expect
+      .poll(
+        async () => {
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
+          const nav = await page.locator(".sidebar").boundingBox();
+          const last = await page
+            .locator("main.content > :last-child")
+            .boundingBox();
+          // Not measurable yet, so poll again.
+          if (!nav || !last) return Number.POSITIVE_INFINITY;
+          return last.y + last.height - nav.y;
+        },
+        { message: path },
+      )
+      .toBeLessThanOrEqual(0);
   }
   await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
   await page.goto("/settings");

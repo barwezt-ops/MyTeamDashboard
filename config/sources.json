@@ -80,6 +80,25 @@
         "firstDateColumn": "D",
         "dateHeaderRow": 1
       }
+    },
+    "lineQueue": {
+      "label": "Line and queue tab",
+      "enabled": false,
+      "sheetId": "",
+      "gid": "",
+      "tab": "My Team's SHIFTS AND SCHEDULES",
+      "mode": "export",
+      "headerRows": 1
+    },
+    "qa": {
+      "label": "QA evaluations",
+      "enabled": false,
+      "mappingApproved": false,
+      "sheetId": "",
+      "gid": "",
+      "tab": "",
+      "mode": "export",
+      "headerRows": 1
     }
   },
   "statusMap": {

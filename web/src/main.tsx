@@ -12,4 +12,5 @@ import "@fontsource/geist-mono/400.css";
 import "@fontsource/geist-mono/500.css";
 import "./styles.css";
 import "./design.css";
+import "./screens.css";
 createRoot(document.getElementById("root")!).render(<App />);

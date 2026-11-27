@@ -14,9 +14,7 @@ test("design system: responsive samples, states, dialogs, search and local fonts
   await page.goto("/styleguide");
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Today", exact: true }),
-  ).toBeVisible();
+  await expect(page.locator(".sidebar")).toBeVisible();
   await page.goto("/styleguide");
   await expect(
     page.getByRole("heading", { name: "A calmer kind of clarity." }),
@@ -81,7 +79,9 @@ test("design system: responsive samples, states, dialogs, search and local fonts
   await expect(page.getByText("No matching people or screens.")).toBeVisible();
   await page.getByLabel("Search commands").fill("Quality");
   await palette.getByRole("button", { name: "Quality", exact: true }).click();
-  await expect(page.getByText(/Quality arrives in Phase 7/)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Quality is waiting for its source" }),
+  ).toBeVisible();
   for (const screen of ["coaching", "quality", "queues", "reports"]) {
     await page.goto(`/${screen}`);
     for (const width of [1440, 390]) {

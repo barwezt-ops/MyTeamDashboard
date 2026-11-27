@@ -13,21 +13,17 @@ import {
 } from "lucide-react";
 import type { Agent, SyncStatus } from "../../../server/src/api/dto";
 import { useApi } from "../api";
-import { cairoHeader } from "../design";
-import {
-  Empty,
-  ErrorNotice,
-  Loading,
-  PageHeader,
-  Section,
-  syncLabel,
-} from "./ui";
-import { Eyebrow, Modal } from "./design";
+import { cairoHeader, freshness } from "../design";
+import { Empty, ErrorNotice, Loading } from "./ui";
+import { Eyebrow, Modal, Summary } from "./design";
+import { useShared, type PageHead } from "../v2/context";
+import { copyEod } from "../v2/eod";
+import { message } from "../api";
 
 export const navigation = [
   { to: "/", label: "Home", Icon: Home },
   { to: "/attendance", label: "Attendance", Icon: CalendarDays },
-  { to: "/roster", label: "Team", Icon: UsersRound },
+  { to: "/team", label: "Team", Icon: UsersRound },
   { to: "/coaching", label: "Coaching", Icon: MessageSquare },
   { to: "/quality", label: "Quality", Icon: Star },
   { to: "/queues", label: "Queues", Icon: ListFilter },
@@ -38,12 +34,14 @@ export function ShellHeader({
   firstName,
   cycleStartDay,
   home,
+  head,
   status,
   search,
 }: {
   firstName: string;
   cycleStartDay: number;
   home: boolean;
+  head: PageHead;
   status: ReturnType<typeof useApi<SyncStatus>>;
   search: () => void;
 }) {
@@ -53,12 +51,14 @@ export function ShellHeader({
     return () => window.clearInterval(timer);
   }, []);
   const header = cairoHeader(now, firstName, cycleStartDay);
-  const sync = status.data ? syncLabel(status.data) : null;
+  const fresh = status.data ? freshness(status.data, now.getTime()) : null;
+  const title = home ? header.greeting : head.title;
   return (
     <header className="shell-header">
       <div>
         <Eyebrow>{header.eyebrow}</Eyebrow>
-        {home && <h1>{header.greeting}</h1>}
+        {title && <h1>{title}</h1>}
+        {head.summary && <Summary>{head.summary}</Summary>}
       </div>
       <div className="shell-actions">
         <div className="button-row">
@@ -66,32 +66,19 @@ export function ShellHeader({
             <Search size={14} />
             Find an agent<kbd>Ctrl K</kbd>
           </button>
-          <Link className="primary" to="/coaching">
+          <Link className="primary" to="/coaching?view=log">
             Log coaching
           </Link>
         </div>
-        <div
-          className={`freshness ${status.error ? "bad" : (sync?.tone ?? "waiting")}`}
+        <Link
+          to="/settings"
+          className={`freshness ${status.error ? "bad" : (fresh?.tone ?? "waiting")}`}
         >
-          <a href="/settings">
-            ●{" "}
-            {sync?.label ??
-              (status.error
-                ? "Sync status unavailable"
-                : "Checking source freshness…")}
-          </a>
-          <span>
-            Attendance{" "}
-            {status.data?.attendanceThrough
-              ? `through ${status.data.attendanceThrough}`
-              : "not imported"}
-            {" · "}MTD{" "}
-            {status.data?.mtdSyncedOn
-              ? `synced ${status.data.mtdSyncedOn}`
-              : "not imported"}{" "}
-            · QA not connected
-          </span>
-        </div>
+          <i aria-hidden="true">●</i>{" "}
+          {status.error
+            ? "Sync status unavailable"
+            : (fresh?.text ?? "Checking source freshness…")}
+        </Link>
       </div>
     </header>
   );
@@ -106,15 +93,15 @@ export function CommandPalette({
   const [search, setSearch] = useState("");
   const agents = useApi<Omit<Agent, "fullName">[]>("/agents?scope=mine");
   const navigate = useNavigate();
+  const { notify } = useShared();
   const matches = (s: string) =>
     s.toLowerCase().includes(search.trim().toLowerCase());
   const screens = [
     ...navigation,
     { to: "/styleguide", label: "Styleguide" },
+    { to: "/attendance?view=trends", label: "Attendance trends" },
     { to: "/discrepancies", label: "Review discrepancies" },
-    { to: "/trends", label: "Trends" },
-    { to: "/coaching", label: "Log coaching" },
-    { to: "/reports", label: "Copy EOD" },
+    { to: "/coaching?view=log", label: "Log coaching" },
   ].filter((item) => matches(item.label));
   const people =
     agents.data?.filter((agent) =>
@@ -141,6 +128,19 @@ export function CommandPalette({
             <span aria-hidden="true">↗</span>
           </button>
         ))}
+        {matches("Copy EOD") && (
+          <button
+            onClick={() => {
+              close();
+              void copyEod()
+                .then(() => notify("Report copied."))
+                .catch((error) => notify("Could not copy. " + message(error)));
+            }}
+          >
+            Copy EOD
+            <span aria-hidden="true">⧉</span>
+          </button>
+        )}
         <Eyebrow>Your team</Eyebrow>
         {agents.error ? (
           <ErrorNotice retry={agents.reload}>{agents.error}</ErrorNotice>
@@ -160,32 +160,11 @@ export function CommandPalette({
             </button>
           ))
         )}
-        {agents.data && !people.length && !screens.length && (
-          <Empty>No matching people or screens.</Empty>
-        )}
+        {agents.data &&
+          !people.length &&
+          !screens.length &&
+          !matches("Copy EOD") && <Empty>No matching people or screens.</Empty>}
       </div>
     </Modal>
-  );
-}
-export function PendingScreen({
-  title,
-  phase,
-}: {
-  title: string;
-  phase: number;
-}) {
-  return (
-    <>
-      <PageHeader
-        title={title}
-        description="Your team's operations, in one place."
-      />
-      <Section title={title}>
-        <Empty>
-          {title} arrives in Phase {phase}. The design system is ready for
-          review.
-        </Empty>
-      </Section>
-    </>
   );
 }

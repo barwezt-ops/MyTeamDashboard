@@ -105,6 +105,50 @@ Environment keys live in `.env.example`. The optional `DASHBOARD_SOURCE_CONFIG` 
 
 The roster sync runs Sundays at 12:00 Cairo. The daily schedule, attendance and discrepancy sync runs at 16:00 Cairo. The app refreshes the roster first when its last successful sync is more than seven days old.
 
+## V2 sources: line/queue tab and QA
+
+Both are optional, off by default and read by public CSV link. Put real sheet and tab IDs only in your private `config/sources.local.json`.
+
+**Line/queue tab.** Check the headers first, then set `sources.lineQueue` with `enabled: true`, `sheetId` and `gid`. The tab needs `Code`, `Line`, `Account` and one column per weekday (`Monday` or `Mon`). If it labels the first three differently, set `headers: { "code": "…", "line": "…", "account": "…" }`. Only those columns are kept, for your team. Each change of line, account or weekly template is added to history. The weekly template is used only when the dated schedule has no entry (no row or a blank cell).
+
+```text
+npm run test-link -- '<view-link>' --source=lineQueue
+```
+
+**QA sheet.** Run the check, which prints headers and a row count only. Stop there. If the report says `stop`, the sheet has headers that look like patient or caller data.
+
+```text
+npm run test-link -- '<view-link>' --source=qa
+```
+
+Mapping needs your approval. Only agent code, evaluation date, score (%) and form can be mapped: set `columns: { "code", "date", "score", "form" }` to the exact header names, then `mappingApproved: true` and `enabled: true`. Use `--header-row=N` on the check if headers are not on row 1.
+
+A failure in either source is reported as a failed sync, after attendance and the discrepancy rules have already run.
+
+## Using the V2 screens
+
+| Screen     | What it answers                                                              |
+| ---------- | ---------------------------------------------------------------------------- |
+| Home       | Yesterday's results next to today's plan, and who needs you                  |
+| Attendance | Every agent and day of a cycle with CSV export, and date-range trends        |
+| Team       | One row per agent, sortable, with saved views and changes against last cycle |
+| Coaching   | Pace, prep sheets, the coaching log, follow-ups, history and fairness counts |
+| Quality    | QA scores, once the QA sheet is mapped                                       |
+| Queues     | Today's board, two weeks of coverage, leave and line changes                 |
+| Reports    | End of day, attendance email, cycle summary, MPR prep and roster changes     |
+
+**Settings** holds what you control in the app: thresholds (only a threshold you set can make something urgent), cycle start day, attendance read hours, staffing baselines per line, the report, email and MPR layouts, and the theme. These, with coaching entries, private notes, follow-ups, dismissals and line history, are included in backups. Sync never overwrites them. The status map is read-only there; labels seen for your team but not mapped are listed first.
+
+**Report layout.** Copy the header row and one sample row from your spreadsheet into **Settings → Report layout**, then replace the sample values with placeholders such as `{date}` and `{exception.line}`. A line with a `{row.…}` placeholder repeats for every agent; one with `{exception.…}` repeats for agents with an exception. The end-of-day report never carries agent names: name placeholders read `Agent`, and counts such as `{team.late_agents}` read "1 Agent" or "3 Agents".
+
+**Attendance email.** Reports lists the day's missing time as Code, Name, Team Leader, Account, Date, Missing and a blank TL Comment, copied as a table that pastes formatted into Gmail. Set the account in **Settings → Attendance email**; the subject defaults to `Attendance | {account} | {D Month YYYY}`.
+
+**MPR layout.** Leave it empty for the default, or arrange your own with the listed placeholders. Private notes are included only when you tick them.
+
+**Coaching and recognition.** With a target of two per cycle, the first coaching falls due mid-cycle and the second on the last day. Perfect attendance ends with lateness, missing time, UPL (including forced UPL), casual, NCNS or AWOL, whole or half day; annual leave, sick, public holidays and days off are allowed.
+
+When running from the installed checkout, use `npm run build:smoke` to check a build. `server/dist` there points into the installed release, so `npm run build` would overwrite the running app.
+
 ## Free VM deploy (optional, needs a card)
 
 ### 1. Create the project and budget
@@ -413,9 +457,11 @@ Use **Settings → Upload attendance CSV** to stream the file and save only the 
 
 Put the workbook ID in `sources.attendance.paste.sheetId` in your private `config/sources.local.json`. The workbook should have an **Attendance** tab with headers in row 1 and an **MTD** tab with headers in row 4. The link check also reports **Team View**. Keep attendance disabled while you verify the source against the existing roster.
 
+Break minutes come from the Attendance tab's **Duration Of break Exceeding** column; **Exceeded** stays the signal that a break was over. Both headers are required, so a paste without them fails and leaves existing data untouched. After each sync, an agent whose MTD lateness differs from the sum of their daily rows is named on Settings, with a count on the freshness line. Nothing is changed.
+
 ```text
 npm run test-link -- --paste-tabs
 npm run sync -- --job=attendance --dry-run --paste
 ```
 
-After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly all day by default (`paste.startHour: 0`, `paste.endHour: 24` in Cairo). A window such as 12 to 2 starts at noon and ends at 02:00 the next day, with the end hour excluded. A paste with fewer than half as many matched Attendance codes as the last successful paste fails before writing attendance or MTD data. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.
+After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly all day by default (`paste.startHour: 0`, `paste.endHour: 24` in Cairo). A window such as 12 to 2 starts at noon and ends at 02:00 the next day, with the end hour excluded. Hours chosen in **Settings → Cycle and attendance reads** take the place of the config file's. A paste with fewer than half as many matched Attendance codes as the last successful paste fails before writing attendance or MTD data. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.

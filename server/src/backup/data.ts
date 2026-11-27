@@ -1,3 +1,4 @@
+import { ownerBackupSchema, ownerBackup, restoreOwner } from "../v2/backup.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Db } from "../db/db.js";
@@ -82,6 +83,7 @@ const schema = z.strictObject({
   rosterSnapshots: snapshots,
   rosterEvents: events,
   discrepancies,
+  owner: ownerBackupSchema.optional(),
 });
 type Backup = z.infer<typeof schema>;
 type Rows = Omit<Backup, "version" | "createdAt">;
@@ -89,6 +91,7 @@ export const maxBackupBytes = 32 * 1024 * 1024;
 
 function readRows(db: Db): Rows {
   return {
+    owner: ownerBackup(db),
     notes: db
       .prepare(
         "SELECT id, code, date, what_happened, what_was_said, next_step, follow_up_date, done, created_at FROM notes ORDER BY id",
@@ -175,6 +178,15 @@ function changes<Row>(
 const snapshotKey = (row: Rows["rosterSnapshots"][number]) =>
   JSON.stringify([row.week_of, row.code]);
 
+function flatOwner(owner: Rows["owner"]) {
+  return Object.entries(owner ?? {}).flatMap(([kind, rows]) =>
+    rows.map((row) => ({
+      key: kind + ":" + ("id" in row ? row.id : row.key),
+      value: row,
+    })),
+  );
+}
+
 function preview(current: Rows, file: Backup) {
   const hash = createHash("sha256")
     .update(JSON.stringify(current))
@@ -198,6 +210,11 @@ function preview(current: Rows, file: Backup) {
     token: hash.digest("hex"),
     createdAt: file.createdAt,
     changes: {
+      owner: changes(
+        flatOwner(current.owner),
+        flatOwner(file.owner ?? current.owner),
+        (row) => row.key,
+      ),
       notes: changes(current.notes, file.notes, (row) => row.id),
       rosterSnapshots: changes(
         current.rosterSnapshots,
@@ -229,6 +246,7 @@ export function restoreBackup(db: Db, file: Backup, token?: string) {
     db.exec(
       "DELETE FROM notes; DELETE FROM roster_snapshots; DELETE FROM roster_events",
     );
+    if (file.owner) restoreOwner(db, file.owner);
     const note = db.prepare(`INSERT INTO notes
       (id, code, date, what_happened, what_was_said, next_step, follow_up_date, done, created_at)
       VALUES (@id, @code, @date, @what_happened, @what_was_said, @next_step, @follow_up_date, @done, @created_at)`);
