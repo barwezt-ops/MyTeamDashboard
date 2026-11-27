@@ -8,24 +8,32 @@ import { d4 } from "./d4.js";
 import { d5 } from "./d5.js";
 import { d6 } from "./d6.js";
 import { d7 } from "./d7.js";
+import { agentsOf, attendanceOf, scheduleOf } from "../db/repo.js";
 
 export function attendanceFindings(ctx: RuleContext) {
   return [d1, d2, d3, d4].flatMap((rule) => rule(ctx));
 }
 
-export function runRules(db: Db, ctx: RuleContext, now: string) {
+export function runRules(
+  db: Db,
+  ctx: RuleContext,
+  now: string,
+  preserveRoster = false,
+) {
   const attendance = ctx.attendanceEnabled ? ctx.attendance : [];
   const context = { ...ctx, attendance };
   const findings = [
     ...(ctx.attendanceEnabled ? attendanceFindings(context) : []),
-    ...[d5, d6, d7].flatMap((rule) => rule(context)),
+    ...(preserveRoster ? [d6, d7] : [d5, d6, d7]).flatMap((rule) =>
+      rule(context),
+    ),
   ];
   const insert =
     db.prepare(`INSERT INTO discrepancies (id,code,date,rule_id,severity,missing,source,created_at,updated_at)
     VALUES (@id,@code,@date,@ruleId,@severity,@missing,@source,@now,@now)
     ON CONFLICT(id) DO UPDATE SET severity=excluded.severity,missing=excluded.missing,source=excluded.source,updated_at=excluded.updated_at,
-    state=CASE WHEN discrepancies.rule_id='D5' AND discrepancies.auto_cleared=1 THEN 'open' ELSE discrepancies.state END,
-    auto_cleared=CASE WHEN discrepancies.rule_id='D5' THEN 0 ELSE discrepancies.auto_cleared END`);
+    state=CASE WHEN discrepancies.auto_cleared=1 THEN 'open' ELSE discrepancies.state END,
+    auto_cleared=0`);
   const clear = db.prepare(
     "UPDATE discrepancies SET auto_cleared=1,state='resolved',updated_at=? WHERE id=? AND state='open'",
   );
@@ -43,6 +51,7 @@ export function runRules(db: Db, ctx: RuleContext, now: string) {
   for (const row of findings) insert.run({ ...row, now });
   const agentByCode = new Map(ctx.agents.map((agent) => [agent.code, agent]));
   for (const row of existing) {
+    if (preserveRoster && row.ruleId === "D5") continue;
     if (ids.has(row.id)) continue;
     if (row.ruleId === "D5") {
       const agent = agentByCode.get(row.code);
@@ -57,4 +66,32 @@ export function runRules(db: Db, ctx: RuleContext, now: string) {
     clear.run(now, row.id);
   }
   return findings.length;
+}
+
+/** Owner changes take effect immediately without fetching or syncing a source. */
+export function refreshAttendanceRules(
+  db: Db,
+  today: string,
+  enabled: boolean,
+) {
+  const from =
+    (
+      db.prepare("SELECT MIN(date) AS date FROM attendance_days").get() as {
+        date: string | null;
+      }
+    ).date ?? today;
+  runRules(
+    db,
+    {
+      agents: agentsOf(db),
+      attendance: attendanceOf(db, { from, to: today }),
+      schedule: scheduleOf(db, { from, to: plusDays(today, 7) }),
+      scheduleMembers: null,
+      today,
+      from,
+      attendanceEnabled: enabled,
+    },
+    new Date().toISOString(),
+    true,
+  );
 }

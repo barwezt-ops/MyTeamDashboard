@@ -26,6 +26,7 @@ export function incidents(profile: ProfileView) {
       day.missing ? `missing ${duration(day.missing)}` : "",
       day.breakExceeded ? breakIncident(day.breakMinutes) : "",
       day.absence ?? "",
+      day.correction ? (day.label ?? "") : "",
     ].filter(Boolean);
     return found.length
       ? [`- ${shortDate(day.date)}: ${found.join(", ")}`]

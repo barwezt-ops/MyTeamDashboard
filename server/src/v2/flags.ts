@@ -16,6 +16,7 @@ import {
 export const severities = ["URGENT", "SOON", "LATER"] as const;
 export type Severity = (typeof severities)[number];
 export type Flag = {
+  state?: "explained";
   id: string;
   code: string;
   kind: string;

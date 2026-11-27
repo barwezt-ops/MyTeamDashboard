@@ -52,6 +52,10 @@ export const patientHeader = (value: string) =>
 export const privateHeader = (value: string) =>
   sensitiveHeader(value) || patientHeader(value);
 
+// Owner-approved exception is confined to the Attendance paste reader.
+export const pastePrivateHeader = (value: string) =>
+  value.trim().toLowerCase() !== "tl comment" && privateHeader(value);
+
 export function checkSourceHeaders(
   rows: string[][],
   config: Config,

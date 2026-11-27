@@ -61,8 +61,40 @@ createApp(
 ).listen(3212, "127.0.0.1");
 
 // Each V2 screen test starts from the same synthetic data.
+const correctionsDb = openDb(":memory:");
+seedTeam(correctionsDb);
+createApp(
+  readEnv(),
+  team,
+  correctionsDb,
+  createSync(correctionsDb, team, "fixture", () => new Date(TEAM_NOW)),
+).listen(3213, "127.0.0.1");
 createServer((request, response) => {
   if (request.method === "POST" && request.url === "/reset") resetTeam(teamDb);
+  if (request.method === "POST" && request.url === "/corrections-fixture") {
+    resetTeam(correctionsDb);
+    correctionsDb
+      .prepare(
+        "INSERT INTO attendance_sheet_comments VALUES ('99106','2026-11-22','Active - Site, Annual or Sick',NULL,NULL,2)",
+      )
+      .run();
+    // Fake review case only; production has no fixture routes.
+    correctionsDb
+      .prepare(
+        "UPDATE attendance_days SET raw='NCNS',status='Absent',missing='08:00:00' WHERE code='99105' AND date='2026-11-25'",
+      )
+      .run();
+    correctionsDb
+      .prepare(
+        "INSERT INTO attendance_sheet_comments VALUES ('99105','2026-11-25','Forced Annual approved for this day.','forced annual','PTO',0)",
+      )
+      .run();
+    correctionsDb
+      .prepare(
+        "INSERT INTO attendance_sheet_comments VALUES ('99103','2026-11-25','Transport delay reported to the lead.',NULL,NULL,1)",
+      )
+      .run();
+  }
   response.writeHead(204).end();
 }).listen(3219, "127.0.0.1");
 

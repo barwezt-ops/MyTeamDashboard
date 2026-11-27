@@ -21,6 +21,7 @@ import { Empty, Section } from "../components/ui";
 import { useHead, useShared, useView } from "../v2/context";
 import { downloadCsv } from "../v2/copy";
 import { CycleSelect, Person, Skeleton, LoadError } from "../v2/parts";
+import { CorrectStatus } from "../v2/corrections";
 
 // The chart library loads only when Trends is opened.
 const Trends = lazy(() => import("./AttendanceTrends"));
@@ -37,6 +38,7 @@ const weekday = (date: string) =>
 
 const cellLabel = (row: Row, cell: Cell) =>
   `${row.name}, ${shortDate(cell.date)}: ${cell.planned ? "planned " : ""}${cell.status ?? "No record"}` +
+  (cell.correction ? `, ${cell.label}` : "") +
   (cell.late ? `, ${duration(cell.late)} late` : "") +
   (cell.missing ? `, ${duration(cell.missing)} missing` : "") +
   (cell.breakExceeded
@@ -77,7 +79,7 @@ function exportCsv(view: Grid, rows: Row[]) {
       ...row.cells.map(
         (cell) =>
           (cell.planned ? "Planned: " : "") +
-          (cell.status ?? "") +
+          (cell.correction ? (cell.label ?? "") : (cell.status ?? "")) +
           (cell.late ? ` (late ${Math.round(cell.late)}m)` : "") +
           (cell.missing ? ` (missing ${Math.round(cell.missing)}m)` : "") +
           (cell.breakExceeded
@@ -247,6 +249,11 @@ function Table({
                     </span>
                     {!!cell.late && <i className="mark late" />}
                     {!!cell.missing && <i className="mark missing" />}
+                    {cell.correction && (
+                      <i className="correction-mark" aria-hidden="true">
+                        {cell.correction.state === "corrected" ? "*" : "✓"}
+                      </i>
+                    )}
                   </button>
                 </td>
               ))}
@@ -457,6 +464,14 @@ export function Attendance() {
             {day.cell.status ?? "No record"}
           </p>
           <Details cell={day.cell} />
+          {day.cell.recorded && (
+            <CorrectStatus
+              code={day.row.code}
+              date={day.cell.date}
+              correction={day.cell.correction}
+              done={() => setDay(null)}
+            />
+          )}
           <div className="button-row">
             <button
               type="button"

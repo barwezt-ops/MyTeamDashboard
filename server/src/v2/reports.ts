@@ -15,6 +15,7 @@ import {
   type RowValues,
 } from "./template.js";
 import * as say from "./templates.js";
+import { attendanceLabel } from "../db/corrections.js";
 
 const dayOf = (agent: V2Agent, date: string) =>
   agent.calendar.find((row) => row.date === date);
@@ -42,7 +43,11 @@ function rowValues(agent: V2Agent, date: string): RowValues {
     line: agent.line ?? "",
     account: agent.account,
     shift: say.clockTime(facts?.shift ?? planned?.shiftStart ?? null) ?? "",
-    status: facts?.absence ?? facts?.status ?? planned?.status ?? "",
+    status: facts
+      ? facts.correction
+        ? attendanceLabel(facts)
+        : (facts.absence ?? facts.status)
+      : (planned?.status ?? ""),
     login: say.clockTime(facts?.login ?? null) ?? "",
     logout: say.clockTime(facts?.logout ?? null) ?? "",
     late: text(facts?.late),
@@ -137,7 +142,7 @@ const subjectDate = (date: string) =>
 
 /**
  * Missing time on one date, as the attendance email's table. The comment column
- * is left blank for the owner; no workforce comment column is ever read.
+ * is left blank for the owner; private TL comments are never exported.
  */
 export function attendanceEmail(data: DashboardData, date: string) {
   const rows = data.agents
@@ -151,7 +156,8 @@ export function attendanceEmail(data: DashboardData, date: string) {
               agent.tl,
               agent.account,
               say.fullDate(date),
-              say.duration(facts.missing),
+              say.duration(facts.missing) +
+                (facts.correction ? ` · ${attendanceLabel(facts)}` : ""),
               "",
             ],
           ]

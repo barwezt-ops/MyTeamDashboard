@@ -24,9 +24,9 @@ export async function signIn(page: Page) {
   session = await page.context().cookies();
 }
 
-export async function openTeam(page: Page, path = "/") {
+export async function openTeam(page: Page, path = "/", reset = "/reset") {
   expect(
-    (await page.request.post("http://127.0.0.1:3219/reset")).status(),
+    (await page.request.post("http://127.0.0.1:3219" + reset)).status(),
   ).toBe(204);
   await page.clock.install({ time: new Date("2026-11-26T12:00:00Z") });
   const errors: string[] = [];

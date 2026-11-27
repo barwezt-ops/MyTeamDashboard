@@ -74,6 +74,66 @@ const data = async () =>
 const agent = async (code = "99001") =>
   (await data()).agents.find((row) => row.code === code)!;
 
+it("validates owner corrections, keeps app precedence and undoes back to the sheet immediately", async () => {
+  const path = "/corrections/99001/2026-11-19";
+  const secret = "Synthetic local note";
+  expect((await request("PUT", path, { label: "Sick", note: "" })).status).toBe(
+    400,
+  );
+  expect(
+    (await request("PUT", path, { label: "Guess", note: secret })).status,
+  ).toBe(400);
+  expect(
+    (
+      await request("PUT", "/corrections/99003/2026-11-19", {
+        label: "Sick",
+        note: secret,
+      })
+    ).status,
+  ).toBe(404);
+  expect(
+    (
+      await request("PUT", "/corrections/99001/2026-12-31", {
+        label: "Sick",
+        note: secret,
+      })
+    ).status,
+  ).toBe(404);
+  db.prepare(
+    "INSERT INTO attendance_sheet_comments VALUES ('99001','2026-11-19','Annual','annual','PTO',0)",
+  ).run();
+  try {
+    expect(
+      (await request("PUT", path, { label: "Sick", note: secret })).status,
+    ).toBe(204);
+    const row = (await agent()).calendar.find(
+      (day) => day.date === "2026-11-19",
+    )!;
+    expect(row.attendance).toMatchObject({
+      status: "Sick",
+      correction: { source: "app", note: secret },
+    });
+    const list = await (await request("GET", "/corrections")).json();
+    expect(list).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "99001",
+          date: "2026-11-19",
+          source: "app",
+          used: "Sick",
+        }),
+      ]),
+    );
+    expect((await request("DELETE", path)).status).toBe(204);
+    expect(
+      (await agent()).calendar.find((day) => day.date === "2026-11-19")
+        ?.attendance,
+    ).toMatchObject({ status: "PTO", correction: { source: "sheet" } });
+  } finally {
+    db.prepare("DELETE FROM attendance_sheet_comments").run();
+    db.prepare("DELETE FROM attendance_corrections").run();
+  }
+});
 it("reports empty current-cycle MTD and owner-only cell warnings without reusing stored totals", async () => {
   const prior = db
     .prepare("SELECT diagnostics FROM attendance_paste_state WHERE id=1")
@@ -111,6 +171,7 @@ it("reports empty current-cycle MTD and owner-only cell warnings without reusing
     ).run(prior);
   }
 });
+
 const coaching = {
   code: "99001",
   date: "2026-11-20",

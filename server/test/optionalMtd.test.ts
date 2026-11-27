@@ -27,6 +27,8 @@ afterEach(() => {
     "attendance_paste_details",
     "attendance_mtd_snapshots",
     "attendance_paste_state",
+    "attendance_sheet_comments",
+    "attendance_corrections",
   ])
     db.prepare(`DELETE FROM ${table}`).run();
 });
@@ -159,4 +161,37 @@ it("names missing current-cycle MTD on the freshness line even if an old sync da
   } as unknown as SyncStatus;
   expect(freshness(status).text).toContain("MTD for this cycle not pasted yet");
   expect(freshness(status).text).not.toContain("Attendance & MTD");
+});
+
+it("combines empty MTD and sanitized cells with WFM-aware TL corrections", () => {
+  seed();
+  const input: PasteRow[] = Array.from({ length: 5 }, (_, i) => ({
+    code: "99001",
+    date: "2026-11-" + (21 + i),
+    status: i === 4 ? "NCNS" : "Active - Site",
+    logout: i === 1 ? "#VALUE!" : "17:00",
+    tlComment: i === 4 ? "WFM marked NCNS, was on Forced Annual" : "",
+  }));
+  const paste = prepare(input);
+  save(paste);
+  const model = dashboardData(db, config, today);
+  const day = model.agents[0].calendar.find(
+    (row) => row.date === "2026-11-25",
+  )!.attendance!;
+  expect(day).toMatchObject({
+    status: "PTO",
+    raw: "Forced Annual",
+    correction: { source: "sheet", wfmRaw: "NCNS", state: "corrected" },
+  });
+  expect(model.agents[0].counts.source).toBe("daily");
+  expect(paste.warnings).toEqual([
+    expect.objectContaining({
+      date: "2026-11-22",
+      column: "Logout Time",
+      error: "#VALUE!",
+    }),
+  ]);
+  expect(
+    paste.details.find((row) => row.date === "2026-11-22")?.fields.logout,
+  ).toBeNull();
 });
