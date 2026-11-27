@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import type { BoardView } from "../../../server/src/v2/board";
-import { shortDate, weekdayDate } from "../../../server/src/v2/templates";
+import { shortDate, weekdayName } from "../../../server/src/v2/templates";
 import { DataTable, Empty, Section } from "../components/ui";
 import { useHead, useView } from "../v2/context";
 import { LoadError, Person, Skeleton } from "../v2/parts";
@@ -74,7 +74,7 @@ function Coverage({ view }: { view: BoardView }) {
               <th>Line</th>
               {view.dates.map((date) => (
                 <th key={date} className="numeric">
-                  {weekdayDate(date)}
+                  <small>{weekdayName(date)}</small> {shortDate(date)}
                 </th>
               ))}
             </tr>

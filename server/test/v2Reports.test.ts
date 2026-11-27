@@ -31,7 +31,7 @@ it("fills the default layout with yesterday's exceptions", () => {
   );
   expect(report.table!.rows).toHaveLength(6);
   expect(report.table!.rows[0].slice(0, 7)).toEqual([
-    "2026-11-25",
+    "25 Nov 2026",
     "Avery S.",
     "Inbound A",
     "Present",
@@ -86,14 +86,14 @@ it("summarises the cycle and lists roster changes", () => {
   expect(
     rosterReport(previous, eventsOf(db, previous.cycle.from)).rows,
   ).toContainEqual([
-    "2026-10-25",
+    "25 Oct 2026",
     "99115",
     "Skyler Cross",
     "New hire",
     "Joined the team",
   ]);
   expect(rosterReport(load(), eventsOf(db, "2026-11-21")).rows).toContainEqual([
-    TEAM_TODAY,
+    "26 Nov 2026",
     "99116",
     "Finley Hale",
     "Dropped",

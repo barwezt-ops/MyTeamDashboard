@@ -128,7 +128,7 @@ describe("Home", () => {
   it("names the latest reported day when attendance is behind", () => {
     const later = homeView(dashboardData(db, config, "2026-11-28"));
     expect(later.reportDay).toBe("2026-11-25");
-    expect(later.kpis[0].label).toBe("Late Wed 25");
+    expect(later.kpis[0].label).toBe("Late 25 Nov");
     const empty = openDb(":memory:");
     const bare = homeView(dashboardData(empty, config, TEAM_TODAY));
     expect(bare.kpis[0]).toMatchObject({
@@ -227,7 +227,7 @@ it("describes source freshness in one line", () => {
   const now = Date.parse("2026-11-26T12:00:00Z");
   expect(freshness(status, now)).toEqual({
     tone: "good",
-    text: "Attendance & MTD through Wed 25 · QA synced 2h ago",
+    text: "Attendance & MTD through 25 Nov · QA synced 2h ago",
   });
   expect(
     freshness({ ...status, attendanceThrough: "2026-11-23" }, now).tone,

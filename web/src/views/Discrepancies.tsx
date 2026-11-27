@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { DiscrepancyRow, Scope } from "../../../server/src/api/dto";
+import { fullDate } from "../../../server/src/v2/templates";
 import { api, message, query, useApi } from "../api";
 import {
   CardCell,
@@ -279,7 +280,7 @@ export function Discrepancies({
                   <CardCell label="Team Leader">{row.tl || "—"}</CardCell>
                   <CardCell label="Account">{row.account || "—"}</CardCell>
                   <CardCell label="Date" className="mono nowrap">
-                    {row.date}
+                    {fullDate(row.date)}
                   </CardCell>
                   <CardCell label="Missing">
                     <span className="rule-tag">{row.ruleId}</span> {row.missing}

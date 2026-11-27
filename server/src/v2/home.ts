@@ -104,7 +104,7 @@ export function homeView(data: DashboardData) {
     data.agents.map((agent) => [agent.code, say.shortName(agent)]),
   );
   const day = reportDay(data);
-  const reportLabel = day === yesterday ? "yesterday" : say.weekdayDate(day);
+  const reportLabel = day === yesterday ? "yesterday" : say.shortDate(day);
   const recorded = recordedDays(data);
   const on = (date: string) => recorded.get(date) ?? [];
   const facts = (date: string) => on(date).map((row) => row.facts);

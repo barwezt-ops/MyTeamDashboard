@@ -11,11 +11,11 @@ it("labels Cairo greetings and cycle boundaries, including leap years and DST", 
     cairoHeader(new Date(stamp), "Alex", start);
   expect(header("2026-11-26T12:00:00Z")).toEqual({
     greeting: "Good afternoon, Alex.",
-    eyebrow: "Thursday 26 November · Cycle day 6 of 30",
+    eyebrow: "Thursday 26 Nov · Cycle day 6 of 30",
   });
   expect(header("2026-11-20T22:30:00Z")).toMatchObject({
     greeting: "Good morning, Alex.",
-    eyebrow: "Saturday 21 November · Cycle day 1 of 30",
+    eyebrow: "Saturday 21 Nov · Cycle day 1 of 30",
   });
   expect(header("2026-11-20T10:00:00Z").eyebrow).toContain(
     "Cycle day 31 of 31",
@@ -25,7 +25,7 @@ it("labels Cairo greetings and cycle boundaries, including leap years and DST", 
   );
   expect(header("2026-07-01T21:30:00Z", 1)).toEqual({
     greeting: "Good morning, Alex.",
-    eyebrow: "Thursday 2 July · Cycle day 2 of 31",
+    eyebrow: "Thursday 2 Jul · Cycle day 2 of 31",
   });
   expect(header("2026-12-31T21:00:00Z").greeting).toBe("Good evening, Alex.");
 });

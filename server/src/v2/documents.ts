@@ -2,7 +2,7 @@
 // list recorded facts and the owner's own coaching entries. Private notes are
 // included only when the owner asks.
 import type { ProfileView } from "./profile.js";
-import { breakIncident, duration, shortDate } from "./templates.js";
+import { breakIncident, duration, fullDate, shortDate } from "./templates.js";
 
 const section = (title: string, lines: string[]) =>
   [title, ...(lines.length ? lines : ["Nothing recorded."])].join("\n");
@@ -14,7 +14,7 @@ const header = (title: string, profile: ProfileView) =>
     [
       profile.agent.line,
       profile.agent.hireDate &&
-        `hired ${profile.agent.hireDate} (${profile.agent.tenure})`,
+        `hired ${fullDate(profile.agent.hireDate)} (${profile.agent.tenure})`,
     ]
       .filter(Boolean)
       .join(" · "),

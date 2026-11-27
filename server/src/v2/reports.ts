@@ -69,7 +69,7 @@ export function eodReport(data: DashboardData, date: string) {
       ? data.settings.reportTemplate
       : defaultTemplate,
     {
-      date,
+      date: say.fullDate(date),
       "date.long": longDate(date),
       cycle: cycleLabel(data.cycle),
       "team.size": String(plan.length),
@@ -230,8 +230,8 @@ export function rosterReport(data: DashboardData, events: RosterEvent[]) {
   });
   return {
     headers: ["Date", "Code", "Agent", "Change", "Detail"],
-    rows: [...changes, ...dropped].sort(
-      (a, b) => b[0].localeCompare(a[0]) || a[2].localeCompare(b[2]),
-    ),
+    rows: [...changes, ...dropped]
+      .sort((a, b) => b[0].localeCompare(a[0]) || a[2].localeCompare(b[2]))
+      .map(([date, ...rest]) => [say.fullDate(date), ...rest]),
   };
 }

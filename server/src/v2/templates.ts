@@ -196,12 +196,10 @@ export function fullDate(date: string) {
     timeZone: "UTC",
   }).format(new Date(date + "T00:00:00Z"));
 }
-export function weekdayDate(date: string) {
+/** "Thu", shown above a date in a column heading. */
+export function weekdayName(date: string) {
   return new Intl.DateTimeFormat("en-GB", {
     weekday: "short",
-    day: "numeric",
     timeZone: "UTC",
-  })
-    .format(new Date(date + "T00:00:00Z"))
-    .replace(",", "");
+  }).format(new Date(date + "T00:00:00Z"));
 }

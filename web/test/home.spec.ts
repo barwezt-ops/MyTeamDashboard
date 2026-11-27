@@ -18,7 +18,7 @@ test("Home answers the shift questions from real numbers", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByText("Attendance & MTD through Wed 25 · QA synced 2h ago"),
+    page.getByText("Attendance & MTD through 25 Nov · QA synced 2h ago"),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Home, 2 urgent" }),
