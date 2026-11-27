@@ -2,11 +2,13 @@
 import type { AttendanceDay, Status } from "../api/dto.js";
 import { labelOf } from "../parse/normalize.js";
 import { minutes } from "./templates.js";
+import { workStatus, type Correction } from "../db/corrections.js";
 
 export type DayFacts = {
   date: string;
   status: Status;
   raw: string;
+  correction?: Correction;
   /** Minutes late, or null when the source does not report it. */
   late: number | null;
   /** Missing minutes after compensation, or null when not reported. */
@@ -37,6 +39,8 @@ export function dayFacts(
   details: Record<string, unknown> | undefined,
   breakLabel: string,
 ): DayFacts {
+  if (row.correction?.state === "corrected" && !workStatus(row.status))
+    details = undefined;
   const raw = labelOf(row.raw);
   const breakExceeded =
     labelOf(String(details?.exceeded ?? "")) === labelOf(breakLabel);
@@ -44,6 +48,7 @@ export function dayFacts(
     date: row.date,
     status: row.status,
     raw: row.raw,
+    ...(row.correction ? { correction: row.correction } : {}),
     late: minutes(details?.lateness),
     missing: minutes(row.missing),
     breakExceeded,

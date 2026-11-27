@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { commentStatus } from "../parse/commentStatus.js";
 import type { Agent, AttendanceDay } from "../api/dto.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db/db.js";
@@ -134,13 +135,22 @@ export function prepareAttendancePaste(
     throw new Error("MTD contains duplicate team codes.");
   records.sort((a, b) => order(a.date, b.date) || order(a.code, b.code));
   const details = records.map((row) => history.get(row.code + "|" + row.date)!);
+  const comments = checkedTeamRows(attendance, agents, "Attendance").map(
+    (row) => ({
+      code: codeOf(text(row.code)),
+      date: pasteDate(row.date, config.dateOrder)!,
+      note: text(row.tlComment),
+      ...commentStatus(text(row.tlComment), config.statusMap),
+    }),
+  );
   const dates = [...new Set(records.map((row) => row.date))].sort();
   const fingerprint = createHash("sha256")
-    .update(JSON.stringify({ records, details, snapshots }))
+    .update(JSON.stringify({ records, details, snapshots, comments }))
     .digest("hex");
   return {
     records,
     details,
+    comments,
     dates,
     snapshots,
     fingerprint,
@@ -197,6 +207,16 @@ export function storeAttendancePaste(
       for (const row of paste.records) record.run({ ...row, now });
       for (const row of paste.details)
         detail.run(row.code, row.date, JSON.stringify(row.fields));
+      const removeComment = db.prepare(
+        "DELETE FROM attendance_sheet_comments WHERE code=? AND date=?",
+      );
+      const comment = db.prepare(
+        "INSERT INTO attendance_sheet_comments VALUES (@code,@date,@note,@label,@status,@explained)",
+      );
+      for (const row of paste.comments) {
+        removeComment.run(row.code, row.date);
+        if (row.note) comment.run({ ...row, explained: Number(row.explained) });
+      }
       db.prepare(
         "INSERT INTO attendance_paste_state (id,fingerprint,last_changed_at,team_code_count) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,last_changed_at=excluded.last_changed_at,team_code_count=excluded.team_code_count",
       ).run(paste.fingerprint, now, teamCodeCount);

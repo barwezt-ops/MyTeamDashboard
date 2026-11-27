@@ -74,3 +74,21 @@ CREATE TABLE IF NOT EXISTS flag_dismissals (
   id TEXT PRIMARY KEY, facts TEXT NOT NULL, reason TEXT NOT NULL, dismissed_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS owner_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+-- Comments stay local and are deliberately excluded from all backup/export payloads.
+CREATE TABLE IF NOT EXISTS attendance_sheet_comments (
+  code TEXT NOT NULL,
+  date TEXT NOT NULL,
+  note TEXT NOT NULL,
+  label TEXT,
+  status TEXT,
+  explained INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (code,date)
+);
+CREATE TABLE IF NOT EXISTS attendance_corrections (
+  code TEXT NOT NULL,
+  date TEXT NOT NULL,
+  label TEXT NOT NULL,
+  status TEXT NOT NULL,
+  note TEXT NOT NULL,
+  PRIMARY KEY (code,date)
+);

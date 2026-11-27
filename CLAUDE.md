@@ -44,11 +44,12 @@ You are working on a private-use team dashboard: a Node/Express + SQLite service
 2. **No real data in git, ever.** No real names, agent codes, phone numbers, emails, sheet IDs, CSVs, SQLite files, notes or env values. Fixtures are fake (`Demo Lead`, `Cover Lead`, codes `99xxx`). Real config lives in gitignored `config/sources.local.json` or the `DASHBOARD_SOURCE_CONFIG` env var.
 3. **No patient data** exists in the sources and none may ever be stored.
 4. **Join on agent code, never on name.** Names differ between sheets.
-5. **Whitelisted columns only.** The config refuses to map phone, email, laptop, "American Name", comment and allowance headers (`/phone|email|laptop|american|comment|allow/i`). Medical and Internet per-day allowance fields are also refused.
+5. **Whitelisted columns only.** The config refuses to map phone, email, laptop, "American Name", comment and allowance headers (`/phone|email|laptop|american|comment|allow/i`). Medical and Internet per-day allowance fields are also refused. **Owner-approved exception (2026-11-27): only the exact `TL Comment` header on the Attendance paste may be read.** Ops Comment, WFM Comment and other comment columns remain refused, including on other sources. Sheet TL comments and in-app correction notes stay in local SQLite only: never log them, commit real text, or include them in exports/backups. Only the owner may explicitly copy their text.
 6. **Config over code.** Sheet IDs, GIDs, column letters, schedule anchor, cron times, status labels, date order — all in config.
 7. **No invented business rules.** `thresholds` ships empty; only the owner (via TL/SOP) sets numbers. Same rules for every agent, no per-agent exceptions.
 8. **Fail loudly, never wipe on failure.** A failed sync logs to `sync_log`, shows on Settings/the sync badge, and leaves existing data untouched. Syncs only replace the dates the source actually covers.
 9. **Never overwrite user data in sync:** discrepancy `state`/`tl_comment` and `notes` are owner-entered.
+   Attendance app corrections are owner data too and always beat sheet corrections; Undo restores the sheet. Retain WFM rows, resolve effective status on reads, and keep WFM provenance visible. One distinct known whole status label in a TL comment applies a correction (case-insensitive, longest overlapping label first); zero labels explains flags without changing counts; two or more labels apply neither. Sheet comment changes/removal take effect on the next successful paste sync. Matching WFM labels show `WFM updated` without an override marker.
 10. **Timezone is Africa/Cairo** (it observes DST). Each sync locks in one Cairo date at start.
 
 ## Where things are

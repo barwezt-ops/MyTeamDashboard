@@ -239,7 +239,7 @@ function Week({ view }: { view: HomeView }) {
                   <HeatCell
                     key={cell.date}
                     status={cell.status}
-                    label={`${row.name}, ${dayName(cell.date)} ${shortDate(cell.date)}: ${cell.status ?? "No record"}`}
+                    label={`${row.name}, ${dayName(cell.date)} ${shortDate(cell.date)}: ${cell.label ?? cell.status ?? "No record"}`}
                   />
                 ))}
               </div>
@@ -366,6 +366,9 @@ function Exceptions({ view }: { view: HomeView }) {
                   >
                     {row.status}
                   </span>
+                  {row.note && (
+                    <small className="correction-note">{row.note}</small>
+                  )}
                 </td>
                 <td className="mono">{row.login ?? "—"}</td>
                 {cell(row.late, "warn")}

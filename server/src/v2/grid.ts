@@ -6,13 +6,15 @@ import { heatStatus } from "./heat.js";
 import { reportDay } from "./home.js";
 import { noLine } from "./queues.js";
 import * as say from "./templates.js";
+import { attendanceLabel } from "../db/corrections.js";
 
 /** Items that need the owner: URGENT, plus due follow-ups. */
 export const needsAttention = (agent: V2Agent) =>
   agent.flags.filter(
     (flag) =>
-      flag.severity === "URGENT" ||
-      (flag.severity === "SOON" && flag.kind !== "pace"),
+      flag.state !== "explained" &&
+      (flag.severity === "URGENT" ||
+        (flag.severity === "SOON" && flag.kind !== "pace")),
   ).length;
 
 export function dayText(
@@ -40,7 +42,15 @@ export function dayText(
       ],
     ];
   return [
-    ["Status", facts.raw || facts.status],
+    ["Status", attendanceLabel(facts)],
+    ...(facts.correction
+      ? [
+          [
+            facts.correction.source === "sheet" ? "TL comment" : "Owner note",
+            facts.correction.note,
+          ] as [string, string],
+        ]
+      : []),
     ...(facts.shift
       ? [["Shift", say.clockTime(facts.shift)!] as [string, string]]
       : plan),
@@ -65,6 +75,9 @@ export function dayText(
 export function gridCells(agent: V2Agent, today: string) {
   return agent.calendar.map((day) => ({
     date: day.date,
+    recorded: !!day.attendance,
+    correction: day.attendance?.correction ?? null,
+    label: day.attendance ? attendanceLabel(day.attendance) : null,
     status: heatStatus(day.attendance, day.schedule?.status ?? null),
     // Planned days that have not been reported are drawn as outlines.
     planned: !day.attendance && day.date >= today,

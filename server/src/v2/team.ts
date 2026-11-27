@@ -1,5 +1,6 @@
 // The team table, with each number compared to the same point last cycle.
 import { absenceCounts } from "./absences.js";
+import { attendanceLabel } from "../db/corrections.js";
 import { daysApart } from "./cycle.js";
 import type { DashboardData, V2Agent } from "./data.js";
 import { isLate, isMissing, sum, type DayFacts } from "./facts.js";
@@ -147,7 +148,9 @@ export function teamView(data: DashboardData, previous: DashboardData) {
         (mtd?.status as string) || (agent.active ? "Active" : "Left the team"),
       latestDay: latest?.date ?? null,
       latestStatus: latest
-        ? (latest.absence ?? (latest.raw || latest.status))
+        ? latest.correction
+          ? attendanceLabel(latest)
+          : (latest.absence ?? (latest.raw || latest.status))
         : null,
       latestShift: latest?.shift ?? null,
       latestLogin: latest?.login ?? null,

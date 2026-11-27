@@ -9,6 +9,7 @@ import type {
 } from "../api/dto.js";
 import type { Window } from "../parse/schedule.js";
 import type { Db } from "./db.js";
+import { attendanceLabel, correctedDay, correctionsOf } from "./corrections.js";
 
 const agentFields =
   "code, first_name AS firstName, full_name AS fullName, account, account2, dtl, tl, stl, title, hire_date AS hireDate, last_working_day AS lastWorkingDay, owner_group AS ownerGroup, active";
@@ -43,20 +44,25 @@ export function scheduleOf(db: Db, { from, to }: Window, code?: string) {
     .all(from, to, ...(code ? [code] : [])) as ScheduleDay[];
 }
 export function attendanceOf(db: Db, { from, to }: Window, code?: string) {
-  return db
+  const corrections = correctionsOf(db);
+  const rows = db
     .prepare(
       "SELECT code,date,raw,status,missing FROM attendance_days WHERE date BETWEEN ? AND ?" +
         (code ? " AND code=?" : "") +
         " ORDER BY date",
     )
     .all(from, to, ...(code ? [code] : [])) as AttendanceDay[];
+  if (!corrections.size) return rows;
+  return rows.map((row) =>
+    correctedDay(row, corrections.get(row.code + "|" + row.date)),
+  );
 }
 export function discrepanciesOf(
   db: Db,
   where = "1=1",
   params: (string | number)[] = [],
 ) {
-  return db
+  const rows = db
     .prepare(
       "SELECT " +
         discFields +
@@ -65,6 +71,24 @@ export function discrepanciesOf(
         " ORDER BY d.date DESC,d.code,d.rule_id",
     )
     .all(...params) as DiscrepancyRow[];
+  const corrections = correctionsOf(db);
+  return rows.map((row) => {
+    if (row.source === "roster") return row;
+    const correction = corrections.get(row.code + "|" + row.date);
+    if (!correction) return row;
+    const actual = db
+      .prepare(
+        "SELECT code,date,raw,status,missing FROM attendance_days WHERE code=? AND date=?",
+      )
+      .get(row.code, row.date) as AttendanceDay | undefined;
+    return {
+      ...row,
+      ...(correction.label === null ? { explanation: correction.note } : {}),
+      ...(actual
+        ? { attendanceLabel: attendanceLabel(correctedDay(actual, correction)) }
+        : {}),
+    };
+  });
 }
 export function notesOf(
   db: Db,

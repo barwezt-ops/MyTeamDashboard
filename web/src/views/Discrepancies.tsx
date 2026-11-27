@@ -189,6 +189,7 @@ export function Discrepancies({
               onChange={(event) => setState(event.target.value)}
             >
               <option value="all">All states</option>
+              <option value="explained">Explained</option>
               {options.map((value) => (
                 <option key={value} value={value}>
                   {labels[value]}
@@ -284,6 +285,16 @@ export function Discrepancies({
                   </CardCell>
                   <CardCell label="Missing">
                     <span className="rule-tag">{row.ruleId}</span> {row.missing}
+                    {row.attendanceLabel && (
+                      <small className="correction-note">
+                        {row.attendanceLabel}
+                      </small>
+                    )}
+                    {row.explanation && (
+                      <small className="correction-note">
+                        Explained · {row.explanation}
+                      </small>
+                    )}
                   </CardCell>
                   <CardCell label="TL Comment">
                     <input
@@ -303,21 +314,26 @@ export function Discrepancies({
                     />
                   </CardCell>
                   <CardCell label="State">
-                    <select
-                      aria-label={"State for " + row.code + " " + row.ruleId}
-                      value={row.state}
-                      onChange={(event) =>
-                        void change(row.id, {
-                          state: event.target.value as DiscrepancyRow["state"],
-                        })
-                      }
-                    >
-                      {options.map((value) => (
-                        <option key={value} value={value}>
-                          {labels[value]}
-                        </option>
-                      ))}
-                    </select>
+                    {row.explanation ? (
+                      <span className="tag">Explained</span>
+                    ) : (
+                      <select
+                        aria-label={"State for " + row.code + " " + row.ruleId}
+                        value={row.state}
+                        onChange={(event) =>
+                          void change(row.id, {
+                            state: event.target
+                              .value as DiscrepancyRow["state"],
+                          })
+                        }
+                      >
+                        {options.map((value) => (
+                          <option key={value} value={value}>
+                            {labels[value]}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </CardCell>
                 </tr>
               ))}

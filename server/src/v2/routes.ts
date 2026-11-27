@@ -32,7 +32,15 @@ import { statusMapView } from "./statusMap.js";
 import { reportDay } from "./home.js";
 import { shortName } from "./templates.js";
 import { boardView } from "./board.js";
-import { discrepanciesOf, eventsOf } from "../db/repo.js";
+import {
+  agentsOf,
+  attendanceOf,
+  discrepanciesOf,
+  eventsOf,
+} from "../db/repo.js";
+import { attendanceLabel } from "../db/corrections.js";
+import { labelOf } from "../parse/normalize.js";
+import { refreshAttendanceRules } from "../rules/index.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -45,6 +53,93 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
   const refuse = (res: Response, error: string) =>
     void res.status(400).json({ error });
   const idParams = z.strictObject({ id: noteId });
+  const correctionParams = z.strictObject({ code, date: day });
+  const recordedDay = (agent: string, date: string) =>
+    own(agent) &&
+    !!db
+      .prepare("SELECT 1 FROM attendance_days WHERE code=? AND date=?")
+      .get(agent, date);
+  router.get(
+    "/corrections",
+    endpoint({}, (_input, _req, res) => {
+      const names = new Map(
+        agentsOf(db)
+          .filter((agent) => agent.ownerGroup === "mine")
+          .map((agent) => [agent.code, shortName(agent)]),
+      );
+      // No cycle cutoff: Settings lists every corrected or explained day.
+      const rows = attendanceOf(db, { from: "1000-01-01", to: "9999-12-31" });
+      res.json(
+        rows
+          .filter((row) => row.correction && names.has(row.code))
+          .map((row) => ({
+            ...row.correction!,
+            code: row.code,
+            name: names.get(row.code)!,
+            date: row.date,
+            used: row.raw || row.status,
+            display: attendanceLabel(row),
+          }))
+          .sort(
+            (a, b) =>
+              b.date.localeCompare(a.date) || a.name.localeCompare(b.name),
+          ),
+      );
+    }),
+  );
+  router.put(
+    "/corrections/:code/:date",
+    endpoint(
+      {
+        params: correctionParams,
+        body: z.strictObject({
+          label: z.string().trim().min(1).max(200),
+          note: z.string().trim().min(1).max(10000),
+        }),
+      },
+      ({ params, body }, _req, res) => {
+        if (!recordedDay(params.code, params.date))
+          return notFound(res, "Recorded day in your team");
+        const label = labelOf(body.label);
+        if (
+          !Object.hasOwn(config.statusMap, label) ||
+          config.statusMap[label] === "Unknown"
+        )
+          return refuse(res, "Choose a known status label");
+        db.transaction(() => {
+          db.prepare(
+            "INSERT INTO attendance_corrections VALUES (?,?,?,?,?) ON CONFLICT(code,date) DO UPDATE SET label=excluded.label,status=excluded.status,note=excluded.note",
+          ).run(
+            params.code,
+            params.date,
+            label,
+            config.statusMap[label],
+            body.note,
+          );
+          refreshAttendanceRules(
+            db,
+            today(),
+            config.sources.attendance.enabled,
+          );
+        })();
+        res.sendStatus(204);
+      },
+    ),
+  );
+  router.delete(
+    "/corrections/:code/:date",
+    endpoint({ params: correctionParams }, ({ params }, _req, res) => {
+      if (!recordedDay(params.code, params.date))
+        return notFound(res, "Recorded day in your team");
+      db.transaction(() => {
+        db.prepare(
+          "DELETE FROM attendance_corrections WHERE code=? AND date=?",
+        ).run(params.code, params.date);
+        refreshAttendanceRules(db, today(), config.sources.attendance.enabled);
+      })();
+      res.sendStatus(204);
+    }),
+  );
   /** Returns the row's agent code when the row exists and is on the team. */
   const owned = (table: string, id: number) => {
     const row = db.prepare(`SELECT code FROM ${table} WHERE id=?`).get(id) as

@@ -1705,3 +1705,24 @@ ol.timeline.panel-body {
   padding: 0 18px 18px;
   gap: 0;
 }
+.correction-note {
+  display: block;
+  max-width: 28rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: 0.3rem;
+}
+.correction-mark {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  font-size: 11px;
+  font-style: normal;
+  color: var(--ink);
+}
+.correction-form {
+  margin: 1rem 0;
+}
+.correction-form > button {
+  margin-right: 0.5rem;
+}

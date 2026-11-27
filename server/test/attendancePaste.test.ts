@@ -39,6 +39,8 @@ it("reads only approved fields as serial values and stops before data reads on p
     AQ: "NCNS Streak",
     AW: "Missing After Compensation",
     AX: "TL Comment",
+    AY: "Ops Comment",
+    AZ: "WFM Comment",
   });
   const mtd = header({
     A: "Team Leader",
@@ -72,7 +74,7 @@ it("reads only approved fields as serial values and stops before data reads on p
         const row = [];
         for (let i = indexOf(start); i <= indexOf(end); i++) {
           const column = columnAt(i);
-          expect(["AX", "AM", "AT", "L", "M"]).not.toContain(column);
+          expect(["AY", "AZ", "AM", "AT", "L", "M"]).not.toContain(column);
           row.push(
             column === "G" ? 46_000 : column === "AW" ? 1 / 24 : "99001",
           );
@@ -99,8 +101,10 @@ it("reads only approved fields as serial values and stops before data reads on p
       code: "99001",
       date: 46_000,
       missing: 1 / 24,
+      tlComment: "99001",
     });
-    expect(day.rows[0]).not.toHaveProperty("comment");
+    expect(day.rows[0]).not.toHaveProperty("opsComment");
+    expect(day.rows[0]).not.toHaveProperty("wfmComment");
     expect(snapshot.headers).toContainEqual({
       column: "D",
       header: "Total Missing Hours",
@@ -118,6 +122,19 @@ it("reads only approved fields as serial values and stops before data reads on p
       "'MTD'!B5:B",
       "'Team View'!A2:A",
     ]);
+    attendance[indexOf("AZ")] = "TL Comment";
+    const duplicateBefore = calls.length;
+    await expect(
+      readAttendancePasteTabs(
+        "FakePaste",
+        directory,
+        ["Attendance", "MTD"],
+        false,
+        request,
+      ),
+    ).rejects.toThrow("requires one TL Comment header");
+    expect(calls).toHaveLength(duplicateBefore + 1);
+    attendance[indexOf("AZ")] = "WFM Comment";
     attendance[indexOf("AX")] = "Patient record";
     const before = calls.length;
     await expect(

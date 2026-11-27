@@ -35,7 +35,11 @@ export function calculateTrends(
   for (const row of attendance)
     if (row.status !== "Unknown") {
       const key = dayKey(row.code, row.date);
-      if (actual.get(key)?.status === "Off Day" && row.status !== "Present")
+      if (
+        !row.correction?.label &&
+        actual.get(key)?.status === "Off Day" &&
+        row.status !== "Present"
+      )
         continue;
       actual.set(key, { ...row, shiftStart: null });
     }

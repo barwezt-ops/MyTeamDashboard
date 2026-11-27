@@ -1,9 +1,12 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
+_Last updated: 2026-11-27 for attendance corrections._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **Attendance corrections:** built on `feature/attendance-corrections` from current `origin/main` (`e5d54f7`), one PR for owner review; do not merge or update the installed app. Sheet TL comments and app correction notes are local-only, excluded from logs and exports/backups. See `docs/attendance-corrections.md` for behavior, checks and synthetic screenshots.
+- **Corrections validation:** 249 Vitest tests passed, one existing skip; all 26 Playwright checks passed, then the final corrections/reports/Settings checks passed again (3). Lint, typecheck and isolated `build:smoke` pass. Suites ran with one worker because parallel runs exceeded existing host time/latency limits; no limits were changed. Corrections browser tests have a separate synthetic database to avoid resetting another screen test's data.
+- **Current main:** V2 PRs #20–#27 are now merged (verified from Git history). The older stack/checkpoint notes below describe their pre-merge state.
 - **V2 status:** plan-v2 Phases 1–8 are built on stacked branches with one open PR each, none merged: #20 design system (approved), #21 data layer, #22 Home, #23 grid and Team, #24 agent profile, #25 Coaching, #26 Quality and Queues, #27 Reports, Settings and polish. Merge in that order; after each merge, point the next PR at `main`.
 - **Branches:** `v2-phase-1-design-system` → `-2-data` → `-3-home` → `-4-grid` → `-5-profile` → `-6-coaching` → `-7-quality-queues` → `-8-reports-settings` (all prefixed `v2-phase`).
 - **Review follow-up:** the owner reviewed PRs #21–#27 and approved them with 15 fixes and decisions (plan-v2 section 8). All are done as follow-up commits on `v2-phase-8-reports-settings` (PR #27), waiting for review. The earlier branches are unchanged, so merge the whole stack before using any one phase.
@@ -16,6 +19,7 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - **Next task:** the owner reviews the follow-up, merges the V2 PRs, updates the installed app, runs an attendance sync (which fills in break minutes for the pasted days), sets the account, report layout, thresholds and staffing in Settings, connects the line/queue tab, and sends the QA link.
 
 ## 2. Features
+- **Attendance corrections (2026-11-27):** exact Attendance `TL Comment` header exception; one known whole label changes effective status throughout the shared read model, preserving WFM status and provenance. No label explains that day's flags/discrepancies without changing counts; ambiguous labels apply neither. Sheet changes/removal are sync-driven; matching WFM labels show `WFM updated`. Attendance drawer supports owner status + note and Undo; app wins over sheet and survives sync. Settings lists every corrected/explained day, across cycles. New additive local tables: `attendance_sheet_comments`, `attendance_corrections`; neither is exported or included in JSON backups.
 - **V2 review follow-up (2026-11-27):** whole-coaching pace; the perfect-attendance rule; break minutes everywhere; the MTD-against-daily warning (freshness line and Settings, by name); every Team View column in Team; a nameless end-of-day report; the attendance email table and subject; escalation headings, documentation order and an MPR layout in Settings; read-only status map with unmapped labels (`v2/statusMap.ts`, `GET /v2/status-map`); one date format; Attendance → Trends replacing the Trends screen (`views/AttendanceTrends.tsx`); Home exceptions and shout-out layout (`web/test/layout.spec.ts`).
 - **V2 Phase 8:** Reports (end of day in the owner's layout, cycle summary, MPR prep, roster changes, all copy and CSV), Settings (thresholds marked set or not set, cycle and attendance read hours, staffing baselines, report layout, theme, status map), Ctrl K “Copy EOD”, custom form controls and a quality-bar browser test (`v2/reports.ts`, `v2/template.ts`, `views/Reports.tsx`, `views/OwnerSettings.tsx`). `GET /v2/reports?cycle&date`.
 - **V2 Phase 7:** Quality (latest, cycle and previous average, recent scores, last evaluation, distribution, sorting, owner-set overdue mark, prep links) and Queues (today's board, 14-day coverage against owner baselines, 31-day leave list, line changes). `GET /v2/quality`, `GET /v2/queues`.
@@ -69,6 +73,8 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
+- 2026-11-27: Owner explicitly approved reading only `TL Comment` from the Attendance paste, superseding the blanket comment refusal for that exact column/source. Ops Comment/WFM Comment and other comment columns stay refused. Real comment/note text never belongs in Git, logs or automatic exports; local correction tables are deliberately excluded even from JSON backups. The owner can manually copy text.
+- 2026-11-27: Keep WFM attendance rows untouched; apply app > sheet corrections when reading. Match distinct whole configured labels case-insensitively, consuming longer overlapping labels first (Forced Annual is one label, not also Annual). Zero labels explains, two or more does nothing. Full-day nonworking corrections remove working-time incidents from effective facts; covered daily deltas adjust MTD totals while preserving unpasted totals. WFM confirmation compares labels, not just the broader mapped category (Annual and Forced Annual both map to PTO).
 - 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
 - 2026-11-26: Bundle Fontsource fonts; use muted small labels and darker warning tag text for contrast while keeping the supplied decorative tokens. Native dialogs provide modal focus behavior.
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
@@ -136,6 +142,7 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
 ## 6. Known issues & tech debt
+- Corrections and their notes deliberately do not travel in JSON backups/exports under the owner's local-only rule; they remain in the local SQLite database. No live sync, mapping change or installed release update was performed for this feature.
 - The line/queue tab has not been connected and QA is waiting for its link.
 
 - The owner approved importing the prior coaching cycle. Its MTD totals are saved under the Cairo sync date with the source cycle recorded.
@@ -187,6 +194,11 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - TL comment and owner corrections
+- Built sheet corrections, explanations, WFM-updated state, owner precedence/Undo and Settings history on a new branch from main. Added lifecycle, privacy, API and browser checks plus synthetic screenshots of grid, Home and profile.
+- Kept source WFM rows and existing owner discrepancy state separate; auto-cleared discrepancies reopen when a sheet correction is removed. Source comments are excluded from copy/export/backup payloads.
+- Verified all quality gates with serial test workers, kept all latency/time limits, and refreshed synthetic grid/Home/profile and Settings screenshots. The last affected-screen browser run uses the final compiled source.
 
 ### 2026-11-27 - V2 review follow-up (new session)
 - Took over from the previous session with a clean tree at `03d10cc`.

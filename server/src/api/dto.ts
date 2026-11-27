@@ -56,6 +56,7 @@ export interface AttendanceDay {
   raw: string;
   status: Status;
   missing: string | null;
+  correction?: import("../db/corrections.js").Correction;
 }
 export interface Discrepancy {
   id: string;
@@ -71,6 +72,8 @@ export interface Discrepancy {
   updatedAt: string;
 }
 export interface DiscrepancyRow extends Discrepancy {
+  explanation?: string;
+  attendanceLabel?: string;
   firstName: string;
   tl: string;
   account: string;

@@ -25,6 +25,8 @@ import { breakStreak, findPatterns } from "./patterns.js";
 import { plannedDay, type LineHistory } from "./sources.js";
 import { readSettings } from "./settings.js";
 import { minutes } from "./templates.js";
+import { labelOf } from "../parse/normalize.js";
+import { attendanceLabel } from "../db/corrections.js";
 
 export type CoachingRow = {
   id: number;
@@ -168,6 +170,63 @@ export function dashboardData(
     const mtd = latestMtd
       ? (JSON.parse(latestMtd.fields) as Record<string, unknown>)
       : null;
+    // Apply only known daily deltas to WFM totals; keep unpasted days counted.
+    if (mtd) {
+      const statusCounts = {
+        ...((mtd.counts ?? {}) as Record<string, number>),
+      };
+      for (const row of attendanceFor(code).filter(
+        (row) =>
+          within(row.date, cycle) &&
+          row.date < latestMtd!.sync_date &&
+          row.correction?.state === "corrected",
+      )) {
+        const correction = row.correction!;
+        const detail = details.get(code + "|" + row.date);
+        const original = dayFacts(
+          {
+            ...row,
+            raw: correction.wfmRaw,
+            status: correction.wfmStatus,
+            missing: correction.wfmMissing,
+            correction: undefined,
+          },
+          detail,
+          breakLabel ?? "Exceeded",
+        );
+        const used = dayFacts(row, detail, breakLabel ?? "Exceeded");
+        const subtract = (key: string, amount: number, time: boolean) => {
+          const value = time ? minutes(mtd[key]) : reportedNumber(mtd[key]);
+          if (value !== null) {
+            const next = Math.max(0, value - amount);
+            const seconds = Math.round(next * 60);
+            mtd[key] = time
+              ? `${Math.floor(seconds / 3600)}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
+              : next;
+          }
+        };
+        subtract("lateness", (original.late ?? 0) - (used.late ?? 0), true);
+        subtract(
+          "totalMissingHours",
+          (original.missing ?? 0) - (used.missing ?? 0),
+          true,
+        );
+        subtract(
+          "latenessIncidents",
+          Number(isLate(original)) - Number(isLate(used)),
+          false,
+        );
+        const oldLabel = labelOf(correction.wfmRaw),
+          newLabel = labelOf(row.raw);
+        if (oldLabel in statusCounts)
+          statusCounts[oldLabel] = Math.max(
+            0,
+            Number(statusCounts[oldLabel]) - 1,
+          );
+        statusCounts[newLabel] = Number(statusCounts[newLabel] ?? 0) + 1;
+      }
+      mtd.counts = statusCounts;
+    }
     const useMtd =
       !!latestMtd &&
       latestMtd.sync_date >= plusDays(current.at(-1)?.date ?? cycle.from, 1);
@@ -227,7 +286,7 @@ export function dashboardData(
     const qa = qaFor(code);
     const currentQa = qa.filter((row) => within(row.date, cycle));
     const patterns = findPatterns(days, current, isOff);
-    const candidates = candidateFlags({
+    const flagInput = {
       settings,
       today,
       active: agent.active,
@@ -243,8 +302,60 @@ export function dashboardData(
         evaluations: currentQa,
       },
       patterns,
+    };
+    const unexplained = (rows: DayFacts[]) =>
+      rows.filter((day) => day.correction?.state !== "explained");
+    const explained = current.filter(
+      (day) => day.correction?.state === "explained",
+    );
+    const actionable = candidateFlags({
+      ...flagInput,
+      cycle: unexplained(current),
+      days: unexplained(days),
+      counts: {
+        ...counts,
+        lateCount: Math.max(
+          0,
+          counts.lateCount - explained.filter(isLate).length,
+        ),
+        lateMinutes: Math.max(0, counts.lateMinutes - sum(explained, "late")),
+        missingMinutes: Math.max(
+          0,
+          counts.missingMinutes - sum(explained, "missing"),
+        ),
+      },
+      patterns: findPatterns(unexplained(days), unexplained(current), isOff),
     });
-    const flags = openFlags(code, cycle.from, candidates, dismissals);
+    const explainedFlags = candidateFlags(flagInput).filter(
+      (flag) => !actionable.some((item) => item.kind === flag.kind),
+    );
+    const flags = [
+      ...openFlags(code, cycle.from, actionable, dismissals),
+      ...openFlags(code, cycle.from, explainedFlags, []).map((flag) => ({
+        ...flag,
+        state: "explained" as const,
+        severity: "LATER" as const,
+        reason: `Explained · ${flag.reason}`,
+        detail: days
+          .filter(
+            (day) =>
+              day.correction?.state === "explained" &&
+              flag.facts.some((fact) => fact.startsWith(day.date)),
+          )
+          .map((day) => `${day.date}: ${day.correction!.note}`)
+          .join(" · "),
+      })),
+    ];
+    for (const flag of flags) {
+      const provenance = days
+        .filter(
+          (day) =>
+            day.correction &&
+            flag.facts.some((fact) => fact.startsWith(day.date)),
+        )
+        .map((day) => `${day.date}: ${attendanceLabel(day)}`);
+      if (provenance.length) flag.detail += " · " + provenance.join(" · ");
+    }
 
     const calendar = datesBetween(cycle.from, cycle.to).map((date) => ({
       date,
@@ -310,7 +421,11 @@ export function dashboardData(
     };
   });
 
-  const flags = sortFlags(agents.flatMap((agent) => agent.flags));
+  const flags = sortFlags(
+    agents
+      .flatMap((agent) => agent.flags)
+      .filter((flag) => flag.state !== "explained"),
+  );
   return {
     today,
     yesterday,

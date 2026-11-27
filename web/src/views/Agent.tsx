@@ -156,7 +156,7 @@ function Calendar({ view }: { view: Profile }) {
                 type="button"
                 className={cell.planned ? "grid-cell is-planned" : "grid-cell"}
                 aria-pressed={chosen === cell.date}
-                aria-label={`${shortDate(cell.date)}: ${cell.planned ? "planned " : ""}${cell.status ?? "No record"}`}
+                aria-label={`${shortDate(cell.date)}: ${cell.planned ? "planned " : ""}${cell.correction ? cell.label : (cell.status ?? "No record")}`}
                 onClick={() => setChosen(chosen === cell.date ? "" : cell.date)}
               >
                 <span aria-hidden="true">
@@ -415,19 +415,25 @@ function Details({ view, drawer }: { view: Profile; drawer: boolean }) {
           <ul className="flag-list">
             {view.flags.map((flag) => (
               <li key={flag.id}>
-                <Severity level={flag.severity} />
+                {flag.state === "explained" ? (
+                  <span className="tag">Explained</span>
+                ) : (
+                  <Severity level={flag.severity} />
+                )}
                 <div>
                   <strong>{flag.reason}</strong>
                   <small>{flag.detail}</small>
                 </div>
-                <button
-                  type="button"
-                  className="secondary small"
-                  aria-label={"Dismiss: " + flag.reason}
-                  onClick={() => setDialog({ type: "dismiss", flag })}
-                >
-                  Dismiss
-                </button>
+                {flag.state !== "explained" && (
+                  <button
+                    type="button"
+                    className="secondary small"
+                    aria-label={"Dismiss: " + flag.reason}
+                    onClick={() => setDialog({ type: "dismiss", flag })}
+                  >
+                    Dismiss
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -505,9 +511,16 @@ function Details({ view, drawer }: { view: Profile; drawer: boolean }) {
                 <tr key={row.id}>
                   <td className="mono nowrap">{fullDate(row.date)}</td>
                   <td>{row.ruleId}</td>
-                  <td>{row.missing || "—"}</td>
-                  <td>{row.state}</td>
-                  <td>{row.tlComment || "—"}</td>
+                  <td>
+                    {row.missing || "—"}
+                    {row.attendanceLabel && (
+                      <small className="correction-note">
+                        {row.attendanceLabel}
+                      </small>
+                    )}
+                  </td>
+                  <td>{row.explanation ? "Explained" : row.state}</td>
+                  <td>{row.explanation || row.tlComment || "—"}</td>
                 </tr>
               ))}
             </tbody>

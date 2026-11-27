@@ -46,7 +46,7 @@ const state = z.enum(["open", "ack", "resolved"]);
 const rules = z.enum(["D1", "D2", "D3", "D4", "D5", "D6", "D7"]);
 const filters = z.strictObject({
   scope: scopes.optional(),
-  state: z.union([state, z.literal("all")]).optional(),
+  state: z.union([state, z.literal("all"), z.literal("explained")]).optional(),
   rule: rules.optional(),
   from: day.optional(),
   to: day.optional(),
@@ -101,7 +101,12 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     if ((query.scope ?? config.me.defaultScope) === "mine")
       where.push("a.owner_group='mine'");
     for (const [column, value] of [
-      ["d.state", query.state === "all" ? undefined : query.state],
+      [
+        "d.state",
+        query.state === "all" || query.state === "explained"
+          ? undefined
+          : query.state,
+      ],
       ["d.rule_id", query.rule],
       ["d.code", query.code],
     ]) {
@@ -123,6 +128,11 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     const q = query.q?.toLowerCase();
     return rows.filter(
       (row) =>
+        (query.state === "explained"
+          ? !!row.explanation
+          : query.state === "open"
+            ? !row.explanation
+            : true) &&
         (!ids || ids.has(row.id)) &&
         (!q || (row.firstName + " " + row.code).toLowerCase().includes(q)),
     );

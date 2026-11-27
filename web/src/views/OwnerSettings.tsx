@@ -18,6 +18,7 @@ import { api } from "../api";
 import { ErrorNotice, Loading, Section } from "../components/ui";
 import { useView } from "../v2/context";
 import { useSave } from "../v2/dialogs";
+import { Corrections } from "../v2/corrections";
 
 const show = (value: number | null) => (value === null ? "" : String(value));
 const read = (value: string) => (value.trim() === "" ? null : Number(value));
@@ -434,6 +435,7 @@ export function OwnerSettings({
     JSON.stringify(fields.map((field) => [field, saved[field]]));
   return (
     <div className="owner-settings">
+      <Corrections />
       <Thresholds
         key={key(...thresholds.map(([field]) => field), "coachingTarget")}
         settings={saved}

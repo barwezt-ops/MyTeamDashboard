@@ -13,6 +13,7 @@ import {
 import { heatStatus } from "./heat.js";
 import { planFor, queuesFor, working } from "./queues.js";
 import * as say from "./templates.js";
+import { attendanceLabel } from "../db/corrections.js";
 
 export type Tone = "good" | "warn" | "bad" | "accent";
 
@@ -72,20 +73,28 @@ export function reportDay(data: DashboardData) {
     : yesterday;
 }
 
-export function exceptionRows(data: DashboardData, date: string) {
+export function exceptionRows(
+  data: DashboardData,
+  date: string,
+  includeCorrections = false,
+) {
   return (recordedDays(data).get(date) ?? [])
     .filter(
       ({ facts }) =>
         isLate(facts) ||
         isMissing(facts) ||
         facts.breakExceeded ||
-        isUnplanned(facts),
+        isUnplanned(facts) ||
+        (includeCorrections && !!facts.correction),
     )
     .map(({ agent, facts }) => ({
       code: agent.code,
       name: say.shortName(agent),
       line: agent.line,
-      status: facts.absence ?? facts.status,
+      status: facts.correction
+        ? attendanceLabel(facts)
+        : (facts.absence ?? facts.status),
+      note: facts.correction?.note ?? null,
       login: say.clockTime(facts.login),
       late: facts.late ? say.duration(facts.late) : null,
       missing: facts.missing ? say.duration(facts.missing) : null,
@@ -291,6 +300,7 @@ export function homeView(data: DashboardData) {
           agent.calendar.find((item) => item.date === date);
         return {
           date,
+          label: row?.attendance ? attendanceLabel(row.attendance) : null,
           status: heatStatus(
             row?.attendance ?? null,
             row?.schedule?.status ?? null,
@@ -400,7 +410,7 @@ export function homeView(data: DashboardData) {
       ),
     },
     queues,
-    exceptions: exceptionRows(data, day),
+    exceptions: exceptionRows(data, day, true),
     hasReport,
     lateness,
     shoutout,

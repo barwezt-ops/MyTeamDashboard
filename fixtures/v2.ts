@@ -23,6 +23,7 @@ export type FakeDay = {
   breakMinutes?: number;
   shift?: string;
   login?: string;
+  tlComment?: string;
 };
 
 export const fraction = (minutes: number) => minutes / 1440;
@@ -56,6 +57,7 @@ export function fakePaste(days: FakeDay[]) {
       breakOver: fraction(day.breakExceeded ? (day.breakMinutes ?? 6) : 0),
       exceeded: day.breakExceeded ? "Exceeded" : "",
       ncnsStreak: 0,
+      tlComment: day.tlComment,
     };
   });
   const mtd = [...new Set(days.map((day) => day.code))].map((code) => {

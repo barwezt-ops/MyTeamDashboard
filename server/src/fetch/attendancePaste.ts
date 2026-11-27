@@ -7,7 +7,11 @@ import {
   googleJson,
   googleRequest,
 } from "./googleAuth.js";
-import { patientHeader, privateHeader } from "./sourceColumns.js";
+import {
+  patientHeader,
+  privateHeader,
+  pastePrivateHeader,
+} from "./sourceColumns.js";
 
 export const pasteTabs = ["Attendance", "MTD", "Team View"] as const;
 export type PasteTab = (typeof pasteTabs)[number];
@@ -29,6 +33,7 @@ const fields = {
     exceeded: "Exceeded",
     ncnsStreak: "NCNS Streak",
     missing: "Missing After Compensation",
+    tlComment: "TL Comment",
   },
   MTD: {
     leader: "Team Leader",
@@ -79,7 +84,13 @@ function mapColumns(tab: PasteTab, headers: Cell[], reportOnly: boolean) {
     const matches = headers.flatMap((value, i) =>
       labelOf(String(value)) === labelOf(header) ? [i] : [],
     );
-    if (matches.length !== 1 || privateHeader(String(headers[matches[0]])))
+    if (field === "tlComment" && matches.length === 0) continue;
+    if (
+      matches.length !== 1 ||
+      (tab === "Attendance" ? pastePrivateHeader : privateHeader)(
+        String(headers[matches[0]]),
+      )
+    )
       throw new SourceAccessError(tab + " requires one " + header + " header.");
     selected.set(field, matches[0]);
   }

@@ -7,6 +7,7 @@ import { coachingTotals } from "./home.js";
 import { outcomeText } from "./profile.js";
 import type { reasons } from "./choices.js";
 import * as say from "./templates.js";
+import { attendanceLabel } from "../db/corrections.js";
 
 type Reason = (typeof reasons)[number];
 
@@ -183,7 +184,10 @@ export function coachingView(data: DashboardData) {
 export type CoachingView = ReturnType<typeof coachingView>;
 
 const dayLines = (days: DayFacts[], describe: (day: DayFacts) => string) =>
-  days.map((day) => `${say.shortDate(day.date)}: ${describe(day)}`);
+  days.map(
+    (day) =>
+      `${say.shortDate(day.date)}: ${describe(day)}${day.correction ? ` · ${attendanceLabel(day)}` : ""}`,
+  );
 
 /** Facts pulled together for one conversation. */
 export function prepView(data: DashboardData, code: string) {
@@ -210,6 +214,16 @@ export function prepView(data: DashboardData, code: string) {
   const lastFollowUp =
     last && agent.followUps.find((row) => row.coaching_id === last.id);
   const sections = [
+    section(
+      "Corrections and explanations",
+      "Original WFM status retained. Notes stay local.",
+      days
+        .filter((day) => day.correction)
+        .map(
+          (day) =>
+            `${say.shortDate(day.date)}: ${attendanceLabel(day)} · ${day.correction!.note}`,
+        ),
+    ),
     section(
       "Lateness this cycle",
       late.length
