@@ -1,14 +1,15 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for V2 Phase 5 (Agent profile)._
+_Last updated: 2026-11-27 for V2 Phase 6 (Coaching hub)._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **V2 Phase 6:** on `v2-phase-6-coaching`, stacked on Phase 5 (PR #24). `/coaching?view=overview|prep|log|followups|history|fairness&agent=<code>`.
 - **V2 Phase 5:** on `v2-phase-5-profile`, stacked on Phase 4 (PR #23). The agent drawer and `/agent/:code` use the V2 profile.
 - **V2 Phase 4:** on `v2-phase-4-grid`, stacked on Phase 3 (PR #22). `/attendance` is the cycle grid, `/team` the Team table. The discrepancy queue stays at `/discrepancies` (linked from the grid) and the v1 roster view at `/roster`.
 - **V2 Phase 3 (Home):** on `v2-phase-3-home`, stacked on Phase 2 (PR #21). The v1 Today list moved to `/today` (command palette).
 - **V2 Phase 2 (data layer):** done on `v2-phase-2-data`, stacked on `v2-phase-1-design-system` (PR #20 approved, still open). This session took over from an interrupted agent: its uncommitted Phase 2 work was recovered, reviewed and finished, and nothing was discarded. Phases 3–8 follow on stacked branches.
-- **Tests on the Phase 5 branch:** 217 Vitest tests passed, one existing skip; 13 Playwright specs passed. Lint, typecheck and the isolated build pass.
+- **Tests on the Phase 6 branch:** 221 Vitest tests passed, one existing skip; 14 Playwright specs passed. Lint, typecheck and the isolated build pass.
 - **Installed app:** `server/dist` in this checkout is a junction into the live release. Never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
 - **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
@@ -19,6 +20,7 @@ _Last updated: 2026-11-27 for V2 Phase 5 (Agent profile)._
 - **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
 
 ## 2. Features
+- **V2 Phase 6:** Coaching overview (ring, pace, needs-it-most order), prep sheet with facts and question prompts, log form with linked evidence and optional measurable step, follow-ups, filterable history with Copy as documentation and CSV, and per-agent fairness counts (`v2/coaching.ts`, `views/Coaching.tsx`). `GET /v2/coaching`, `GET /v2/coaching/prep/:code?cycle`.
 - **V2 Phase 5:** profile header with new-hire stage, open flags with dismiss-with-reason, scorecard against the team average, cycle calendar, six-cycle trends, patterns, coaching timeline with kept/not kept, private tagged notes, discrepancy history, MPR prep and escalation drafts (`v2/profile.ts`, `v2/documents.ts`, `views/Agent.tsx`). `GET /v2/agents/:code`.
 - **V2 Phase 4:** attendance grid (sticky names and days, plan outlines, late/missing marks, tooltip, day drawer, arrow-key navigation, row and column totals, line/status/flagged filters, cycle switcher, CSV) and Team table (sorting, column picker, density, saved views in owner settings, CSV, deltas against the previous cycle). `GET /v2/grid?cycle`, `GET /v2/team?cycle`.
 - **V2 Phase 3:** Home with greeting and generated summary, urgent strip, floor card, four KPIs against the cycle daily average, coaching ring, Needs you, week heatmap, queues today, yesterday's exceptions with Copy for EOD, 14-day lateness and shout-out (`v2/home.ts`, `views/Home.tsx`). One-line source freshness, live nav counts, `GET /v2/home` and `/v2/counts`. A synthetic 16-agent team (`fixtures/team.ts`, test port 3212) drives V2 screen tests; `SAVE_SCREENSHOTS=1` refreshes `docs/design/`.
@@ -73,6 +75,9 @@ _Last updated: 2026-11-27 for V2 Phase 5 (Agent profile)._
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | Pace counts today as one of the days left. “Needs it most” sorts by open urgent flags and due follow-ups, then fewest coachings this cycle, then longest since the last. | plan-v2 section F order. | — |
+| 2026-11-27 | Fairness shows counts only, sorted by name, for this cycle or all time. Notes include private and earlier notes. | No judgement or ranking. | — |
+| 2026-11-27 | A measured next step is optional and records a limit the owner enters; nothing is measured otherwise. | No invented targets. | — |
 | 2026-11-27 | New notes are private tagged notes. Earlier v1 notes stay readable and can be marked done; they are no longer created in the UI. | V2 separates the coaching log from private notes. The v1 API is unchanged. | — |
 | 2026-11-27 | MPR and escalation drafts leave out private notes unless the owner ticks them, and are editable before copying. | Notes are exported only when the owner asks. | — |
 | 2026-11-27 | The owner's kept or not kept mark overrides the data-derived outcome. | Owner-entered judgement wins over inference. | — |
@@ -149,6 +154,7 @@ _Last updated: 2026-11-27 for V2 Phase 5 (Agent profile)._
 | Q9 | The paste has no break-exceed minutes. Is there a column with them? | no | open |
 | Q10 | Does a shout-out ("clean record") mean no lateness, missing time or unplanned absence, with planned leave allowed? | Phase 3 default | open |
 | Q11 | Does the Team View tab have any column the Team table lacks? Send its header row to approve new mappings. | no | open |
+| Q12 | Are the prep-sheet question prompts right for your conversations? They are listed in `v2/coaching.ts`. | no | open |
 
 ## 8. Review feedback
 - **PR #20 design approved with five fixes:** viewport-sticky sidebar and internal nav scroll, greeting-name initials, smaller phone KPI values without sparklines, Floor phone wordmark/logout in Settings, and bottom-nav safe-area clearance. Regression coverage checks all current pages at 390px. Phases 2?8 are authorized after this gate.
@@ -158,6 +164,9 @@ _Last updated: 2026-11-27 for V2 Phase 5 (Agent profile)._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - V2 Phase 6 Coaching hub
+- Built the hub with unit and browser tests and 1440/390 screenshots. Home's Coach and Review buttons open it.
 
 ### 2026-11-27 - V2 Phase 5 agent profile
 - Replaced the v1 agent view; updated the older note tests to private notes; added unit and browser tests and screenshots.
