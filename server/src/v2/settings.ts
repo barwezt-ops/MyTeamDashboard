@@ -2,6 +2,7 @@
 // owner has set: three or more lateness incidents in a cycle.
 import { z } from "zod";
 import type { Db } from "../db/db.js";
+import { coachingTypes, followUpStates, measures, reasons } from "./choices.js";
 
 const count = z.number().int().positive().nullable().default(null);
 const fields = z.strictObject({
@@ -59,19 +60,7 @@ export function saveSettings(db: Db, settings: V2Settings) {
   ).run(JSON.stringify(settings));
 }
 
-export const reasons = [
-  "attendance",
-  "quality",
-  "behaviour",
-  "recognition",
-] as const;
-export const coachingTypes = [
-  "corrective",
-  "recognition",
-  "follow-up",
-] as const;
-export const measures = ["none", "lateness", "missing", "breaks"] as const;
-export const followUpStates = ["open", "done", "kept", "not kept"] as const;
+export { reasons, coachingTypes, measures, followUpStates };
 
 const unique = (values: string[]) => new Set(values).size === values.length;
 export const coachingSchema = z

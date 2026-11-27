@@ -389,6 +389,20 @@ export function seedTeam(db: Db) {
     run.run(job, TEAM_TODAY + "T10:00:00Z", TEAM_TODAY + "T10:00:00Z");
 }
 
+/** Empties every table of a fixture database and seeds the team again. */
+export function resetTeam(db: Db) {
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+    .pluck()
+    .all() as string[];
+  db.pragma("foreign_keys = OFF");
+  db.transaction(() => {
+    for (const table of tables) db.prepare(`DELETE FROM ${table}`).run();
+    seedTeam(db);
+  })();
+  db.pragma("foreign_keys = ON");
+}
+
 /** Source settings that make the fixture team look connected. */
 export function teamConfig() {
   const config = fixtureConfig();

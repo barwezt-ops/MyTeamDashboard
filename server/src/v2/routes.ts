@@ -20,6 +20,7 @@ import { gridView } from "./grid.js";
 import { teamView } from "./team.js";
 import { recentCycles } from "./cycle.js";
 import { profileView } from "./profile.js";
+import { coachingView, prepView } from "./coaching.js";
 import { discrepanciesOf } from "../db/repo.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
@@ -94,6 +95,21 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
         );
         if (!view) return notFound(res, "Agent in your team");
         res.json({ ...view, cycles });
+      },
+    ),
+  );
+  router.get(
+    "/coaching",
+    endpoint({}, (_input, _req, res) => res.json(coachingView(current()))),
+  );
+  router.get(
+    "/coaching/prep/:code",
+    endpoint(
+      { params: z.strictObject({ code }), query: cycleQuery },
+      ({ params, query }, _req, res) => {
+        const view = prepView(forCycle(query.cycle).data, params.code);
+        if (!view) return notFound(res, "Agent in your team");
+        res.json(view);
       },
     ),
   );
