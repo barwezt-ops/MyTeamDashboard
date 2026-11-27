@@ -171,9 +171,11 @@ td.bad {
   flex: 3 1 260px;
   height: 320px;
 }
+/* The card grows with its names, so nothing in it is ever cut off. */
 .home-shout {
   flex: 3 1 240px;
-  height: 320px;
+  height: auto;
+  min-height: 320px;
 }
 .panel-scroll {
   flex: 1 1 auto;
@@ -376,7 +378,7 @@ td.bad {
 .shout p {
   margin: 10px 0 12px;
   font:
-    400 21px/1.25 "Fraunces",
+    400 19px/1.25 "Fraunces",
     serif;
 }
 .shout ul {
@@ -398,7 +400,20 @@ td.bad {
   height: 22px;
   font-size: 9.5px;
 }
-.shout > button {
+.shout > .shout-more {
+  align-self: flex-start;
+  min-height: 28px;
+  margin: -6px 0 12px;
+  padding: 0;
+  background: none;
+  color: var(--shout-ink);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.shout > button:last-child {
+  margin-top: auto;
+}
+.shout > button:not(.shout-more) {
   min-height: 34px;
   border-radius: 999px;
   background: var(--shout-ink);
@@ -416,6 +431,9 @@ td.bad {
     height: auto;
     max-height: 520px;
   }
+  .home-shout {
+    max-height: none;
+  }
   .home-first > * {
     flex: 1 1 100% !important;
   }
@@ -432,6 +450,59 @@ td.bad {
   white-space: nowrap;
   padding-top: 7px;
   padding-bottom: 7px;
+}
+/* Seven columns must fit the panel without scrolling sideways. */
+@media (min-width: 1280px) {
+  .home-exceptions :is(th, td) {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  .home-exceptions :is(th, td):first-child {
+    padding-left: 14px;
+  }
+  .home-exceptions :is(th, td):last-child {
+    padding-right: 14px;
+  }
+  /* Queue and status wrap before the table grows. */
+  .home-exceptions td:nth-child(2),
+  .home-exceptions td:nth-child(3),
+  .home-exceptions td:nth-child(3) .tag {
+    white-space: normal;
+  }
+}
+
+.subject-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.subject-line code {
+  flex: 1 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.panel-subhead {
+  margin: 4px 18px 8px;
+  font-size: 12.5px;
+}
+.mismatch {
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+.mismatch ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.mismatch a {
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 /* Toolbars and menus */
@@ -504,7 +575,7 @@ label.check {
   position: absolute;
   right: 0;
   z-index: 6;
-  width: 220px;
+  width: 270px;
   max-height: 320px;
   overflow: auto;
   margin: 6px 0 0;
@@ -1232,4 +1303,405 @@ tfoot th,
 tfoot td {
   font-weight: 600;
   border-top: 1px solid var(--line);
+}
+
+/* Quality */
+.quality-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.quality-team {
+  flex: 3 1 240px;
+  padding: 20px;
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+.quality-team p {
+  margin: 0;
+}
+.quality-team strong {
+  font:
+    500 56px/1 "Fraunces",
+    serif;
+}
+.quality-team small {
+  color: var(--muted);
+}
+.quality-team a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.quality-distribution {
+  flex: 5 1 320px;
+}
+.distribution {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px 18px;
+  display: grid;
+  gap: 8px;
+}
+.distribution li {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.distribution-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+.distribution-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.score-trend {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 24px;
+}
+.score-trend i {
+  display: block;
+  width: 7px;
+  border-radius: 2px;
+  background: #d9cdb8;
+}
+.score-trend i:last-child {
+  background: var(--accent);
+}
+.steps {
+  list-style: decimal;
+  padding-left: 38px;
+}
+
+/* Queues */
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+.board article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.board ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.board li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line-soft);
+}
+th.line-name {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+th.line-name small,
+td.gap small {
+  display: block;
+  font-weight: 400;
+  font-size: 10.5px;
+}
+td.gap {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.queue-lower {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+.queue-lower > :first-child {
+  flex: 3 1 420px;
+}
+.queue-lower > :last-child {
+  flex: 2 1 280px;
+}
+.facts li > p {
+  margin: 4px 0 0;
+}
+.notice-line {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+/* Let wide tables scroll inside their panel instead of widening the page. */
+.queue-lower > *,
+.quality-top > * {
+  min-width: 0;
+  max-width: 100%;
+}
+/* One column that never grows past the viewport. */
+.content {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Reports */
+.report-text {
+  margin: 0;
+  padding: 0 18px 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    400 12px/1.6 "Geist Mono",
+    monospace;
+}
+
+/* Settings */
+.owner-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.owner-settings > * {
+  min-width: 0;
+  scroll-margin-top: 16px;
+}
+.setting-list {
+  display: grid;
+}
+.setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 96px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.record-form .setting label {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+.setting small {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.setting .tag {
+  justify-self: start;
+}
+.record-form textarea.template-text {
+  min-height: 140px;
+}
+.placeholders summary {
+  font-weight: 600;
+}
+.placeholders p {
+  margin: 8px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Form controls: one look everywhere instead of the browser's. */
+select {
+  appearance: none;
+  padding-right: 30px !important;
+  border-radius: 8px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 15px) 52%,
+    calc(100% - 10px) 52%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+}
+select option {
+  background: var(--surface);
+  color: var(--text);
+}
+input[type="checkbox"] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1.5px solid var(--control-border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+input[type="checkbox"]:checked {
+  background: #1e3a32;
+  border-color: #1e3a32;
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid #fbf8f2;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+input[type="checkbox"]:indeterminate::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: var(--accent);
+}
+input[type="checkbox"]:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+input[type="number"] {
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+input[type="search"]::-webkit-search-decoration {
+  appearance: none;
+}
+input[type="date"] {
+  font-family: "Geist Mono", monospace;
+  min-height: 34px;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+input[type="file"] {
+  border: 0 !important;
+  background: transparent !important;
+  padding-left: 0 !important;
+  max-width: 100%;
+}
+input[type="file"]::file-selector-button {
+  font:
+    600 12px "Instrument Sans",
+    sans-serif;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--control-border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  margin-right: 12px;
+  cursor: pointer;
+}
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+details:not(.menu) > summary::before {
+  content: "+";
+  display: inline-block;
+  width: 16px;
+  color: var(--muted);
+}
+details[open]:not(.menu) > summary::before {
+  content: "\2212";
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-border) transparent;
+}
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.dismissed summary::before {
+  margin-left: 0;
+}
+
+/* Dark theme versions of the chart tints. */
+:root[data-theme="dark"] :is(.trend i, .bar-track i, .score-trend i) {
+  background: #5d7466;
+}
+:root[data-theme="dark"] .trend i.above {
+  background: #c98f5a;
+}
+:root[data-theme="dark"] .trend i.latest {
+  background: #ffc0b2;
+}
+:root[data-theme="dark"]
+  :is(.bar-series li.latest .bar-track i, .score-trend i:last-child) {
+  background: var(--accent);
+}
+:root[data-theme="dark"] .grid-cell.is-planned .heat-cell {
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  .setting {
+    grid-template-columns: minmax(0, 1fr) 80px;
+  }
+  .setting .tag {
+    grid-column: 1 / -1;
+  }
+  .toolbar-end {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+  .toolbar select,
+  .toolbar input:not([type="checkbox"]),
+  .record-form input,
+  .record-form select,
+  .record-form textarea {
+    /* Stops phones zooming the page when a field is focused. */
+    font-size: 16px;
+  }
+  .tabs {
+    width: 100%;
+  }
+  .panel-body,
+  .record-form.log-form {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
+/* Older Settings panels that share the panel body spacing. */
+.button-row.panel-body {
+  display: flex;
+  flex-wrap: wrap;
+}
+.panel-body.source-details label {
+  display: grid;
+  gap: 4px;
+  max-width: 520px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.panel-body.source-details label :is(input, select) {
+  width: 100%;
+  font-size: 13px;
+}
+ol.timeline.panel-body {
+  padding: 0 18px 18px;
+  gap: 0;
 }

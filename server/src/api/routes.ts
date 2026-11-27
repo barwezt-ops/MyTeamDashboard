@@ -10,19 +10,21 @@ import {
   eventsOf,
   lastRun,
   lastSuccess,
+  lastWarnings,
   notesOf,
   recentRuns,
   scheduleOf,
 } from "../db/repo.js";
 import type { Config, SourceKey } from "../config.js";
 import type { SyncService } from "../sync/service.js";
-import type {
-  Agent,
-  AgentProfile,
-  DiscrepancyRow,
-  Scope,
-  SyncStatus,
-  TodayData,
+import {
+  mtdMismatchWarning,
+  type Agent,
+  type AgentProfile,
+  type DiscrepancyRow,
+  type Scope,
+  type SyncStatus,
+  type TodayData,
 } from "./dto.js";
 import { plusDays, weekday, weekdays } from "../parse/normalize.js";
 import { excluded } from "../parse/status.js";
@@ -463,7 +465,23 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
       const { sheetId: _privatePasteId, ...pasteSettings } =
         config.sources.attendance.paste ?? {};
       void _privatePasteId;
+      const mismatched = new Set(
+        lastWarnings(db, "attendance")
+          .filter((warning) => warning.startsWith(mtdMismatchWarning))
+          .flatMap((warning) =>
+            warning.slice(mtdMismatchWarning.length).split(","),
+          ),
+      );
       const result: SyncStatus = {
+        mtdMismatch: agentsOf(db)
+          .filter(
+            (agent) =>
+              agent.ownerGroup === "mine" && mismatched.has(agent.code),
+          )
+          .map((agent) => ({
+            code: agent.code,
+            name: agent.fullName || agent.firstName,
+          })),
         attendanceThrough: db
           .prepare(
             "SELECT MAX(d.date) FROM attendance_days d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",

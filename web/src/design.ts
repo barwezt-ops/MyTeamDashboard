@@ -1,5 +1,5 @@
 import { coachingCycle, localDate } from "../../server/src/parse/normalize";
-import { weekdayDate } from "../../server/src/v2/templates";
+import { mtdMismatch, shortDate } from "../../server/src/v2/templates";
 import type { SyncStatus } from "../../server/src/api/dto";
 
 export const avatarPalette = [
@@ -36,7 +36,7 @@ export function freshness(status: SyncStatus, now = Date.now()) {
     (source) => source.job === "attendance" && source.enabled,
   );
   if (through) {
-    const day = weekdayDate(through);
+    const day = shortDate(through);
     parts.push(
       status.mtdSyncedOn
         ? `Attendance & MTD through ${day}`
@@ -49,6 +49,10 @@ export function freshness(status: SyncStatus, now = Date.now()) {
   } else {
     parts.push("Attendance not imported");
     if (attendanceOn) stale = true;
+  }
+  if (status.mtdMismatch?.length) {
+    parts.push(mtdMismatch(status.mtdMismatch.length));
+    stale = true;
   }
   if (status.sources.some((source) => source.job === "qa")) {
     const qa = status.jobs.qa?.lastSuccessAt;
@@ -92,6 +96,6 @@ export function cairoHeader(now: Date, firstName: string, startDay = 21) {
   const days = (Date.parse(cycle.to) - Date.parse(cycle.from)) / 86400000 + 1;
   return {
     greeting: `Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, ${firstName}.`,
-    eyebrow: `${new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", weekday: "long", day: "numeric", month: "long" }).format(now)} · Cycle day ${elapsed} of ${days}`,
+    eyebrow: `${new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", weekday: "long" }).format(now)} ${shortDate(date)} · Cycle day ${elapsed} of ${days}`,
   };
 }

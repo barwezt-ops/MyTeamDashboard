@@ -34,6 +34,7 @@ it("reads only approved fields as serial values and stops before data reads on p
     J: "Login Time",
     K: "Logout Time",
     Q: "Lateness",
+    AG: "Duration Of break Exceeding",
     AH: "Exceeded",
     AQ: "NCNS Streak",
     AW: "Missing After Compensation",

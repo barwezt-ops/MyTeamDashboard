@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { AttendancePreview as Preview } from "../../../server/src/sync/attendancePreview";
 import { api, message } from "../api";
+import { fullDate } from "../../../server/src/v2/templates";
 import { ErrorNotice, Section } from "../components/ui";
 
 export function AttendancePreview({ allowUpload }: { allowUpload: boolean }) {
@@ -113,7 +114,9 @@ export function AttendancePreview({ allowUpload }: { allowUpload: boolean }) {
                 <dt>Date range</dt>
                 <dd>
                   {result.dateRange
-                    ? result.dateRange.from + " to " + result.dateRange.to
+                    ? fullDate(result.dateRange.from) +
+                      " to " +
+                      fullDate(result.dateRange.to)
                     : "None"}
                 </dd>
               </div>

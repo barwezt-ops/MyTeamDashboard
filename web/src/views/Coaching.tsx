@@ -6,6 +6,7 @@ import {
   measures,
   reasons,
 } from "../../../server/src/v2/choices";
+import { documentationTable } from "../../../server/src/v2/documents";
 import { shortDate } from "../../../server/src/v2/templates";
 import { api } from "../api";
 import { Avatar, ProgressRing, SegmentedControl } from "../components/design";
@@ -35,7 +36,7 @@ function Overview({ view, go }: { view: CoachingView; go: Go }) {
           <ProgressRing
             done={totals.done}
             total={totals.total}
-            expected={Math.round(totals.expected * 10) / 10}
+            expected={totals.expected}
           />
         </div>
         <dl>
@@ -559,25 +560,6 @@ function FollowUps({ view }: { view: CoachingView }) {
   );
 }
 
-const documentation = (rows: CoachingView["history"]) => ({
-  headers: [
-    "Agent",
-    "Date",
-    "What happened",
-    "What was said",
-    "Agreed next step",
-    "Follow-up date",
-  ],
-  rows: rows.map((row) => [
-    row.name,
-    row.date,
-    row.whatHappened,
-    row.whatWasSaid,
-    row.nextStep,
-    row.followUpDate ?? "",
-  ]),
-});
-
 function History({
   view,
   code,
@@ -606,7 +588,7 @@ function History({
   );
   const documented = (list: typeof rows) =>
     run(() => {
-      const table = documentation(list);
+      const table = documentationTable(list);
       return copy(tableText(table), tableHtml(table));
     }, "Documentation copied.");
   return (
@@ -665,7 +647,10 @@ function History({
             className="secondary small"
             disabled={!rows.length}
             onClick={() =>
-              downloadCsv("coaching-history.csv", documentation(rows))
+              downloadCsv(
+                "coaching-history.csv",
+                documentationTable(rows, true),
+              )
             }
           >
             Export CSV

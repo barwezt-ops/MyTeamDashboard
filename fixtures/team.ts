@@ -80,13 +80,13 @@ const events: Record<string, Record<string, Event>> = {
   "99102": {
     "21": { missing: 22 },
     "23": { missing: 18 },
-    "25": { missing: 32, breakExceeded: true },
+    "25": { missing: 32, breakExceeded: true, breakMinutes: 11 },
   },
   "99103": { "25": { late: 8, missing: 8 } },
   "99104": {
-    "23": { breakExceeded: true },
-    "24": { breakExceeded: true },
-    "25": { breakExceeded: true },
+    "23": { breakExceeded: true, breakMinutes: 4 },
+    "24": { breakExceeded: true, breakMinutes: 9 },
+    "25": { breakExceeded: true, breakMinutes: 76 },
   },
   "99106": { "22": { late: 12 } },
   "99110": { "24": { late: 5 }, "25": { late: 7, breakExceeded: true } },

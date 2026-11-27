@@ -5,6 +5,35 @@ import { gridView } from "../src/v2/grid.js";
 import { teamView } from "../src/v2/team.js";
 import { seedTeam, teamConfig, TEAM_TODAY } from "../../fixtures/team.js";
 
+const teamViewColumns = [
+  "Code",
+  "Name",
+  "Team Leader",
+  "HR Status",
+  "Latest Day",
+  "Status (Latest Day)",
+  "Scheduled Shift",
+  "Login",
+  "Logout",
+  "Lateness (Latest Day)",
+  "Missing (Latest Day)",
+  "Break Exceeded (Latest Day)",
+  "NCNS Streak",
+  "Days Late (Cycle)",
+  "Days With Missing (Cycle)",
+  "Breaks Exceeded (Cycle)",
+  "MTD Missing Hours",
+  "MTD OT Hours",
+  "MTD Lateness Mins",
+  "MTD Lateness Incidents",
+  "MTD Sick",
+  "MTD UPL",
+  "MTD Casual",
+  "MTD Annual",
+  "MTD NCNS",
+  "MTD AWOL",
+  "MTD Deducted Days",
+];
 const db = openDb(":memory:");
 seedTeam(db);
 const config = teamConfig();
@@ -97,6 +126,30 @@ it("compares each agent with the same point of the previous cycle", () => {
       "flags",
     ]),
   );
+  // Every Team View column is offered, under the sheet's own label.
+  const labels = view.columns.map((column) => column.label);
+  expect(labels).toEqual(expect.arrayContaining(teamViewColumns));
+  expect(new Set(labels).size).toBe(labels.length);
+  expect(avery.values).toMatchObject({
+    teamLeader: "Sample Lead",
+    latestDay: "2026-11-25",
+    latestStatus: "Active - Site",
+    latestShift: "15:45",
+    latestLate: 16,
+    latestMissing: 0,
+    latestBreak: null,
+    ncnsStreak: 0,
+    daysLate: 4,
+    daysMissing: 0,
+    mtdLateness: 38,
+    mtdIncidents: 4,
+    "mtd:sick": null,
+  });
+  expect(view.rows.find((row) => row.code === "99104")!.values).toMatchObject({
+    latestBreak: 76,
+    breaks: 3,
+    breakMinutes: 89,
+  });
   // Missing values stay missing, and no change is reported for them.
   expect(avery.values.otMinutes).toBe(0);
   const past = load("2026-10-21");

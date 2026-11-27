@@ -1,9 +1,28 @@
 // Shared steps for the V2 screen tests, which run against the synthetic team.
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import {
+  expect,
+  type Cookie,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { expectAccessible } from "./accessibility";
 
 export const teamUrl = "http://127.0.0.1:3212";
+
+// Sign-in is limited to five a minute, so one session is reused.
+let session: Cookie[] | undefined;
+
+export async function signIn(page: Page) {
+  if (session) await page.context().addCookies(session);
+  await page.goto("/");
+  if (!session) {
+    await page.getByLabel("Password").fill("synthetic-smoke-password");
+    await page.getByRole("button", { name: "Sign in" }).click();
+  }
+  await expect(page.locator(".sidebar")).toBeVisible();
+  session = await page.context().cookies();
+}
 
 export async function openTeam(page: Page, path = "/") {
   expect(
@@ -18,10 +37,7 @@ export async function openTeam(page: Page, path = "/") {
     if (url.protocol.startsWith("http") && url.hostname !== "127.0.0.1")
       external.push(request.url());
   });
-  await page.goto("/");
-  await page.getByLabel("Password").fill("synthetic-smoke-password");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.locator(".sidebar")).toBeVisible();
+  await signIn(page);
   if (path !== "/") await page.goto(path);
   return () => {
     expect(errors).toEqual([]);
@@ -47,11 +63,16 @@ export async function reviewScreen(page: Page, info: TestInfo, name: string) {
     const file = `${name}-${width}.png`;
     if (process.env.SAVE_SCREENSHOTS)
       mkdirSync("docs/design", { recursive: true });
+    // A window as tall as the page, so the sidebar and the phone navigation sit
+    // where a person sees them and not part way down a long capture.
+    await page.setViewportSize({
+      width,
+      height: await page.evaluate(() => document.documentElement.scrollHeight),
+    });
     await page.screenshot({
       path: process.env.SAVE_SCREENSHOTS
         ? "docs/design/" + file
         : info.outputPath(file),
-      fullPage: true,
       animations: "disabled",
     });
   }

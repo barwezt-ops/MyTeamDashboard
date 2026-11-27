@@ -129,25 +129,6 @@ export function SearchBox({
     </label>
   );
 }
-export function StatCard({
-  label,
-  count,
-  tone,
-}: {
-  label: string;
-  count: number;
-  tone: string;
-}) {
-  return (
-    <article className="stat" style={{ "--tone": tone } as CSSProperties}>
-      <span>
-        <i />
-        {label}
-      </span>
-      <strong>{count}</strong>
-    </article>
-  );
-}
 export function DataTable({
   children,
   label,
@@ -186,30 +167,6 @@ export function CardCell({
       <span className="card-cell-value">{children}</span>
     </td>
   );
-}
-export function formatDay(date: string) {
-  return new Intl.DateTimeFormat("en", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(date + "T00:00:00Z"));
-}
-export function dateOffset(date: string, days: number) {
-  return new Date(Date.parse(date) + days * 86400000)
-    .toISOString()
-    .slice(0, 10);
-}
-export function tenure(hire: string | null, asOf: string) {
-  if (!hire) return "—";
-  const [year, month, day] = hire.split("-").map(Number);
-  const [endYear, endMonth, endDay] = asOf.split("-").map(Number);
-  const months = Math.max(
-    0,
-    (endYear - year) * 12 + endMonth - month - Number(endDay < day),
-  );
-  return months + " mo";
 }
 export function syncLabel(status: SyncStatus) {
   if (status.running)
