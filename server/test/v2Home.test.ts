@@ -9,6 +9,11 @@ import { freshness } from "../../web/src/design.js";
 import { csv, tableHtml } from "../../web/src/v2/copy.js";
 import type { SyncStatus } from "../src/api/dto.js";
 import { seedTeam, teamConfig, TEAM_TODAY } from "../../fixtures/team.js";
+import {
+  fixtureConfig,
+  seedAgents,
+  seedAttendance,
+} from "../../fixtures/v2.js";
 
 const db = openDb(":memory:");
 seedTeam(db);
@@ -134,6 +139,60 @@ describe("Home", () => {
     expect(bare.shoutout.text).toBe("");
     empty.close();
   });
+});
+
+it("applies the owner's perfect attendance rule", () => {
+  // Days off, annual leave, sick and public holidays are allowed.
+  const allowed = [
+    "Off",
+    "Annual",
+    "Sick",
+    "Public Holiday",
+    "Forced Annual",
+    "1st Half Annual",
+    "2nd Half Forced Annual",
+  ];
+  // Everything else on the owner's list ends it, whole or half day.
+  const ending = [
+    "UPL",
+    "Forced UPL",
+    "Casual",
+    "NCNS",
+    "AWOL",
+    "1st Half UPL",
+    "2nd Half Forced UPL",
+  ];
+  const own = openDb(":memory:");
+  try {
+    const statuses = [...allowed, ...ending];
+    const codes = statuses.map((_, i) => String(99201 + i));
+    seedAgents(
+      own,
+      codes.map((code) => [code, `Sample ${code}`]),
+    );
+    seedAttendance(
+      own,
+      codes.flatMap((code, i) => [
+        { code, date: "2026-11-23" },
+        { code, date: "2026-11-24", status: statuses[i] },
+      ]),
+      TEAM_TODAY,
+    );
+    const clean = () =>
+      homeView(
+        dashboardData(own, fixtureConfig(), TEAM_TODAY),
+      ).shoutout.people.map((p) => p.code);
+    expect(clean()).toEqual(codes.slice(0, allowed.length));
+    // WFM's own totals count even when the daily row shows nothing.
+    own
+      .prepare(
+        "UPDATE attendance_mtd_snapshots SET fields=json_set(fields,'$.latenessIncidents',1,'$.lateness','00:04:00') WHERE code=?",
+      )
+      .run(codes[0]);
+    expect(clean()).toEqual(codes.slice(1, allowed.length));
+  } finally {
+    own.close();
+  }
 });
 
 it("colours days with a text status and short names", () => {

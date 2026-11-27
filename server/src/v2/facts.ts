@@ -60,5 +60,23 @@ const unplanned: Status[] = [
 ];
 export const isUnplanned = (day: DayFacts) => unplanned.includes(day.status);
 
+// Statuses that end perfect attendance. Half days count as their base type.
+// Annual leave, sick, public holidays and days off are allowed. NCNS and AWOL
+// are recorded as Absent.
+const disqualifying: Status[] = [
+  "Casual",
+  "Absent",
+  "UPL",
+  "1st Half UPL",
+  "2nd Half UPL",
+  "1st Half Forced UPL",
+  "2nd Half Forced UPL",
+];
+export const breaksPerfectAttendance = (day: DayFacts) =>
+  isLate(day) ||
+  isMissing(day) ||
+  day.absence !== null ||
+  disqualifying.includes(day.status);
+
 export const sum = (days: DayFacts[], key: "late" | "missing") =>
   days.reduce((total, day) => total + (day[key] ?? 0), 0);

@@ -57,7 +57,7 @@ test("Home answers the shift questions from real numbers", async ({
   await page.getByRole("button", { name: "Copy shout-out" }).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toContain("No lateness, missing time or unplanned absence");
+    .toContain("Perfect attendance from 21 Nov to 25 Nov.");
 
   await urgent.getByRole("button", { name: "Open both" }).click();
   await expect(

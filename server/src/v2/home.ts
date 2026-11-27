@@ -2,7 +2,14 @@
 import { plusDays } from "../parse/normalize.js";
 import { datesBetween, firstCoachingDue } from "./cycle.js";
 import type { DashboardData, V2Agent } from "./data.js";
-import { isLate, isMissing, isUnplanned, sum, type DayFacts } from "./facts.js";
+import {
+  breaksPerfectAttendance,
+  isLate,
+  isMissing,
+  isUnplanned,
+  sum,
+  type DayFacts,
+} from "./facts.js";
 import { heatStatus } from "./heat.js";
 import { planFor, queuesFor, working } from "./queues.js";
 import * as say from "./templates.js";
@@ -317,10 +324,13 @@ export function homeView(data: DashboardData) {
     const rows = agent.calendar.flatMap((row) =>
       row.attendance && row.date < today ? [row.attendance] : [],
     );
+    const { counts } = agent;
     return (
       agent.active &&
       rows.some((row) => row.status === "Present") &&
-      !rows.some((row) => isLate(row) || isMissing(row) || isUnplanned(row))
+      !rows.some(breaksPerfectAttendance) &&
+      // WFM's own totals also count, in case a daily row has not been pasted.
+      !(counts.lateCount || counts.lateMinutes || counts.missingMinutes)
     );
   });
   const cycleThrough = dates.filter((date) => date >= cycle.from).at(-1);

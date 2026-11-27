@@ -93,8 +93,8 @@ export function latenessCaption(
 }
 
 export function perfectCaption(count: number) {
-  if (!count) return "No clean attendance record yet this cycle.";
-  return `${people(count)} ${count === 1 ? "hasn't" : "haven't"} missed a minute all cycle.`;
+  if (!count) return "Nobody has perfect attendance yet this cycle.";
+  return `${people(count)} ${count === 1 ? "has" : "have"} perfect attendance this cycle.`;
 }
 
 /** Where the team stands against the coachings due by now. */
@@ -142,7 +142,7 @@ export function weekCaption(exceptions: number, days: number) {
 
 export function shoutOut(names: string[], from: string, to: string) {
   return names.length
-    ? `Shout-out: ${names.join(", ")}. No lateness, missing time or unplanned absence from ${shortDate(from)} to ${shortDate(to)}.`
+    ? `Shout-out: ${names.join(", ")}. Perfect attendance from ${shortDate(from)} to ${shortDate(to)}.`
     : "";
 }
 
