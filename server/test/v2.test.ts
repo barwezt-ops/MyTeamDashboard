@@ -5,8 +5,16 @@ import { configSchema, loadConfig } from "../src/config.js";
 import { decodeCsv } from "../src/fetch/fetchCsv.js";
 import { agentsOf, lastRun, lastDashboardSyncAt } from "../src/db/repo.js";
 import { createSync } from "../src/sync/service.js";
-import { prepareAttendancePaste } from "../src/sync/attendancePaste.js";
-import { cycleInfo, recentCycles } from "../src/v2/cycle.js";
+import {
+  mtdDailyMismatch,
+  prepareAttendancePaste,
+} from "../src/sync/attendancePaste.js";
+import {
+  cycleInfo,
+  expectedCoachings,
+  firstCoachingDue,
+  recentCycles,
+} from "../src/v2/cycle.js";
 import { dashboardData } from "../src/v2/data.js";
 import type { DayFacts } from "../src/v2/facts.js";
 import { stepOutcome } from "../src/v2/outcomes.js";
@@ -140,15 +148,15 @@ describe("generated sentences", () => {
     ];
     expect(sentences).toEqual([
       "Two people need you before the 4 o'clock rush. Everyone else is on track.",
-      "One person needs you before the 3:45 rush. Three people more have something due soon.",
+      "One person needs you before the 3:45 rush. Three more people have something due soon.",
       "Nothing urgent. One person has something due soon.",
       "Nothing urgent and nothing due. The team is on track.",
       "Climbing this week. Worst day was yesterday, 62 minutes.",
       "No lateness recorded on any reported day.",
       "No attendance reported for these days yet.",
-      "Five people haven't missed a minute all cycle.",
-      "One person hasn't missed a minute all cycle.",
-      "No clean attendance record yet this cycle.",
+      "Five people have perfect attendance this cycle.",
+      "One person has perfect attendance this cycle.",
+      "Nobody has perfect attendance yet this cycle.",
       "23 coachings to go in 24 days: one a day or fewer.",
       "32 coachings to go in 4 days: about 8 a day.",
       "Every coaching for this cycle is done.",
@@ -207,6 +215,38 @@ it("keeps MTD lateness equal to the sum of each agent's daily lateness", () => {
   });
 });
 
+it("warns when MTD and daily lateness disagree, without changing data", () => {
+  seedV2Fixture(db);
+  const { attendance, mtd } = fakePaste(smallTeam);
+  const compare = (rows: typeof mtd) => {
+    const paste = prepareAttendancePaste(
+      attendance,
+      rows,
+      fixtureConfig(),
+      agentsOf(db),
+    );
+    return mtdDailyMismatch(
+      db,
+      paste,
+      21,
+      new Set(["99001", "99002", "99005"]),
+    );
+  };
+  expect(compare(mtd)).toEqual([]);
+  const stored = () =>
+    db.prepare("SELECT * FROM attendance_paste_details").all();
+  const before = stored();
+  const change = (code: string, lateness: number | string) =>
+    mtd.map((row) => (row.code === code ? { ...row, lateness } : row));
+  // MTD shows more lateness than the daily rows: rows may be missing.
+  expect(compare(change("99001", 50 / 1440))).toEqual(["99001"]);
+  // A blank MTD cell means none, which these daily rows contradict.
+  expect(compare(change("99005", ""))).toEqual(["99005"]);
+  // Under a minute is rounding.
+  expect(compare(change("99005", 7.4 / 1440))).toEqual([]);
+  expect(stored()).toEqual(before);
+});
+
 it("reads the exceeded-break label as a day flag", () => {
   seedV2Fixture(db);
   expect(agent("99005")).toMatchObject({ breakStreak: 2 });
@@ -247,6 +287,27 @@ describe("flags", () => {
     expect(data.agents.flatMap((row) => row.flags)).not.toContainEqual(
       expect.objectContaining({ kind: "qa-gap" }),
     );
+  });
+
+  it("makes NCNS or AWOL urgent from the first day once set to one", () => {
+    seedV2Fixture(db);
+    saveSettings({ absentDays: 1 });
+    const absence = () =>
+      snapshot().flags.filter((flag) => flag.kind === "absence");
+    expect(absence()).toEqual([]);
+    for (const raw of ["NCNS", "AWOL"]) {
+      db.prepare(
+        "UPDATE attendance_days SET raw=?,status='Absent' WHERE code='99002'",
+      ).run(raw);
+      expect(absence()).toMatchObject([
+        {
+          severity: "URGENT",
+          action: "Coach",
+          reason: "1 NCNS/AWOL day this cycle",
+          clause: "has 1 NCNS/AWOL day this cycle",
+        },
+      ]);
+    }
   });
 
   it("applies each threshold once the owner sets it", () => {
@@ -324,8 +385,24 @@ describe("flags", () => {
       ),
     ).toMatchObject({
       reason: "1 of 2 coachings this cycle",
-      detail: "Expected by today: 2.0",
+      detail: "Expected by today: 2",
     });
+  });
+
+  it("expects a coaching only once a whole one is due", () => {
+    // A 30-day cycle with a target of two.
+    expect(
+      [1, 14, 15, 29, 30].map((day) => expectedCoachings(2, day, 30)),
+    ).toEqual([0, 0, 1, 1, 2]);
+    expect(firstCoachingDue(2, { from: "2026-11-21", totalDays: 30 })).toBe(
+      "2026-12-05",
+    );
+    expect(firstCoachingDue(2, { from: "2026-10-21", totalDays: 31 })).toBe(
+      "2026-11-05",
+    );
+    expect(
+      say.coachingStanding({ behind: 0, expected: 0, firstDue: "2026-12-05" }),
+    ).toBe("No coaching is due yet. The first is due on 5 Dec.");
   });
 
   it("brings a dismissed flag back only when new facts arrive", () => {
@@ -346,23 +423,32 @@ describe("flags", () => {
     expect(urgent().map((flag) => flag.id)).toEqual([late]);
   });
 
-  it("reopens coaching pace only when another coaching falls behind", () => {
+  it("reopens coaching pace only when another coaching falls due", () => {
     seedV2Fixture(db);
     const pace = "99002|2026-10-21|pace";
     const open = (today: string) =>
       snapshot(today).flags.some((flag) => flag.id === pace);
-    // On day 5 less than one whole coaching is expected.
-    const early = "2026-10-25";
-    const flag = snapshot(early).flags.find((row) => row.id === pace)!;
+    // Nothing is due before mid-cycle.
+    expect(open("2026-10-25")).toBe(false);
+    expect(open("2026-11-04")).toBe(false);
+    const middle = "2026-11-05";
+    const flag = snapshot(middle).flags.find((row) => row.id === pace)!;
+    expect(flag.detail).toBe("Expected by today: 1");
     db.prepare("INSERT INTO flag_dismissals VALUES (?,?,?,?)").run(
       pace,
       JSON.stringify(flag.facts),
       "Planned",
-      "2026-10-25T12:00:00Z",
+      "2026-11-05T12:00:00Z",
     );
-    expect(open("2026-10-26")).toBe(false);
-    expect(open("2026-11-04")).toBe(false);
-    expect(open("2026-11-05")).toBe(true);
+    expect(open("2026-11-19")).toBe(false);
+    // The second falls due on the last day.
+    expect(open("2026-11-20")).toBe(true);
+    // Logging the first one does not hide the second falling due.
+    db.prepare(
+      "INSERT INTO coachings VALUES (9,'99002','2026-11-06','corrective','[\"attendance\"]','[]','Sample fact','','Sample step',1,'none',NULL,'2026-11-06T12:00:00Z')",
+    ).run();
+    expect(open("2026-11-19")).toBe(false);
+    expect(open("2026-11-20")).toBe(true);
   });
 });
 
@@ -374,10 +460,12 @@ describe("patterns and agreed steps", () => {
     late: 0,
     missing: 0,
     breakExceeded: false,
+    breakMinutes: null,
     absence: null,
     shift: null,
     login: null,
     logout: null,
+    ncnsStreak: null,
     ...extra,
   });
   it("reports weekday, after-OFF and break patterns from recorded days", () => {

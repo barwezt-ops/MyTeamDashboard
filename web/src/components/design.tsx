@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { avatarColor } from "../design";
+import { heatStatuses, type HeatStatus } from "../../../server/src/v2/heat";
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return <div className="eyebrow">{children}</div>;
@@ -132,14 +133,16 @@ export function ProgressRing({
           r="50"
           strokeDasharray={`${circumference * ratio(done)} ${circumference}`}
         />
-        <circle
-          className="ring-pace"
-          cx="61"
-          cy="61"
-          r="50"
-          strokeDasharray={`2 ${circumference - 2}`}
-          strokeDashoffset={-circumference * ratio(expected)}
-        />
+        {expected > 0 && (
+          <circle
+            className="ring-pace"
+            cx="61"
+            cy="61"
+            r="50"
+            strokeDasharray={`2 ${circumference - 2}`}
+            strokeDashoffset={-circumference * ratio(expected)}
+          />
+        )}
       </svg>
       <div aria-hidden="true">
         <strong>
@@ -151,26 +154,20 @@ export function ProgressRing({
     </div>
   );
 }
-export const heatStatuses = [
-  "Present",
-  "Late",
-  "Missing",
-  "Off",
-  "Leave / sick",
-  "Absent",
-  "Scheduled",
-] as const;
+export { heatStatuses };
 export function HeatCell({
   status,
+  label = status ?? "No record",
 }: {
-  status: (typeof heatStatuses)[number];
+  status: HeatStatus | null;
+  label?: string;
 }) {
   return (
     <span
-      className={`heat-cell heat-${heatStatuses.indexOf(status)}`}
+      className={`heat-cell ${status ? "heat-" + heatStatuses.indexOf(status) : "heat-none"}`}
       role="img"
-      aria-label={status}
-      title={status}
+      aria-label={label}
+      title={label}
     />
   );
 }

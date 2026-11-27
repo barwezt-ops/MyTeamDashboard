@@ -8,24 +8,27 @@ test("large synthetic roster supports searching and tab navigation", async ({
   await page.goto("/");
   await page.getByLabel("Password").fill("synthetic-smoke-password");
   await page.getByRole("button", { name: "Sign in" }).click();
-  const agents = page.getByRole("table", { name: "Agents" });
-  await expect(agents.getByRole("button")).toHaveCount(204);
-  await page.getByRole("textbox", { name: "Search agents" }).fill("Fixture199");
+  await expect(page.locator(".sidebar")).toBeVisible();
+  await page.goto("/team");
+  const agents = page.getByRole("table", { name: "Team" });
+  await expect(agents.locator("tbody tr")).toHaveCount(200);
+  await page.getByLabel("Search").fill("Fixture199");
   await expect(
-    agents.getByRole("button", { name: "Fixture199", exact: true }),
+    agents.getByRole("link", { name: "Fixture199 Sample" }),
   ).toBeVisible();
   await expect(agents.locator("tbody tr")).toHaveCount(1);
 
-  const nav = page.getByRole("navigation");
+  const nav = page.getByRole("navigation", { name: "Dashboard" });
   await page.keyboard.press("Control+k");
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Trends", exact: true })
+    .getByRole("button", { name: "Attendance trends" })
     .click();
   await expect(
     page.getByRole("table", { name: "Agent trend counts" }).locator("tbody tr"),
   ).toHaveCount(200);
   await nav.getByRole("link", { name: "Attendance", exact: true }).click();
+  await page.getByRole("link", { name: "Review discrepancies →" }).click();
   const queue = page.getByRole("table", { name: "Discrepancies" });
   await expect(queue.locator("tbody tr")).toHaveCount(400);
   await page.getByRole("textbox", { name: "Search agents" }).fill("FAKE-199");

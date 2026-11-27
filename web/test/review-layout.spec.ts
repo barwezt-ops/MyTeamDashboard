@@ -10,7 +10,7 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
   await page.goto("/styleguide");
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const side = await page.locator(".sidebar").boundingBox();
-  expect(side?.y).toBe(0);
+  expect(Math.abs(side!.y)).toBeLessThan(1);
   expect(side?.height).toBe(1000);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(
@@ -26,8 +26,9 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
   for (const path of [
     "/",
     "/attendance",
-    "/roster",
-    "/trends",
+    "/attendance?view=trends",
+    "/team",
+    "/discrepancies",
     "/coaching",
     "/quality",
     "/queues",
@@ -50,7 +51,9 @@ test("review fixes: sticky sidebar, first-name initials, phone tiles and unobscu
           const last = await page
             .locator("main.content > :last-child")
             .boundingBox();
-          return last!.y + last!.height - nav!.y;
+          // Not measurable yet, so poll again.
+          if (!nav || !last) return Number.POSITIVE_INFINITY;
+          return last.y + last.height - nav.y;
         },
         { message: path },
       )

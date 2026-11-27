@@ -25,6 +25,7 @@ const fields = {
     login: "Login Time",
     logout: "Logout Time",
     lateness: "Lateness",
+    breakOver: "Duration Of break Exceeding",
     exceeded: "Exceeded",
     ncnsStreak: "NCNS Streak",
     missing: "Missing After Compensation",
