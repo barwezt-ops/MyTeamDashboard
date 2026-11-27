@@ -53,7 +53,8 @@ test("Home answers the shift questions from real numbers", async ({
   expect(copied.split(/\r?\n/)[0]).toBe(
     "Date\tAgent\tQueue\tStatus\tLogin\tLate\tMissing\tBreak",
   );
-  expect(copied).toContain("2026-11-25\tAvery S.\tInbound A\tPresent");
+  expect(copied).toContain("25 Nov 2026\tAgent\tInbound A\tPresent");
+  expect(copied).not.toMatch(/Avery|Jordan/);
   await page.getByRole("button", { name: "Copy shout-out" }).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))

@@ -4,11 +4,16 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import type { V2Settings } from "../../../server/src/v2/settings";
 import type { BoardView } from "../../../server/src/v2/board";
 import {
+  defaultEmailSubject,
   defaultTemplate,
   globalFields,
   rowFields,
 } from "../../../server/src/v2/template";
 import { noLine } from "../../../server/src/v2/queues";
+import {
+  defaultMprTemplate,
+  mprFields,
+} from "../../../server/src/v2/documents";
 import { api } from "../api";
 import { ErrorNotice, Loading, Section } from "../components/ui";
 import { useView } from "../v2/context";
@@ -282,7 +287,7 @@ function ReportTemplate({ settings }: { settings: V2Settings }) {
     <SaveForm
       title="Report layout"
       id="report-template"
-      intro="Paste your end-of-day or client table once. Copy the header row and one sample row from your sheet, then replace the sample values with placeholders. Leave empty to use the default."
+      intro="Paste your end-of-day layout once, then replace sample values with placeholders. Leave empty to use the default. Agent names are never included: name placeholders read Agent."
       done="Report layout saved."
       values={() => ({ reportTemplate: text })}
     >
@@ -320,6 +325,83 @@ function ReportTemplate({ settings }: { settings: V2Settings }) {
           Start from the default
         </button>
         <SetTag set={!!settings.reportTemplate.trim()} />
+      </div>
+    </SaveForm>
+  );
+}
+
+function EmailLayout({ settings }: { settings: V2Settings }) {
+  const [account, setAccount] = useState(settings.reportAccount);
+  const [subject, setSubject] = useState(settings.emailSubject);
+  return (
+    <SaveForm
+      title="Attendance email"
+      id="email-layout"
+      intro="The subject above the attendance table on Reports. {account} and {D Month YYYY} are filled in."
+      done="Attendance email saved."
+      values={() => ({ reportAccount: account, emailSubject: subject })}
+    >
+      <label>
+        Account
+        <input
+          maxLength={200}
+          value={account}
+          onChange={(e) => setAccount(e.target.value)}
+        />
+      </label>
+      <label>
+        Subject layout
+        <input
+          maxLength={300}
+          value={subject}
+          placeholder={defaultEmailSubject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
+      </label>
+      <div className="button-row">
+        <SetTag set={!!settings.reportAccount} />
+      </div>
+    </SaveForm>
+  );
+}
+
+function MprLayout({ settings }: { settings: V2Settings }) {
+  const [text, setText] = useState(settings.mprTemplate);
+  return (
+    <SaveForm
+      title="MPR layout"
+      id="mpr-layout"
+      intro="The MPR preparation text. Leave empty to use the default."
+      done="MPR layout saved."
+      values={() => ({ mprTemplate: text })}
+    >
+      <label>
+        Layout
+        <textarea
+          aria-label="MPR layout"
+          className="document-text template-text"
+          maxLength={20000}
+          value={text}
+          placeholder={defaultMprTemplate}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </label>
+      <details className="placeholders">
+        <summary>MPR placeholders</summary>
+        <p className="mono">
+          {mprFields.map((field) => `{${field}}`).join(" ")}
+        </p>
+        <p>{"{notes}"} stays empty unless you tick “Include private notes”.</p>
+      </details>
+      <div className="button-row">
+        <button
+          type="button"
+          className="secondary small"
+          onClick={() => setText(defaultMprTemplate)}
+        >
+          Start from the default
+        </button>
+        <SetTag set={!!settings.mprTemplate.trim()} />
       </div>
     </SaveForm>
   );
@@ -369,6 +451,11 @@ export function OwnerSettings({
           .filter((line) => line !== noLine)}
       />
       <ReportTemplate key={key("reportTemplate")} settings={saved} />
+      <EmailLayout
+        key={key("reportAccount", "emailSubject")}
+        settings={saved}
+      />
+      <MprLayout key={key("mprTemplate")} settings={saved} />
     </div>
   );
 }

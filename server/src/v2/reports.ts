@@ -7,7 +7,13 @@ import { isLate, isMissing, isUnplanned, sum, type DayFacts } from "./facts.js";
 import { cycleLabel } from "./grid.js";
 import { coachingTotals, exceptionRows } from "./home.js";
 import { planFor, working } from "./queues.js";
-import { defaultTemplate, renderTemplate, type RowValues } from "./template.js";
+import {
+  defaultEmailSubject,
+  defaultTemplate,
+  nameless,
+  renderTemplate,
+  type RowValues,
+} from "./template.js";
 import * as say from "./templates.js";
 
 const dayOf = (agent: V2Agent, date: string) =>
@@ -31,8 +37,8 @@ function rowValues(agent: V2Agent, date: string): RowValues {
     value === null || value === undefined ? "" : String(Math.round(value));
   return {
     code: agent.code,
-    name: say.shortName(agent),
-    full_name: agent.fullName || agent.firstName,
+    name: nameless,
+    full_name: nameless,
     line: agent.line ?? "",
     account: agent.account,
     shift: say.clockTime(facts?.shift ?? planned?.shiftStart ?? null) ?? "",
@@ -48,7 +54,10 @@ function rowValues(agent: V2Agent, date: string): RowValues {
   };
 }
 
-/** The end-of-day table for one date, in the owner's layout. */
+/**
+ * The end-of-day table for one date, in the owner's layout. It never carries an
+ * agent's name.
+ */
 export function eodReport(data: DashboardData, date: string) {
   const agents = data.agents.filter(
     (agent) => agent.active || dayOf(agent, date)?.attendance,
@@ -61,9 +70,14 @@ export function eodReport(data: DashboardData, date: string) {
   const exceptions = new Set(exceptionRows(data, date).map((row) => row.code));
   const rows = agents
     .map((agent) => rowValues(agent, date))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort(
+      (a, b) => a.line.localeCompare(b.line) || a.code.localeCompare(b.code),
+    );
   const count = (test: (day: DayFacts) => boolean) =>
     String(facts.filter(test).length);
+  const people = (total: number) => say.plural(total, nameless);
+  const counted = (test: (day: DayFacts) => boolean) =>
+    people(facts.filter(test).length);
   const rendered = renderTemplate(
     data.settings.reportTemplate.trim()
       ? data.settings.reportTemplate
@@ -84,6 +98,11 @@ export function eodReport(data: DashboardData, date: string) {
       "team.absent": count(isUnplanned),
       "team.leave": count((day) => day.status === "PTO"),
       "team.off": count((day) => day.status === "Off Day"),
+      "team.late_agents": counted(isLate),
+      "team.missing_agents": counted(isMissing),
+      "team.break_agents": counted((day) => day.breakExceeded),
+      "team.absent_agents": counted(isUnplanned),
+      "team.exception_agents": people(exceptions.size),
     },
     {
       row: rows,
@@ -96,6 +115,59 @@ export function eodReport(data: DashboardData, date: string) {
     exceptions: exceptions.size,
     customTemplate: !!data.settings.reportTemplate.trim(),
     ...rendered,
+  };
+}
+
+export const emailHeaders = [
+  "Code",
+  "Name",
+  "Team Leader",
+  "Account",
+  "Date",
+  "Missing",
+  "TL Comment",
+];
+const subjectDate = (date: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(date + "T00:00:00Z"));
+
+/**
+ * Missing time on one date, as the attendance email's table. The comment column
+ * is left blank for the owner; no workforce comment column is ever read.
+ */
+export function attendanceEmail(data: DashboardData, date: string) {
+  const rows = data.agents
+    .flatMap((agent) => {
+      const facts = dayOf(agent, date)?.attendance;
+      return facts && isMissing(facts)
+        ? [
+            [
+              agent.code,
+              agent.fullName || agent.firstName,
+              agent.tl,
+              agent.account,
+              say.fullDate(date),
+              say.duration(facts.missing),
+              "",
+            ],
+          ]
+        : [];
+    })
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const { reportAccount, emailSubject } = data.settings;
+  const layout = emailSubject || defaultEmailSubject;
+  return {
+    date,
+    subject: layout
+      .replaceAll("{D Month YYYY}", subjectDate(date))
+      .replaceAll("{account}", () => reportAccount || "{account}"),
+    // The subject is not ready to send until its account is set.
+    needsAccount: layout.includes("{account}") && !reportAccount,
+    table: { headers: emailHeaders, rows },
   };
 }
 

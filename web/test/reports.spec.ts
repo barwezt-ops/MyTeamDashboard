@@ -18,14 +18,37 @@ test("reports: end of day, summary, MPR prep and roster changes", async ({
 
   await page.getByRole("button", { name: "Copy report" }).click();
   await expect(page.getByRole("status")).toContainText("report copied");
-  expect(await clipboard(page)).toContain("2026-11-25\tAvery S.");
+  expect(await clipboard(page)).toContain("25 Nov 2026\tAgent");
+  expect(await clipboard(page)).not.toContain("Avery");
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export report as CSV" }).click();
-  expect(await readFile((await (await download).path())!, "utf8")).toContain(
-    "Avery S.",
+  const csv = await readFile((await (await download).path())!, "utf8");
+  expect(csv).toContain("Agent");
+  expect(csv).not.toContain("Avery");
+
+  // The attendance email: a subject waiting for its account, then the table.
+  await expect(
+    page.getByText("Attendance | {account} | 25 November 2026"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Copy subject" }),
+  ).toBeDisabled();
+  const email = page.getByRole("table", { name: "Attendance email table" });
+  await expect(email.locator("tbody tr")).toHaveCount(2);
+  await page.getByRole("button", { name: "Copy email table" }).click();
+  await expect(page.getByRole("status").last()).toContainText(
+    "email table copied",
   );
+  const pasted = await page.evaluate(async () => {
+    const [item] = await navigator.clipboard.read();
+    return (await item.getType("text/html")).text();
+  });
+  expect(pasted).toMatch(/background-color:\s*(#16365c|rgb\(22, 54, 92\))/);
+  expect(pasted).toMatch(/border:\s*1px solid/);
+  expect(pasted).toContain("TL Comment");
+
   await page.getByLabel("Report date").fill("2026-11-23");
-  await expect(eod).toContainText("2026-11-23");
+  await expect(eod).toContainText("23 Nov 2026");
   await page.getByRole("button", { name: "Copy summary" }).click();
   await expect
     .poll(() => clipboard(page))
@@ -50,7 +73,7 @@ test("reports: end of day, summary, MPR prep and roster changes", async ({
     .getByRole("button", { name: "Copy EOD" })
     .click();
   await expect(page.getByRole("status").last()).toContainText("Report copied.");
-  expect(await clipboard(page)).toContain("2026-11-25");
+  expect(await clipboard(page)).toContain("25 Nov 2026");
   clean();
 });
 
@@ -103,6 +126,39 @@ test("settings: thresholds, staffing, layout, hours and theme", async ({
   await expect(
     page.getByRole("table", { name: "End of day report" }).locator("thead th"),
   ).toHaveText(["Agent", "Late"]);
+
+  await page.goto("/settings");
+  await page.getByLabel("Account", { exact: true }).fill("Sample Account");
+  await page.getByRole("button", { name: "Save attendance email" }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Attendance email saved.",
+  );
+  await page
+    .getByLabel("MPR layout", { exact: true })
+    .fill("Sample review: {agent.name}");
+  await page.getByRole("button", { name: "Save mpr layout" }).click();
+  await expect(page.getByRole("status")).toContainText("MPR layout saved.");
+  // The status map is read-only.
+  await expect(
+    page.getByText("Every status seen for your team is mapped."),
+  ).toBeVisible();
+  await expect(page.getByRole("table", { name: "Status map" })).toBeVisible();
+  await page.goto("/reports");
+  await expect(
+    page.getByText("Attendance | Sample Account | 25 November 2026"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Copy subject" }).click();
+  await expect
+    .poll(() => clipboard(page))
+    .toBe("Attendance | Sample Account | 25 November 2026");
+  await page.getByLabel("Agent", { exact: true }).selectOption("99101");
+  await page.getByRole("button", { name: "Open MPR prep" }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "MPR prep" })
+      .getByLabel("Text", { exact: true }),
+  ).toHaveValue("Sample review: Avery Stone");
+  await page.keyboard.press("Escape");
 
   await page.goto("/settings");
   await page.getByLabel("Choose attendance read hours here").check();

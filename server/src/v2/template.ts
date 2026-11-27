@@ -18,6 +18,12 @@ export const globalFields = [
   "team.absent",
   "team.leave",
   "team.off",
+  // Counts with the word, as in "1 Agent" and "3 Agents".
+  "team.late_agents",
+  "team.missing_agents",
+  "team.break_agents",
+  "team.absent_agents",
+  "team.exception_agents",
 ] as const;
 export const rowFields = [
   "code",
@@ -38,6 +44,11 @@ export const rowFields = [
 ] as const;
 export type RowValues = Record<(typeof rowFields)[number], string>;
 export type GlobalValues = Record<(typeof globalFields)[number], string>;
+
+export const defaultEmailSubject = "Attendance | {account} | {D Month YYYY}";
+
+/** Stands in for every agent name. The end-of-day report never carries one. */
+export const nameless = "Agent";
 
 export const defaultTemplate = [
   "Date\tAgent\tQueue\tStatus\tLogin\tLate\tMissing\tBreak",

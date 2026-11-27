@@ -268,6 +268,7 @@ export function profileView(
       previous: agent.priorQaAverage,
       evaluations: [...agent.qa].reverse().slice(0, 12),
     },
+    mprTemplate: data.settings.mprTemplate,
     earlierNotes: agent.notes,
     notes: agent.privateNotes.map((row) => ({
       id: row.id,

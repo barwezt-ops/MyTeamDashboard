@@ -3,7 +3,13 @@ import { openDb } from "../src/db/db.js";
 import { eventsOf } from "../src/db/repo.js";
 import { startLiveJobs } from "../src/sync/cron.js";
 import { dashboardData } from "../src/v2/data.js";
-import { cycleSummary, eodReport, rosterReport } from "../src/v2/reports.js";
+import {
+  attendanceEmail,
+  cycleSummary,
+  eodReport,
+  rosterReport,
+} from "../src/v2/reports.js";
+import { statusMapView } from "../src/v2/statusMap.js";
 import {
   readSettings,
   saveSettings,
@@ -32,7 +38,7 @@ it("fills the default layout with yesterday's exceptions", () => {
   expect(report.table!.rows).toHaveLength(6);
   expect(report.table!.rows[0].slice(0, 7)).toEqual([
     "25 Nov 2026",
-    "Avery S.",
+    "Agent",
     "Inbound A",
     "Present",
     "3:46 PM",
@@ -69,6 +75,118 @@ it("repeats the owner's row lines and reports unknown placeholders", () => {
     exception: [],
   });
   expect(unsafe.text).toBe("'=cmd x\tx");
+});
+
+it("never puts an agent's name in the end-of-day report", () => {
+  saveSettings(db, {
+    ...readSettings(db),
+    reportTemplate: [
+      "{team.late_agents} late, {team.missing_agents} missing time",
+      "{team.exception_agents} with an exception, {team.break_agents} over a break",
+      "{row.name}\t{row.full_name}",
+      "{exception.name}\t{exception.full_name}",
+    ].join("\n"),
+  });
+  const data = load();
+  const report = eodReport(data, "2026-11-25");
+  expect(report.text.split("\n").slice(0, 2)).toEqual([
+    "3 Agents late, 2 Agents missing time",
+    "6 Agents with an exception, 3 Agents over a break",
+  ]);
+  const everything = report.text + JSON.stringify(report.table);
+  for (const agent of data.agents)
+    for (const name of [agent.fullName, ...agent.fullName.split(" ")])
+      expect(everything).not.toContain(name);
+  expect(report.text).toContain("Agent\tAgent");
+  // One person reads in the singular. The default layout has no names either.
+  saveSettings(db, {
+    ...readSettings(db),
+    reportTemplate: "{team.late_agents}",
+  });
+  expect(eodReport(load(), "2026-11-21").text).toBe("1 Agent");
+  saveSettings(db, { ...readSettings(db), reportTemplate: "" });
+  expect(eodReport(load(), "2026-11-25").text).not.toMatch(/Avery|Jordan/);
+});
+
+it("builds the attendance email from recorded missing time", () => {
+  const before = attendanceEmail(load(), "2026-11-25");
+  expect(before.table).toEqual({
+    headers: [
+      "Code",
+      "Name",
+      "Team Leader",
+      "Account",
+      "Date",
+      "Missing",
+      "TL Comment",
+    ],
+    rows: [
+      [
+        "99102",
+        "Jordan Brook",
+        "Sample Lead",
+        "Support",
+        "25 Nov 2026",
+        "32m",
+        "",
+      ],
+      [
+        "99103",
+        "Riley Vale",
+        "Sample Lead",
+        "Support",
+        "25 Nov 2026",
+        "8m",
+        "",
+      ],
+    ],
+  });
+  // The subject waits for the account the owner sets.
+  expect(before).toMatchObject({
+    subject: "Attendance | {account} | 25 November 2026",
+    needsAccount: true,
+  });
+  saveSettings(db, { ...readSettings(db), reportAccount: "Sample $& Account" });
+  expect(attendanceEmail(load(), "2026-11-25")).toMatchObject({
+    subject: "Attendance | Sample $& Account | 25 November 2026",
+    needsAccount: false,
+  });
+  saveSettings(db, {
+    ...readSettings(db),
+    emailSubject: "{D Month YYYY} missing time",
+  });
+  expect(attendanceEmail(load(), "2026-11-25").subject).toBe(
+    "25 November 2026 missing time",
+  );
+  expect(attendanceEmail(load(), "2026-11-26").table.rows).toEqual([]);
+});
+
+it("lists statuses seen for the team that the map does not cover", () => {
+  expect(statusMapView(db, config).unmapped).toEqual([]);
+  db.prepare(
+    "UPDATE attendance_days SET raw='Sample Leave',status='Unknown' WHERE code='99101' AND date IN ('2026-11-23','2026-11-24')",
+  ).run();
+  db.prepare(
+    "UPDATE schedule_days SET raw=' sample  leave ',status='Unknown' WHERE code='99102' AND date='2026-11-27'",
+  ).run();
+  // A label mapped since the last sync is no longer listed.
+  db.prepare(
+    "UPDATE schedule_days SET raw='OFF',status='Unknown' WHERE code='99102' AND date='2026-11-28'",
+  ).run();
+  expect(statusMapView(db, config).unmapped).toEqual([
+    {
+      label: "sample  leave",
+      source: "Schedule",
+      count: 1,
+      last: "2026-11-27",
+    },
+    {
+      label: "Sample Leave",
+      source: "Attendance",
+      count: 2,
+      last: "2026-11-24",
+    },
+  ]);
 });
 
 it("summarises the cycle and lists roster changes", () => {

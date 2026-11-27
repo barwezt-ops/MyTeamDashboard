@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type {
+  attendanceEmail,
   cycleSummary,
   eodReport,
   rosterReport,
@@ -25,6 +26,7 @@ export type ReportsData = {
   cycle: { from: string; to: string };
   cycles: { from: string; to: string }[];
   eod: ReturnType<typeof eodReport>;
+  email: ReturnType<typeof attendanceEmail>;
   summary: ReturnType<typeof cycleSummary>;
   roster: ReturnType<typeof rosterReport>;
   agents: { code: string; name: string }[];
@@ -99,6 +101,54 @@ function Actions({
   );
 }
 
+function Email({ email }: { email: ReportsData["email"] }) {
+  const run = useCopy();
+  const { table, subject, needsAccount, date } = email;
+  return (
+    <Section
+      title="Attendance email"
+      number="02"
+      action={
+        <Actions
+          name="email table"
+          disabled={!table.rows.length}
+          onCopy={() => copy(tableText(table), tableHtml(table))}
+          onCsv={() => downloadCsv(`attendance-email-${date}.csv`, table)}
+        />
+      }
+    >
+      <div className="panel-body">
+        <div className="subject-line">
+          <span className="eyebrow">Subject</span>
+          <code>{subject}</code>
+          <button
+            type="button"
+            className="secondary small"
+            disabled={needsAccount}
+            onClick={() => run(() => copy(subject), "Subject copied.")}
+          >
+            Copy subject
+          </button>
+        </div>
+        {needsAccount && (
+          <p className="notice-line">
+            Set the account in{" "}
+            <Link className="panel-link" to="/settings#email-layout">
+              Settings
+            </Link>{" "}
+            to finish the subject.
+          </p>
+        )}
+      </div>
+      {table.rows.length ? (
+        <ReportTable table={table} label="Attendance email table" />
+      ) : (
+        <Empty>No missing time recorded on {shortDate(date)}.</Empty>
+      )}
+    </Section>
+  );
+}
+
 function MprActions({ code, cycle }: { code: string; cycle: string }) {
   const [open, setOpen] = useState(false);
   const result = useView<ProfileView>(
@@ -150,7 +200,7 @@ function MprActions({ code, cycle }: { code: string; cycle: string }) {
 function Mpr({ data }: { data: ReportsData }) {
   const [code, setCode] = useState("");
   return (
-    <Section title="MPR prep" number="03">
+    <Section title="MPR prep" number="04">
       <div className="panel-body">
         <div className="toolbar">
           <label>
@@ -273,9 +323,10 @@ export function Reports() {
           <Empty>No rows for this date.</Empty>
         )}
       </Section>
+      <Email email={view.email} />
       <Section
         title="Cycle summary"
-        number="02"
+        number="03"
         action={
           <Actions
             name="summary"
@@ -306,7 +357,7 @@ export function Reports() {
       <Mpr key={view.cycle.from} data={view} />
       <Section
         title="Roster changes"
-        number="04"
+        number="05"
         action={
           <Actions
             name="roster changes"

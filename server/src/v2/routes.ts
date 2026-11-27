@@ -22,7 +22,12 @@ import { recentCycles } from "./cycle.js";
 import { profileView } from "./profile.js";
 import { coachingView, prepView } from "./coaching.js";
 import { qualityView } from "./quality.js";
-import { cycleSummary, eodReport, rosterReport } from "./reports.js";
+import {
+  attendanceEmail,
+  cycleSummary,
+  eodReport,
+  rosterReport,
+} from "./reports.js";
 import { statusMapView } from "./statusMap.js";
 import { reportDay } from "./home.js";
 import { shortName } from "./templates.js";
@@ -149,6 +154,7 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
           cycle: { from: data.cycle.from, to: data.cycle.to },
           cycles,
           eod: eodReport(data, date),
+          email: attendanceEmail(data, date),
           summary: cycleSummary(data),
           roster: rosterReport(data, eventsOf(db, data.cycle.from)),
           agents: data.agents

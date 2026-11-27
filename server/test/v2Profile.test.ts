@@ -1,7 +1,11 @@
 import { afterAll, expect, it } from "vitest";
 import { openDb } from "../src/db/db.js";
 import { dashboardData } from "../src/v2/data.js";
-import { escalationText, mprText } from "../src/v2/documents.js";
+import {
+  documentationTable,
+  escalationText,
+  mprText,
+} from "../src/v2/documents.js";
 import {
   newHireBadge,
   outcomeText,
@@ -70,6 +74,85 @@ it("derives hire stages, tenure and shift patterns", () => {
   expect(tenureText(null, TEAM_TODAY)).toBeNull();
   const agent = data.agents[0];
   expect(shiftPattern({ ...agent, lineTemplate: null, next14: [] })).toBeNull();
+});
+
+it("drafts an escalation under the owner's four headings", () => {
+  const draft = escalationText(profile("99101"));
+  const at = (heading: string) => draft.indexOf("\n" + heading + "\n");
+  const order = [
+    "What happened",
+    "Impact",
+    "What I've already done",
+    "What I need",
+  ].map(at);
+  expect(order.every((position) => position > 0)).toBe(true);
+  expect([...order].sort((a, b) => a - b)).toEqual(order);
+  expect(draft).toContain("- Late time this cycle: 38m");
+  // What is needed is left for the owner to write.
+  expect(draft.slice(order[3]).trim()).toBe("What I need");
+});
+
+it("fills the owner's MPR layout", () => {
+  const view = profile("99101");
+  const layout = {
+    ...view,
+    mprTemplate:
+      "Sample review: {agent.name}\n{scorecard}\n{unknown} {constructor}",
+  };
+  const text = mprText(layout);
+  expect(
+    text.startsWith("Sample review: Avery Stone\n- Late incidents: 4"),
+  ).toBe(true);
+  expect(text).toContain("{unknown} {constructor}");
+  expect(text).not.toContain("Recent cycles");
+  expect(text).not.toContain("earlier shift");
+  // Asking for notes includes them even without a place in the layout.
+  expect(mprText(layout, true)).toMatch(/Private notes\n- 20 Nov: Asked/);
+  // The default layout still reads as before.
+  expect(mprText(view)).toMatch(
+    /^MPR preparation: Avery Stone \(99101\)\nCycle .+ Prepared 26 Nov\.\n/,
+  );
+});
+
+it("copies coaching documentation in the owner's order", () => {
+  const entry = {
+    code: "99101",
+    name: "Avery S.",
+    date: "2026-11-04",
+    whatHappened: "Sample fact",
+    whatWasSaid: "Sample talk",
+    nextStep: "Sample step",
+    followUpDate: "2026-11-11",
+  };
+  const fields = [
+    "Date",
+    "What happened",
+    "What was said",
+    "Agreed next step",
+    "Follow-up date",
+  ];
+  expect(documentationTable([entry])).toEqual({
+    headers: fields,
+    rows: [
+      [
+        "4 Nov 2026",
+        "Sample fact",
+        "Sample talk",
+        "Sample step",
+        "11 Nov 2026",
+      ],
+    ],
+  });
+  const both = documentationTable([
+    entry,
+    { ...entry, code: "99102", name: "Jordan B.", followUpDate: null },
+  ]);
+  expect(both.headers).toEqual(["Agent", ...fields]);
+  expect(both.rows[1].at(-1)).toBe("");
+  expect(documentationTable([entry], true).rows[0].slice(0, 2)).toEqual([
+    "Avery S.",
+    "2026-11-04",
+  ]);
 });
 
 it("drafts documents from facts and includes private notes only on request", () => {
