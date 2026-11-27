@@ -48,7 +48,7 @@ test("Home answers the shift questions from real numbers", async ({
   await reviewScreen(page, info, "phase-3-home");
 
   await page.getByRole("button", { name: "Copy for EOD" }).click();
-  await expect(page.getByRole("status")).toContainText("Table copied.");
+  await expect(page.getByRole("status")).toContainText("Report copied.");
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied.split(/\r?\n/)[0]).toBe(
     "Date\tAgent\tQueue\tStatus\tLogin\tLate\tMissing\tBreak",
