@@ -21,6 +21,8 @@ import { teamView } from "./team.js";
 import { recentCycles } from "./cycle.js";
 import { profileView } from "./profile.js";
 import { coachingView, prepView } from "./coaching.js";
+import { qualityView } from "./quality.js";
+import { boardView } from "./board.js";
 import { discrepanciesOf } from "../db/repo.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
@@ -112,6 +114,14 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
         res.json(view);
       },
     ),
+  );
+  router.get(
+    "/quality",
+    endpoint({}, (_input, _req, res) => res.json(qualityView(current()))),
+  );
+  router.get(
+    "/queues",
+    endpoint({}, (_input, _req, res) => res.json(boardView(current()))),
   );
   router.get(
     "/settings",

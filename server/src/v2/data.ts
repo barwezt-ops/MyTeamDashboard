@@ -270,6 +270,10 @@ export function dashboardData(
         date,
         schedule: plan(date),
       })),
+      upcoming: datesBetween(today, plusDays(today, 30)).map((date) => ({
+        date,
+        schedule: plan(date),
+      })),
       recent: datesBetween(plusDays(today, -14), yesterday).map((date) => ({
         date,
         attendance: recordedOn.get(date) ?? null,
