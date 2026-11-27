@@ -1,6 +1,7 @@
 // Composes the V2 read model from synced data and owner records. It covers the
 // owner's team only.
 import type { Db } from "../db/db.js";
+import { mtdForCycle } from "../sync/attendancePaste.js";
 import type { Config } from "../config.js";
 import { agentsOf, attendanceOf, notesOf, scheduleOf } from "../db/repo.js";
 import { plusDays } from "../parse/normalize.js";
@@ -139,11 +140,13 @@ export function dashboardData(
   );
   const dismissals = all<Dismissal>("SELECT * FROM flag_dismissals");
   const mtdFor = groupByCode(
-    all<MtdRow>(
-      "SELECT code,sync_date,fields FROM attendance_mtd_snapshots WHERE cycle_start=? AND cycle_end=? ORDER BY sync_date",
-      cycle.from,
-      cycle.to,
-    ),
+    mtdForCycle(db, cycle)
+      ? all<MtdRow>(
+          "SELECT code,sync_date,fields FROM attendance_mtd_snapshots WHERE cycle_start=? AND cycle_end=? ORDER BY sync_date",
+          cycle.from,
+          cycle.to,
+        )
+      : [],
   );
   const qaConnected = !!config.sources.qa?.enabled;
 

@@ -161,6 +161,7 @@ export function createSync(
           rowsRead: paste.rowsRead,
           rowsKept: paste.records.length,
           warnings: [
+            ...attendancePastePreview(paste, config, date).warnings,
             ...(changed ? [] : ["no change"]),
             ...(mismatch.length
               ? [mtdMismatchWarning + mismatch.join(",")]

@@ -1,26 +1,35 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for attendance corrections._
+_Last updated: 2026-11-27 for the attendance follow-ups and ordered merge._
+
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
 - **Owner-authorized follow-up:** fix PR #29 on its existing branch; implement optional MTD, tolerant formula errors and queue activation as a separate PR from main. Owner explicitly pre-approved merges after green CI in this order: #28, the B PR, #29, then `deploy/windows/update.cmd` and Sync All. This is a scoped exception to the no-self-merge/review stop rules. All test workers, including CI via package scripts, are serial.
-- **Attendance corrections:** built on `feature/attendance-corrections` from current `origin/main` (`e5d54f7`), one PR for owner review; do not merge or update the installed app. Sheet TL comments and app correction notes are local-only, excluded from logs and exports/backups. See `docs/attendance-corrections.md` for behavior, checks and synthetic screenshots.
+- **Attendance corrections:** built on `feature/attendance-corrections` from current `origin/main` (`e5d54f7`), PR #29 is authorized to merge after #28/#30 and green CI, then deploy. Sheet TL comments and app correction notes are local-only, excluded from logs and exports/backups. See `docs/attendance-corrections.md` for behavior, checks and synthetic screenshots.
 - **Corrections validation:** 249 Vitest tests passed, one existing skip; all 26 Playwright checks passed, then the final corrections/reports/Settings checks passed again (3). Lint, typecheck and isolated `build:smoke` pass. Suites ran with one worker because parallel runs exceeded existing host time/latency limits; no limits were changed. Corrections browser tests have a separate synthetic database to avoid resetting another screen test's data.
 - **Current main:** V2 PRs #20–#27 are now merged (verified from Git history). The older stack/checkpoint notes below describe their pre-merge state.
-- **V2 status:** plan-v2 Phases 1–8 are built on stacked branches with one open PR each, none merged: #20 design system (approved), #21 data layer, #22 Home, #23 grid and Team, #24 agent profile, #25 Coaching, #26 Quality and Queues, #27 Reports, Settings and polish. Merge in that order; after each merge, point the next PR at `main`.
-- **Branches:** `v2-phase-1-design-system` → `-2-data` → `-3-home` → `-4-grid` → `-5-profile` → `-6-coaching` → `-7-quality-queues` → `-8-reports-settings` (all prefixed `v2-phase`).
-- **Review follow-up:** the owner reviewed PRs #21–#27 and approved them with 15 fixes and decisions (plan-v2 section 8). All are done as follow-up commits on `v2-phase-8-reports-settings` (PR #27), waiting for review. The earlier branches are unchanged, so merge the whole stack before using any one phase.
+- **Owner-authorized attendance follow-up B:** branch `fix/optional-mtd-paste-errors` starts from main, separate from PR #29. Empty MTD is valid; formula errors are sanitized and listed in Settings. The line/queue tab passed headers/row-count-only inspection and was enabled in ignored private config. Source IDs and row data were not published.
+- **Authorized sequence:** after green CI, merge #28, this B PR, then #29; deploy with `deploy/windows/update.cmd`, run All and verify live aggregates. The owner explicitly made this scoped exception to the no-self-merge rule. Test workers are serial, including CI via package scripts.
+- **V2 status:** merged and deployed on 2026-11-27. PRs #20–#27 were merged top down with merge commits at the owner's request (an explicit exception to “never merge your own PR”). `main` is `e5d54f7`; its tree matches the reviewed head `92f170f`, and CI passed on it.
+- **Branches:** the eight `v2-phase-*` branches are merged and still on GitHub; they can be deleted when the owner likes.
+- **Review follow-up:** the 15 fixes and decisions from the PR review (plan-v2 section 8) are part of the merged release.
+
+
 - **Handover:** on 2026-11-27 a new session took over from the previous one for the review follow-up. The tree was clean at `03d10cc`, matched origin, and had no stashes or unpushed work. (An earlier handover on 2026-11-26 recovered unpushed Phase 2 work; nothing was discarded.)
-- **Tests on the Phase 8 branch:** 242 Vitest tests passed, one existing skip; 25 Playwright tests passed. Lint, typecheck and the isolated build pass.
-- **Installed database:** on 2026-11-27 the `owner_settings` table was added and `absentDays = 1` saved, at the owner's request. A copy taken first is in the data folder as `dashboard.before-absent-days.db`. The installed release ignores the table until it is updated.
-- **Installed app:** still runs the pre-V2 release. `server/dist` in this checkout is a junction into it, so never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
+- **Tests on the merged code:** 242 Vitest tests passed, one existing skip; 25 Playwright tests passed. Lint, typecheck and the isolated build pass.
+- **Installed database:** migrated on 2026-11-27 (six V2 tables added, schema version still 2, integrity check ok). Against the snapshot taken first, no earlier attendance, discrepancy, note, roster, MTD or settings row was missing or changed. `absentDays = 1` is saved. Copies in the data folder: `dashboard.before-absent-days.db`, `dashboard.pre-v2-deploy.db` and two `backups/*.pre-deploy-copy.json`.
+- **Installed app:** runs `main` at `e5d54f7`, updated with `deploy\windows\update.cmd`; the scheduled task is running and healthy. Keep this checkout on `main`, because the updater pulls the current branch. `server/dist` is a junction into the installed release, so never run `npm run build` here; use `npm run build:smoke` to check and `update.cmd` to deploy. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
+- **First V2 sync (2026-11-27, 17:00 Cairo):** roster, schedule, attendance and rules succeeded; the line/queue tab and QA are off. Attendance holds 491 rows for 16 agents, 21 Oct to 20 Nov, with minutes on all 40 exceeded breaks. Nothing is pasted yet for the cycle from 21 Nov. The MTD warning names one agent. Current-cycle flags: 0 urgent, 0 soon, 7 later (patterns from earlier days).
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **v1 status:** plan.md Phases 0–5 and workstreams B–F are merged to `main`, as are Windows local deployment and the attendance paste sync.
-- **Next task:** the owner reviews the follow-up, merges the V2 PRs, updates the installed app, runs an attendance sync (which fills in break minutes for the pasted days), sets the account, report layout, thresholds and staffing in Settings, connects the line/queue tab, and sends the QA link.
+- **Next task:** the owner pastes attendance for 21 Nov onwards, sets the account, report layout, thresholds and staffing in Settings, checks the roster count (Q18), connects the line/queue tab and sends the QA link.
 
 ## 2. Features
 - **Attendance corrections (2026-11-27):** exact Attendance `TL Comment` header exception; one known whole label changes effective status throughout the shared read model, preserving WFM status and provenance. No label explains that day's flags/discrepancies without changing counts; ambiguous labels apply neither. Sheet changes/removal are sync-driven; matching WFM labels show `WFM updated`. Attendance drawer supports owner status + note and Undo; app wins over sheet and survives sync. Settings lists every corrected/explained day, across cycles. New additive local tables: `attendance_sheet_comments`, `attendance_corrections`; neither is exported or included in JSON backups.
+
+- **Optional MTD and cell diagnostics:** blank MTD headers/data do not block Attendance. Per-cycle MTD availability is saved with paste diagnostics; freshness and Settings say `MTD for this cycle not pasted yet`. MTD comparisons and the MTD shout-out gate are skipped when unavailable, while daily facts still count. Code/Date formula errors refuse only their row; other error cells become blank, with local code/date/column/error warnings. A tab fails above 20% affected relevant rows. Existing days survive refused rows and failed pastes.
+
 - **V2 review follow-up (2026-11-27):** whole-coaching pace; the perfect-attendance rule; break minutes everywhere; the MTD-against-daily warning (freshness line and Settings, by name); every Team View column in Team; a nameless end-of-day report; the attendance email table and subject; escalation headings, documentation order and an MPR layout in Settings; read-only status map with unmapped labels (`v2/statusMap.ts`, `GET /v2/status-map`); one date format; Attendance → Trends replacing the Trends screen (`views/AttendanceTrends.tsx`); Home exceptions and shout-out layout (`web/test/layout.spec.ts`).
 - **V2 Phase 8:** Reports (end of day in the owner's layout, cycle summary, MPR prep, roster changes, all copy and CSV), Settings (thresholds marked set or not set, cycle and attendance read hours, staffing baselines, report layout, theme, status map), Ctrl K “Copy EOD”, custom form controls and a quality-bar browser test (`v2/reports.ts`, `v2/template.ts`, `views/Reports.tsx`, `views/OwnerSettings.tsx`). `GET /v2/reports?cycle&date`.
 - **V2 Phase 7:** Quality (latest, cycle and previous average, recent scores, last evaluation, distribution, sorting, owner-set overdue mark, prep links) and Queues (today's board, 14-day coverage against owner baselines, 31-day leave list, line changes). `GET /v2/quality`, `GET /v2/queues`.
@@ -54,7 +63,7 @@ _Last updated: 2026-11-27 for attendance corrections._
 | Check a sheet link (UI + CLI) | done | `fetch/checkLink.ts`, Settings | docs.google.com only, URL rebuilt server-side, manual redirects only to Google export hosts, 32 MB cap, 5/min, sensitive-looking headers hidden |
 | Views: Login, V2 screens, Discrepancies, Agent, Settings | done | `web/src/views/` | Today, Trends and Roster retired 2026-11-27; their old URLs go Home. Light/dark, 390 px phone layout, keyboard + aria, axe clean |
 | First live boot and public health | done | `index.ts`, `db/db.ts`, `sync/cron.ts` | Startup checks `DATA_DIR`, then starts catch-up after listening. With no successful roster, the first check starts All once at any Cairo hour. Public health returns only `ok`, `version`, and `lastSyncAt`. |
-| Windows local deployment | **merged, install pending** | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
+| Windows local deployment | done, installed | `deploy/windows/`, `README.md`, `env.ts` | Task Scheduler starts at sign-in. The app binds to `127.0.0.1` and rotates logs in the local data folder. Updates build separately and check health after switching. |
 | Free VM and Railway | optional, needs a card | `deploy/`, `README.md` | Existing deploy runbooks remain available. |
 | Real attendance mapping | **not done** | — | Phase 6, blocked on link |
 
@@ -77,11 +86,16 @@ _Last updated: 2026-11-27 for attendance corrections._
 - 2026-11-27 follow-up A: consume longest labels, ignore labels mapping to WFM's status, then count remaining distinct labels. One corrects, zero explains, multiple explain with an ambiguity warning. This supersedes the earlier multiple-label refusal and same-mapped-status sheet override behavior. App corrections still win. The owner authorized the ordered merge and deployment checkpoint above.
 - 2026-11-27: Owner explicitly approved reading only `TL Comment` from the Attendance paste, superseding the blanket comment refusal for that exact column/source. Ops Comment/WFM Comment and other comment columns stay refused. Real comment/note text never belongs in Git, logs or automatic exports; local correction tables are deliberately excluded even from JSON backups. The owner can manually copy text.
 - 2026-11-27: Keep WFM attendance rows untouched; apply app > sheet corrections when reading. Match distinct whole configured labels case-insensitively, consuming longer overlapping labels first (Forced Annual is one label, not also Annual). Zero labels explains, two or more does nothing. Full-day nonworking corrections remove working-time incidents from effective facts; covered daily deltas adjust MTD totals while preserving unpasted totals. WFM confirmation compares labels, not just the broader mapped category (Annual and Forced Annual both map to PTO).
+
+- 2026-11-27 follow-up B: the owner pastes new-cycle Attendance before MTD exists. Empty MTD is explicitly valid; never borrow old-cycle totals. Persist latest paste availability and cell diagnostics in an additive `attendance_paste_state.diagnostics` column, preserve source snapshots, and use daily counts without MTD until supplied. Standard formula-error tokens are safe diagnostics; free cell text is never logged. Row error rate counts rows, not cells, and includes unreadable-code rows alongside relevant team rows.
+- 2026-11-27 follow-up B: the owner authorized enabling the existing queue source after headers-only test-link, then merging #28/B/#29 on green CI and deploying. The queue headers matched the expected Code/Name/Account/Line and seven weekday columns; no patient/caller header was detected. Private configuration stays ignored.
+
 - 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
 - 2026-11-26: Bundle Fontsource fonts; use muted small labels and darker warning tag text for contrast while keeping the supplied decorative tokens. Native dialogs provide modal focus behavior.
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | Deploy this PC with `deploy\windows\update.cmd`, not a manual `npm run build` in the checkout. | The manual build would overwrite the live server through the junction and leave the old web files; the updater stages, health-checks and rolls back. | Stop, pull, build in place, start |
 | 2026-11-27 | Owner: NCNS/AWOL is URGENT from the first day in a cycle. Saved as `absentDays = 1` in local settings; the shipped default stays empty. | Owner's call (Q7). | Shipping 1 as a default |
 | 2026-11-27 | Owner: expected coachings = floor(target × elapsed ÷ total). Behind and SOON only when done is below it. A dismissed pace item returns when the next coaching falls due. Supersedes the fractional pace. | Owner's call (Q8). | 2 × elapsed ÷ total |
 | 2026-11-27 | Owner: perfect attendance ends with lateness, missing time, UPL (incl. forced), Casual, NCNS or AWOL, whole or half day; annual, sick, public holiday and off are allowed. | Owner's call (Q10). | Sick as disqualifying |
@@ -151,7 +165,8 @@ _Last updated: 2026-11-27 for attendance corrections._
 | Issue | Impact | Planned fix |
 |---|---|---|
 | The discrepancy review still uses the older layout | Looks different from V2 | Restyle when asked |
-| Days stored before this change have no break minutes | They read “Exceeded” | The next attendance sync fills in every day still in the paste |
+| An interrupted install or update leaves `.windows-runtime/node-deploy.lock` | The next update refuses to run. One was left on 2026-11-26 | Check it is empty and no deploy process is running, then remove it |
+| The first sync after the update counted as a changed paste | The new break field changed the fingerprint, so the “paste is stale” mark restarted its 24 hours without new days | None needed; the freshness line still shows the last day |
 | Team column choices reset when the cycle changes | Re-pick or use a saved view | Keep the choices across cycles |
 | One agent's MTD lateness differs from the daily sum on the live paste (one agent's MTD missing hours differ too) | The dashboard shows MTD totals beside daily dates and, once updated, warns by name | Owner to check the workbook |
 | `npm run build` writes through the `server/dist` junction | Would overwrite the installed app | Use `build:smoke` in this checkout |
@@ -186,6 +201,7 @@ _Last updated: 2026-11-27 for attendance corrections._
 | Q15 | Should the attendance email also list NCNS/AWOL days or lateness, or only missing time? | no | open |
 | Q16 | The shout-out also ends on an unlabelled Absent and on MTD lateness or missing totals, and ignores unmapped statuses. Is that right? | no | open |
 | Q17 | Should “MTD UPL” include forced and half-day UPL counts? | no | open |
+| Q18 | The roster has 21 active agents in your team, the attendance paste covers 16 and the schedule lists 15. Coaching counts all 21 (42 per cycle). Is that right? | no | open |
 
 ## 8. Review feedback
 - **PRs #21–#27 review (2026-11-27):** approved with 15 fixes and decisions (plan-v2 section 8). Done on PR #27, awaiting review.
@@ -204,6 +220,18 @@ _Last updated: 2026-11-27 for attendance corrections._
 - Built sheet corrections, explanations, WFM-updated state, owner precedence/Undo and Settings history on a new branch from main. Added lifecycle, privacy, API and browser checks plus synthetic screenshots of grid, Home and profile.
 - Kept source WFM rows and existing owner discrepancy state separate; auto-cleared discrepancies reopen when a sheet correction is removed. Source comments are excluded from copy/export/backup payloads.
 - Verified all quality gates with serial test workers, kept all latency/time limits, and refreshed synthetic grid/Home/profile and Settings screenshots. The last affected-screen browser run uses the final compiled source.
+
+### 2026-11-27 - Optional MTD and tolerant paste errors
+- Added empty-MTD reads, cycle-scoped availability, daily fallback without stale MTD reuse, aggregate sync warnings and a Settings cell-warning table. Added boundary, preservation, shout-out, API and browser tests; test scripts run serially by default.
+- Ran the configured queue test-link read-only, reported headers and row count, then enabled only the queue source in private config with a local ignored backup.
+
+### 2026-11-27 - V2 merged, deployed and first live sync
+- Merged #27 to #20 in order, each green and mergeable on its current head. Confirmed `main` contains `92f170f`.
+- Took a full SQLite snapshot and ran `npm run backup` with the old code, then deployed with `update.cmd`.
+- Removed an empty deploy lock left by the 2026-11-26 install after checking no deploy process was running.
+- Ran the first full sync with `npm run sync -- --job=all`, the command form of Settings → Sync now → All.
+
+
 
 ### 2026-11-27 - V2 review follow-up (new session)
 - Took over from the previous session with a clean tree at `03d10cc`.

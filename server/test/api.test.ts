@@ -315,7 +315,7 @@ it("reports actual attendance coverage and MTD import dates for the owner's team
   try {
     expect(await (await request("GET", "/sync/status")).json()).toMatchObject({
       attendanceThrough: "2026-11-19",
-      mtdSyncedOn: "2026-11-20",
+      mtdSyncedOn: null,
     });
     expect(await (await request("GET", "/me")).json()).toMatchObject({
       firstName: "Alex",

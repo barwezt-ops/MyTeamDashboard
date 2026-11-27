@@ -1,10 +1,17 @@
 import { createHash } from "node:crypto";
 import { commentStatus } from "../parse/commentStatus.js";
-import type { Agent, AttendanceDay } from "../api/dto.js";
+import { mtdNotPasted } from "../api/dto.js";
+import type {
+  Agent,
+  AttendanceDay,
+  AttendanceCellWarning,
+} from "../api/dto.js";
+
 import type { Config } from "../config.js";
 import type { Db } from "../db/db.js";
 import {
   readAttendancePasteTabs,
+  pasteColumn,
   type PasteRow,
 } from "../fetch/attendancePaste.js";
 import { clean, codeOf, coachingCycle, parseDate } from "../parse/normalize.js";
@@ -43,20 +50,56 @@ export function pasteTime(value: PasteRow[string]) {
   );
 }
 
-function checkedTeamRows(rows: PasteRow[], agents: Agent[], tab: string) {
-  if (rows.some((row) => isError(row.code)))
-    throw new Error(tab + " contains an error in the code column.");
+function checkedTeamRows(
+  rows: PasteRow[],
+  agents: Agent[],
+  tab: "Attendance" | "MTD",
+  dateOrder: Config["dateOrder"],
+) {
   const codes = new Set(agents.map((agent) => agent.code));
-  const team = rows.filter((row) => codes.has(codeOf(text(row.code))));
-  if (!team.length)
+  const relevant = rows.filter(
+    (row) => isError(row.code) || codes.has(codeOf(text(row.code))),
+  );
+  const warnings: AttendanceCellWarning[] = [];
+  let badRows = 0;
+  const team = relevant.flatMap((row) => {
+    const broken = Object.entries(row).filter(([, value]) => isError(value));
+    if (!broken.length) return [row];
+    badRows++;
+    const rejected =
+      isError(row.code) || (tab === "Attendance" && isError(row.date));
+    for (const [field, value] of broken)
+      warnings.push({
+        tab,
+        code: isError(row.code) ? null : codeOf(text(row.code)),
+        date:
+          tab === "Attendance" && !isError(row.date)
+            ? pasteDate(row.date, dateOrder)
+            : null,
+        column: pasteColumn(tab, field),
+        error: String(value).trim().toUpperCase(),
+        rejected,
+      });
+    return rejected
+      ? []
+      : [
+          Object.fromEntries(
+            Object.entries(row).map(([key, value]) => [
+              key,
+              isError(value) ? undefined : value,
+            ]),
+          ),
+        ];
+  });
+  if (badRows * 5 > relevant.length)
+    throw new Error(tab + " has formula errors in more than 20% of rows.");
+  if (!team.length && (tab !== "MTD" || rows.length))
     throw new Error(
       tab === "Attendance"
         ? "Attendance paste looks incomplete"
         : tab + " has no rows matching the team roster.",
     );
-  if (team.some((row) => Object.values(row).some(isError)))
-    throw new Error(tab + " has calculation errors in mapped team fields.");
-  return team;
+  return { rows: team, warnings };
 }
 
 export function prepareAttendancePaste(
@@ -66,11 +109,19 @@ export function prepareAttendancePaste(
   agents: Agent[],
 ) {
   const records: AttendanceDay[] = [];
+  const checkedAttendance = checkedTeamRows(
+    attendance,
+    agents,
+    "Attendance",
+    config.dateOrder,
+  );
+  const checkedMtd = checkedTeamRows(mtd, agents, "MTD", config.dateOrder);
+  const warnings = [...checkedAttendance.warnings, ...checkedMtd.warnings];
   const history = new Map<
     string,
     { code: string; date: string; fields: Record<string, unknown> }
   >();
-  for (const row of checkedTeamRows(attendance, agents, "Attendance")) {
+  for (const row of checkedAttendance.rows) {
     const code = codeOf(text(row.code)),
       date = pasteDate(row.date, config.dateOrder);
     if (!date) throw new Error("Attendance contains an invalid team date.");
@@ -102,7 +153,7 @@ export function prepareAttendancePaste(
       },
     });
   }
-  const mtdTeam = checkedTeamRows(mtd, agents, "MTD");
+  const mtdTeam = checkedMtd.rows;
   const snapshots = mtdTeam
     .map((row) => {
       const counts = Object.fromEntries(
@@ -135,21 +186,19 @@ export function prepareAttendancePaste(
     throw new Error("MTD contains duplicate team codes.");
   records.sort((a, b) => order(a.date, b.date) || order(a.code, b.code));
   const details = records.map((row) => history.get(row.code + "|" + row.date)!);
-  const comments = checkedTeamRows(attendance, agents, "Attendance").map(
-    (row) => ({
-      code: codeOf(text(row.code)),
-      date: pasteDate(row.date, config.dateOrder)!,
-      note: text(row.tlComment),
-      ...commentStatus(
-        text(row.tlComment),
-        config.statusMap,
-        parseStatus(text(row.status), config.statusMap).status,
-      ),
-    }),
-  );
+  const comments = checkedAttendance.rows.map((row) => ({
+    code: codeOf(text(row.code)),
+    date: pasteDate(row.date, config.dateOrder)!,
+    note: text(row.tlComment),
+    ...commentStatus(
+      text(row.tlComment),
+      config.statusMap,
+      parseStatus(text(row.status), config.statusMap).status,
+    ),
+  }));
   const dates = [...new Set(records.map((row) => row.date))].sort();
   const fingerprint = createHash("sha256")
-    .update(JSON.stringify({ records, details, snapshots, comments }))
+    .update(JSON.stringify({ records, details, snapshots, comments, warnings }))
     .digest("hex");
   return {
     records,
@@ -157,6 +206,7 @@ export function prepareAttendancePaste(
     comments,
     dates,
     snapshots,
+    warnings,
     fingerprint,
     rowsRead: attendance.length,
     otherRows: attendance.length - records.length,
@@ -235,6 +285,16 @@ export function storeAttendancePaste(
       ).run(teamCodeCount);
     }
     const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
+    db.prepare(
+      "UPDATE attendance_paste_state SET diagnostics=? WHERE id=1",
+    ).run(
+      JSON.stringify({
+        cycleStart: cycle.from,
+        cycleEnd: cycle.to,
+        mtdAvailable: paste.snapshots.length > 0,
+        warnings: paste.warnings,
+      }),
+    );
     const already = db
       .prepare(
         "SELECT 1 FROM attendance_mtd_snapshots WHERE sync_date=? LIMIT 1",
@@ -270,6 +330,7 @@ export function mtdDailyMismatch(
   cycleStartDay: number,
   codes: Set<string>,
 ) {
+  if (!paste.snapshots.length) return [];
   const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
   const daily = new Map<string, number>();
   for (const row of db
@@ -334,6 +395,44 @@ export function attendancePastePreview(
     mtdStatusCounts,
     cycle: coachingCycle(paste.dates.at(-1)!, config.coachingCycleStartDay),
     currentCycle: coachingCycle(today, config.coachingCycleStartDay),
-    warnings: [],
+    warnings: [
+      ...(!paste.snapshots.length ? [mtdNotPasted] : []),
+      ...(paste.warnings.length
+        ? [
+            `Formula errors: ${paste.warnings.length} mapped cells (see Settings)`,
+          ]
+        : []),
+    ],
   };
+}
+
+export function pasteDiagnostics(db: Db) {
+  const row = db
+    .prepare("SELECT diagnostics FROM attendance_paste_state WHERE id=1")
+    .get() as { diagnostics: string } | undefined;
+  return row
+    ? (JSON.parse(row.diagnostics) as {
+        cycleStart: string;
+        cycleEnd: string;
+        mtdAvailable: boolean;
+        warnings: AttendanceCellWarning[];
+      })
+    : null;
+}
+export function mtdForCycle(db: Db, cycle: { from: string; to: string }) {
+  const diagnostics = pasteDiagnostics(db);
+  if (
+    diagnostics?.cycleStart === cycle.from &&
+    diagnostics.cycleEnd === cycle.to &&
+    !diagnostics.mtdAvailable
+  )
+    return null;
+  return (
+    (db
+      .prepare(
+        "SELECT MAX(d.sync_date) FROM attendance_mtd_snapshots d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine' AND d.cycle_start=? AND d.cycle_end=?",
+      )
+      .pluck()
+      .get(cycle.from, cycle.to) as string | null) ?? null
+  );
 }

@@ -1,6 +1,7 @@
 import { coachingCycle, localDate } from "../../server/src/parse/normalize";
 import { mtdMismatch, shortDate } from "../../server/src/v2/templates";
 import type { SyncStatus } from "../../server/src/api/dto";
+import { mtdNotPasted } from "../../server/src/api/dto";
 
 export const avatarPalette = [
   "#E4C9A8",
@@ -38,9 +39,11 @@ export function freshness(status: SyncStatus, now = Date.now()) {
   if (through) {
     const day = shortDate(through);
     parts.push(
-      status.mtdSyncedOn
+      status.mtdSyncedOn && !status.mtdMissing
         ? `Attendance & MTD through ${day}`
-        : `Attendance through ${day} · MTD not imported`,
+        : status.mtdMissing
+          ? `Attendance through ${day}`
+          : `Attendance through ${day} · MTD not imported`,
     );
     const yesterday = new Date(Date.parse(status.date) - 86400000)
       .toISOString()
@@ -49,6 +52,10 @@ export function freshness(status: SyncStatus, now = Date.now()) {
   } else {
     parts.push("Attendance not imported");
     if (attendanceOn) stale = true;
+  }
+  if (status.mtdMissing) {
+    parts.push(mtdNotPasted);
+    stale = true;
   }
   if (status.mtdMismatch?.length) {
     parts.push(mtdMismatch(status.mtdMismatch.length));

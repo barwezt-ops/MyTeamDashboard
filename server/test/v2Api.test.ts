@@ -134,6 +134,44 @@ it("validates owner corrections, keeps app precedence and undoes back to the she
     db.prepare("DELETE FROM attendance_corrections").run();
   }
 });
+it("reports empty current-cycle MTD and owner-only cell warnings without reusing stored totals", async () => {
+  const prior = db
+    .prepare("SELECT diagnostics FROM attendance_paste_state WHERE id=1")
+    .pluck()
+    .get() as string;
+  const warnings = ["99001", "99003"].map((code) => ({
+    tab: "Attendance",
+    code,
+    date: "2026-11-19",
+    column: "Logout Time",
+    error: "#VALUE!",
+    rejected: false,
+  }));
+  try {
+    db.prepare(
+      "UPDATE attendance_paste_state SET diagnostics=? WHERE id=1",
+    ).run(
+      JSON.stringify({
+        cycleStart: "2026-10-21",
+        cycleEnd: "2026-11-20",
+        mtdAvailable: false,
+        warnings,
+      }),
+    );
+    const status = await (
+      await fetch(base + "/sync/status", { headers: { Cookie: cookie } })
+    ).json();
+    expect(status.mtdSyncedOn).toBeNull();
+    expect(status.mtdMismatch).toEqual([]);
+    expect(status.pasteWarnings).toEqual([warnings[0]]);
+    expect((await agent()).counts.source).toBe("daily");
+  } finally {
+    db.prepare(
+      "UPDATE attendance_paste_state SET diagnostics=? WHERE id=1",
+    ).run(prior);
+  }
+});
+
 const coaching = {
   code: "99001",
   date: "2026-11-20",
