@@ -9,6 +9,7 @@ import {
 import { clean, codeOf, coachingCycle, parseDate } from "../parse/normalize.js";
 import { halfDayStatuses } from "../api/dto.js";
 import { parseStatus } from "../parse/status.js";
+import { minutes } from "../v2/templates.js";
 
 const dayMs = 86_400_000;
 const epoch = Date.UTC(1899, 11, 30);
@@ -228,6 +229,39 @@ export function storeAttendancePaste(
     }
     return changed;
   })();
+}
+
+/**
+ * Codes whose MTD lateness differs, by a minute or more, from the sum of the
+ * stored daily rows in the same cycle. This only warns: nothing is changed.
+ */
+export function mtdDailyMismatch(
+  db: Db,
+  paste: Paste,
+  cycleStartDay: number,
+  codes: Set<string>,
+) {
+  const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
+  const daily = new Map<string, number>();
+  for (const row of db
+    .prepare(
+      "SELECT code,fields FROM attendance_paste_details WHERE date BETWEEN ? AND ?",
+    )
+    .all(cycle.from, cycle.to) as { code: string; fields: string }[])
+    daily.set(
+      row.code,
+      (daily.get(row.code) ?? 0) +
+        (minutes(JSON.parse(row.fields).lateness) ?? 0),
+    );
+  return paste.snapshots.flatMap(({ code, fields }) => {
+    // A blank MTD cell means none. Text that is not a duration is skipped.
+    const total = fields.lateness === null ? 0 : minutes(fields.lateness);
+    return codes.has(code) &&
+      total !== null &&
+      Math.abs(total - (daily.get(code) ?? 0)) >= 1
+      ? [code]
+      : [];
+  });
 }
 
 export function attendancePasteStale(db: Db, now: Date) {

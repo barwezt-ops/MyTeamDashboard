@@ -158,6 +158,9 @@ export const breakIncident = (minutes: number | null) =>
 export const overInTotal = (minutes: number) =>
   minutes ? `${breakOver(minutes)} over in total` : "";
 
+export const mtdMismatch = (count: number) =>
+  `MTD and daily rows disagree for ${count} agent(s): the paste may be missing rows`;
+
 export const behindPace = (count: number) =>
   `${plural(count, "agent")} behind coaching pace`;
 

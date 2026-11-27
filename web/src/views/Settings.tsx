@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ExternalLink, RefreshCw } from "lucide-react";
-import type { Job, SyncRun, SyncStatus } from "../../../server/src/api/dto";
+import {
+  mtdMismatchWarning,
+  type Job,
+  type SyncRun,
+  type SyncStatus,
+} from "../../../server/src/api/dto";
+import { mtdMismatch } from "../../../server/src/v2/templates";
 import { api, message } from "../api";
 import { AttendancePreview } from "./AttendancePreview";
 import { Backups } from "./Backups";
@@ -25,6 +31,11 @@ function result(run: SyncRun | null | undefined) {
     <span className="sync-badge waiting">{run ? "Running" : "No runs"}</span>
   );
 }
+/** The mismatch warning carries codes; the notice above names the agents. */
+const warningText = (warning: string) =>
+  warning.startsWith(mtdMismatchWarning)
+    ? mtdMismatch(warning.slice(mtdMismatchWarning.length).split(",").length)
+    : warning;
 type ReadConfig = {
   statusMap?: Record<string, string>;
   sources?: {
@@ -101,6 +112,23 @@ export function Settings({
           </button>
         </span>
       </div>
+      {!!data.mtdMismatch?.length && (
+        <div className="mismatch" role="status">
+          <strong>{mtdMismatch(data.mtdMismatch.length)}</strong>
+          <ul>
+            {data.mtdMismatch.map((agent) => (
+              <li key={agent.code}>
+                <Link to={"/agent/" + encodeURIComponent(agent.code)}>
+                  {agent.name} ({agent.code})
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <small>
+            Compared on the last attendance sync. Nothing was changed.
+          </small>
+        </div>
+      )}
       <OwnerSettings
         configHours={
           (data.config as ReadConfig).sources?.attendance?.paste ?? null
@@ -179,7 +207,7 @@ export function Settings({
                 {!!latest?.warnings.length && (
                   <ul className="warnings">
                     {latest.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
+                      <li key={warning}>{warningText(warning)}</li>
                     ))}
                   </ul>
                 )}
@@ -213,7 +241,9 @@ export function Settings({
                   <td>{run.rowsKept ?? "—"}</td>
                   <td>
                     {run.error ||
-                      (run.warnings.length ? run.warnings.join(", ") : "—")}
+                      (run.warnings.length
+                        ? run.warnings.map(warningText).join(", ")
+                        : "—")}
                   </td>
                 </tr>
               ))}

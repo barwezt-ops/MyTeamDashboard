@@ -5,7 +5,10 @@ import { configSchema, loadConfig } from "../src/config.js";
 import { decodeCsv } from "../src/fetch/fetchCsv.js";
 import { agentsOf, lastRun, lastDashboardSyncAt } from "../src/db/repo.js";
 import { createSync } from "../src/sync/service.js";
-import { prepareAttendancePaste } from "../src/sync/attendancePaste.js";
+import {
+  mtdDailyMismatch,
+  prepareAttendancePaste,
+} from "../src/sync/attendancePaste.js";
 import {
   cycleInfo,
   expectedCoachings,
@@ -210,6 +213,38 @@ it("keeps MTD lateness equal to the sum of each agent's daily lateness", () => {
     lateMinutes: 38,
     lateCount: 3,
   });
+});
+
+it("warns when MTD and daily lateness disagree, without changing data", () => {
+  seedV2Fixture(db);
+  const { attendance, mtd } = fakePaste(smallTeam);
+  const compare = (rows: typeof mtd) => {
+    const paste = prepareAttendancePaste(
+      attendance,
+      rows,
+      fixtureConfig(),
+      agentsOf(db),
+    );
+    return mtdDailyMismatch(
+      db,
+      paste,
+      21,
+      new Set(["99001", "99002", "99005"]),
+    );
+  };
+  expect(compare(mtd)).toEqual([]);
+  const stored = () =>
+    db.prepare("SELECT * FROM attendance_paste_details").all();
+  const before = stored();
+  const change = (code: string, lateness: number | string) =>
+    mtd.map((row) => (row.code === code ? { ...row, lateness } : row));
+  // MTD shows more lateness than the daily rows: rows may be missing.
+  expect(compare(change("99001", 50 / 1440))).toEqual(["99001"]);
+  // A blank MTD cell means none, which these daily rows contradict.
+  expect(compare(change("99005", ""))).toEqual(["99005"]);
+  // Under a minute is rounding.
+  expect(compare(change("99005", 7.4 / 1440))).toEqual([]);
+  expect(stored()).toEqual(before);
 });
 
 it("reads the exceeded-break label as a day flag", () => {

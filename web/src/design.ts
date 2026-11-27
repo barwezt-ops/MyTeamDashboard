@@ -1,5 +1,5 @@
 import { coachingCycle, localDate } from "../../server/src/parse/normalize";
-import { weekdayDate } from "../../server/src/v2/templates";
+import { mtdMismatch, weekdayDate } from "../../server/src/v2/templates";
 import type { SyncStatus } from "../../server/src/api/dto";
 
 export const avatarPalette = [
@@ -49,6 +49,10 @@ export function freshness(status: SyncStatus, now = Date.now()) {
   } else {
     parts.push("Attendance not imported");
     if (attendanceOn) stale = true;
+  }
+  if (status.mtdMismatch?.length) {
+    parts.push(mtdMismatch(status.mtdMismatch.length));
+    stale = true;
   }
   if (status.sources.some((source) => source.job === "qa")) {
     const qa = status.jobs.qa?.lastSuccessAt;

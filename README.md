@@ -451,6 +451,8 @@ Use **Settings → Upload attendance CSV** to stream the file and save only the 
 
 Put the workbook ID in `sources.attendance.paste.sheetId` in your private `config/sources.local.json`. The workbook should have an **Attendance** tab with headers in row 1 and an **MTD** tab with headers in row 4. The link check also reports **Team View**. Keep attendance disabled while you verify the source against the existing roster.
 
+Break minutes come from the Attendance tab's **Duration Of break Exceeding** column; **Exceeded** stays the signal that a break was over. Both headers are required, so a paste without them fails and leaves existing data untouched. After each sync, an agent whose MTD lateness differs from the sum of their daily rows is named on Settings, with a count on the freshness line. Nothing is changed.
+
 ```text
 npm run test-link -- --paste-tabs
 npm run sync -- --job=attendance --dry-run --paste

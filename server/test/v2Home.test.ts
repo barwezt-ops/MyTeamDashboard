@@ -240,6 +240,17 @@ it("describes source freshness in one line", () => {
     } as unknown as SyncStatus,
     now,
   );
+  const disagree = freshness(
+    {
+      ...status,
+      mtdMismatch: [{ code: "99101", name: "Avery Stone" }],
+    },
+    now,
+  );
+  expect(disagree.tone).toBe("waiting");
+  expect(disagree.text).toContain(
+    "MTD and daily rows disagree for 1 agent(s): the paste may be missing rows",
+  );
   expect(failed.tone).toBe("bad");
   expect(failed.text).toContain("Last sync failed");
   expect(failed.text).toContain("QA not connected");
