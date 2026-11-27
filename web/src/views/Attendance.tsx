@@ -9,7 +9,11 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { GridView } from "../../../server/src/v2/grid";
 import { absenceTypes } from "../../../server/src/v2/absences";
 import { heatStatuses } from "../../../server/src/v2/heat";
-import { duration, shortDate } from "../../../server/src/v2/templates";
+import {
+  breakOver,
+  duration,
+  shortDate,
+} from "../../../server/src/v2/templates";
 import { HeatCell, HeatLegend, Modal } from "../components/design";
 import { Empty, Section } from "../components/ui";
 import { useHead, useShared, useView } from "../v2/context";
@@ -29,7 +33,10 @@ const weekday = (date: string) =>
 const cellLabel = (row: Row, cell: Cell) =>
   `${row.name}, ${shortDate(cell.date)}: ${cell.planned ? "planned " : ""}${cell.status ?? "No record"}` +
   (cell.late ? `, ${duration(cell.late)} late` : "") +
-  (cell.missing ? `, ${duration(cell.missing)} missing` : "");
+  (cell.missing ? `, ${duration(cell.missing)} missing` : "") +
+  (cell.breakExceeded
+    ? `, break exceeded${cell.breakMinutes ? ` by ${breakOver(cell.breakMinutes)}` : ""}`
+    : "");
 
 function Details({ cell }: { cell: Cell }) {
   return (
@@ -56,6 +63,7 @@ function exportCsv(view: Grid, rows: Row[]) {
       "Missing minutes",
       ...absenceTypes,
       "Break exceeds",
+      "Break minutes over",
     ],
     rows: rows.map((row) => [
       row.code,
@@ -66,13 +74,17 @@ function exportCsv(view: Grid, rows: Row[]) {
           (cell.planned ? "Planned: " : "") +
           (cell.status ?? "") +
           (cell.late ? ` (late ${Math.round(cell.late)}m)` : "") +
-          (cell.missing ? ` (missing ${Math.round(cell.missing)}m)` : ""),
+          (cell.missing ? ` (missing ${Math.round(cell.missing)}m)` : "") +
+          (cell.breakExceeded
+            ? ` (break ${cell.breakMinutes ? Math.round(cell.breakMinutes) + "m over" : "exceeded"})`
+            : ""),
       ),
       String(row.totals.lateCount),
       String(Math.round(row.totals.lateMinutes)),
       String(Math.round(row.totals.missingMinutes)),
       ...absenceTypes.map((type) => String(row.totals[type])),
       String(row.totals.breaks),
+      String(Math.round(row.totals.breakMinutes)),
     ]),
   });
 }
@@ -249,7 +261,11 @@ function Table({
                   {row.totals[type] || "—"}
                 </td>
               ))}
-              <td className="total mono">{row.totals.breaks || "—"}</td>
+              <td className="total mono">
+                {row.totals.breaks || "—"}
+                {!!row.totals.breakMinutes &&
+                  ` · ${breakOver(row.totals.breakMinutes)}`}
+              </td>
             </tr>
           ))}
         </tbody>

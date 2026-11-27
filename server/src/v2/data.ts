@@ -185,6 +185,7 @@ export function dashboardData(
         sum(missing, "missing"),
       missingDays: missing.length,
       breakCount: current.filter((day) => day.breakExceeded).length,
+      breakMinutes: sum(current, "breakMinutes"),
       absences: current.filter((day) => day.status === "Absent").length,
       reportedDays: current.length,
     };

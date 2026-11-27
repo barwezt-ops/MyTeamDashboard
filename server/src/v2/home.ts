@@ -89,7 +89,7 @@ export function exceptionRows(data: DashboardData, date: string) {
       login: say.clockTime(facts.login),
       late: facts.late ? say.duration(facts.late) : null,
       missing: facts.missing ? say.duration(facts.missing) : null,
-      breakExceeded: facts.breakExceeded,
+      break: facts.breakExceeded ? say.breakOver(facts.breakMinutes) : null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -201,7 +201,13 @@ export function homeView(data: DashboardData) {
       () => say.plural(missingAgents, "agent"),
       "bad",
     ),
-    tile("breaks", "Break exceeds", String, (note) => note, "warn"),
+    tile(
+      "breaks",
+      "Break exceeds",
+      String,
+      (note) => say.overInTotal(sum(facts(day), "breakMinutes")) || note,
+      "warn",
+    ),
     {
       key: "qa" as const,
       label: "QA average",

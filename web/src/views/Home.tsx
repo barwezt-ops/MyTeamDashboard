@@ -370,7 +370,7 @@ function Exceptions({ view }: { view: HomeView }) {
                 <td className="mono">{row.login ?? "—"}</td>
                 {cell(row.late, "warn")}
                 {cell(row.missing, "bad")}
-                {cell(row.breakExceeded ? "Exceeded" : null, "warn")}
+                {cell(row.break, "warn")}
               </tr>
             ))}
           </tbody>

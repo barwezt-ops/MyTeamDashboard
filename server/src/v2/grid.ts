@@ -51,7 +51,14 @@ export function dayText(
       "Missing",
       facts.missing === null ? "Not reported" : say.duration(facts.missing),
     ],
-    ["Break", facts.breakExceeded ? "Exceeded" : "Not exceeded"],
+    [
+      "Break",
+      !facts.breakExceeded
+        ? "Not exceeded"
+        : facts.breakMinutes
+          ? `${say.breakOver(facts.breakMinutes)} over`
+          : "Exceeded",
+    ],
   ];
 }
 
@@ -64,6 +71,7 @@ export function gridCells(agent: V2Agent, today: string) {
     late: day.attendance?.late || null,
     missing: day.attendance?.missing || null,
     breakExceeded: day.attendance?.breakExceeded ?? false,
+    breakMinutes: day.attendance?.breakMinutes ?? null,
     absence: day.attendance?.absence ?? null,
     details: dayText(day, today),
   }));
@@ -92,6 +100,7 @@ export function gridView(data: DashboardData) {
           lateMinutes: agent.counts.lateMinutes,
           missingMinutes: agent.counts.missingMinutes,
           breaks: agent.counts.breakCount,
+          breakMinutes: agent.counts.breakMinutes,
           ...absenceCounts(recorded),
         },
       };

@@ -11,8 +11,10 @@ export type DayFacts = {
   late: number | null;
   /** Missing minutes after compensation, or null when not reported. */
   missing: number | null;
-  /** The source marks an exceeded break with a label. It gives no minutes. */
+  /** Set by the source's label, which is what the flags count. */
   breakExceeded: boolean;
+  /** Minutes over on an exceeded break, or null when not reported. */
+  breakMinutes: number | null;
   absence: "NCNS" | "AWOL" | null;
   shift: string | null;
   login: string | null;
@@ -31,14 +33,16 @@ export function dayFacts(
   breakLabel: string,
 ): DayFacts {
   const raw = labelOf(row.raw);
+  const breakExceeded =
+    labelOf(String(details?.exceeded ?? "")) === labelOf(breakLabel);
   return {
     date: row.date,
     status: row.status,
     raw: row.raw,
     late: minutes(details?.lateness),
     missing: minutes(row.missing),
-    breakExceeded:
-      labelOf(String(details?.exceeded ?? "")) === labelOf(breakLabel),
+    breakExceeded,
+    breakMinutes: (breakExceeded && minutes(details?.breakOver)) || null,
     absence: raw === "ncns" ? "NCNS" : raw === "awol" ? "AWOL" : null,
     shift: clock(details?.scheduledShift),
     login: clock(details?.login),
@@ -78,5 +82,7 @@ export const breaksPerfectAttendance = (day: DayFacts) =>
   day.absence !== null ||
   disqualifying.includes(day.status);
 
-export const sum = (days: DayFacts[], key: "late" | "missing") =>
-  days.reduce((total, day) => total + (day[key] ?? 0), 0);
+export const sum = (
+  days: DayFacts[],
+  key: "late" | "missing" | "breakMinutes",
+) => days.reduce((total, day) => total + (day[key] ?? 0), 0);

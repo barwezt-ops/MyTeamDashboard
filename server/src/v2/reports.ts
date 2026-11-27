@@ -43,7 +43,8 @@ function rowValues(agent: V2Agent, date: string): RowValues {
     late_minutes: number(facts?.late),
     missing: text(facts?.missing),
     missing_minutes: number(facts?.missing),
-    break: facts?.breakExceeded ? "Exceeded" : "",
+    break: facts?.breakExceeded ? say.breakOver(facts.breakMinutes) : "",
+    break_minutes: number(facts?.breakMinutes),
   };
 }
 
@@ -78,6 +79,8 @@ export function eodReport(data: DashboardData, date: string) {
       "team.late_minutes": String(Math.round(sum(facts, "late"))),
       "team.missing": count(isMissing),
       "team.missing_minutes": String(Math.round(sum(facts, "missing"))),
+      "team.breaks": count((day) => day.breakExceeded),
+      "team.break_minutes": String(Math.round(sum(facts, "breakMinutes"))),
       "team.absent": count(isUnplanned),
       "team.leave": count((day) => day.status === "PTO"),
       "team.off": count((day) => day.status === "Off Day"),
@@ -128,7 +131,14 @@ export function cycleSummary(data: DashboardData) {
               .map((type) => `${absences[type]} ${type}`)
               .join(", ") || "none"
           }`,
-          `Break exceeds: ${agents.reduce((s, a) => s + a.counts.breakCount, 0)}`,
+          [
+            `Break exceeds: ${agents.reduce((s, a) => s + a.counts.breakCount, 0)}`,
+            say.overInTotal(
+              agents.reduce((s, a) => s + a.counts.breakMinutes, 0),
+            ),
+          ]
+            .filter(Boolean)
+            .join(", "),
         ]
       : []),
     averages.length
@@ -145,6 +155,7 @@ export function cycleSummary(data: DashboardData) {
       "Missing minutes",
       "Absence days",
       "Break exceeds",
+      "Break minutes over",
       "QA",
       "Coaching",
     ],
@@ -163,6 +174,7 @@ export function cycleSummary(data: DashboardData) {
           String(Math.round(agent.counts.missingMinutes)),
           String(absenceTypes.reduce((s, type) => s + own[type], 0)),
           String(agent.counts.breakCount),
+          String(Math.round(agent.counts.breakMinutes)),
           agent.qaAverage === null ? "" : agent.qaAverage.toFixed(1),
           `${agent.coachingDone}/${data.settings.coachingTarget}`,
         ];

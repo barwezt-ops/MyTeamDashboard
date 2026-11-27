@@ -404,6 +404,7 @@ describe("patterns and agreed steps", () => {
     late: 0,
     missing: 0,
     breakExceeded: false,
+    breakMinutes: null,
     absence: null,
     shift: null,
     login: null,

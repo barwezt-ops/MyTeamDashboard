@@ -94,6 +94,7 @@ export function prepareAttendancePaste(
         login: pasteTime(row.login),
         logout: pasteTime(row.logout),
         lateness: pasteTime(row.lateness),
+        breakOver: pasteTime(row.breakOver),
         exceeded: row.exceeded ?? null,
         ncnsStreak: row.ncnsStreak ?? null,
       },

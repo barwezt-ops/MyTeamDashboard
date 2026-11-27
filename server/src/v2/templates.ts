@@ -146,6 +146,18 @@ export function shoutOut(names: string[], from: string, to: string) {
     : "";
 }
 
+/** How far over an exceeded break went, when the source says. */
+export function breakOver(minutes: number | null) {
+  if (!minutes) return "Exceeded";
+  return minutes < 0.5 ? "<1m" : duration(minutes);
+}
+/** One exceeded break inside a list of a day's incidents. */
+export const breakIncident = (minutes: number | null) =>
+  minutes ? `break exceeded by ${breakOver(minutes)}` : "break exceeded";
+/** Added after a count of exceeded breaks. */
+export const overInTotal = (minutes: number) =>
+  minutes ? `${breakOver(minutes)} over in total` : "";
+
 export const behindPace = (count: number) =>
   `${plural(count, "agent")} behind coaching pace`;
 

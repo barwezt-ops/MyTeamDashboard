@@ -13,6 +13,8 @@ export const globalFields = [
   "team.late_minutes",
   "team.missing",
   "team.missing_minutes",
+  "team.breaks",
+  "team.break_minutes",
   "team.absent",
   "team.leave",
   "team.off",
@@ -32,6 +34,7 @@ export const rowFields = [
   "missing",
   "missing_minutes",
   "break",
+  "break_minutes",
 ] as const;
 export type RowValues = Record<(typeof rowFields)[number], string>;
 export type GlobalValues = Record<(typeof globalFields)[number], string>;

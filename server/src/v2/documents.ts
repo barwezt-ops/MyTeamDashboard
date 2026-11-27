@@ -2,7 +2,7 @@
 // list recorded facts and the owner's own coaching entries. Private notes are
 // included only when the owner asks.
 import type { ProfileView } from "./profile.js";
-import { duration, shortDate } from "./templates.js";
+import { breakIncident, duration, shortDate } from "./templates.js";
 
 const section = (title: string, lines: string[]) =>
   [title, ...(lines.length ? lines : ["Nothing recorded."])].join("\n");
@@ -26,7 +26,7 @@ export function incidents(profile: ProfileView) {
     const found = [
       day.late ? `late ${duration(day.late)}` : "",
       day.missing ? `missing ${duration(day.missing)}` : "",
-      day.breakExceeded ? "break exceeded" : "",
+      day.breakExceeded ? breakIncident(day.breakMinutes) : "",
       day.absence ?? "",
     ].filter(Boolean);
     return found.length

@@ -19,6 +19,8 @@ export type FakeDay = {
   late?: number;
   missing?: number;
   breakExceeded?: boolean;
+  /** Minutes over, for an exceeded break. */
+  breakMinutes?: number;
   shift?: string;
   login?: string;
 };
@@ -51,6 +53,7 @@ export function fakePaste(days: FakeDay[]) {
       logout: worked ? time("00:45") : status,
       lateness: fraction(day.late ?? 0),
       missing: fraction(day.missing ?? 0),
+      breakOver: fraction(day.breakExceeded ? (day.breakMinutes ?? 6) : 0),
       exceeded: day.breakExceeded ? "Exceeded" : "",
     };
   });
