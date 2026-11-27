@@ -1,14 +1,14 @@
 # Attendance corrections review
 
-Owner-approved scope, 27 November 2026. Branch: `feature/attendance-corrections`, based on main at `e5d54f7`. Review only; no merge or installed-app update.
+Owner-approved scope, 27 November 2026. Branch: `feature/attendance-corrections`, based on main at `e5d54f7`. Follow-up A is on PR #29; the owner authorized merging after green CI, after #28 and the optional-MTD/formula-error PR.
 
 ## Behavior
 
 - Only `TL Comment` on the Attendance paste is allowed. Ops Comment, WFM Comment and other private columns remain refused.
-- One distinct whole configured status label applies a correction. Matching ignores case and consumes longer overlapping labels first: `Forced Annual` does not also match `Annual`. Repeating the same label is still one label. Zero labels means Explained; two or more distinct labels apply neither a correction nor an explanation. No inference or negation parsing is performed.
+- Matching ignores case and consumes longer overlapping labels first: `Forced Annual` does not also match `Annual`. Ignore any matched label mapping to WFM's own status, then count remaining distinct labels: one corrects; zero explains; two or more explain with `names more than one status, not corrected` in the drawer and Corrections list. `WFM marked NCNS, was on Forced Annual` corrects to Forced Annual; `NCNS confirmed` explains without changing status. No inference or negation parsing is performed.
 - WFM source rows remain intact. Every corrected day carries the used status and provenance, for example `NCNS → Forced Annual · TL comment`. Grid, Home, profile, rules, counts, trends, shout-out, reports and coaching prep use the corrected status. Full-day nonworking corrections remove working-time incidents; MTD totals apply covered daily deltas so unpasted days still count.
 - A note without a status leaves attendance counts unchanged. Its flags and discrepancies show Explained with the note, and explained facts no longer contribute to Needs you. Removing the comment restores normal treatment on the next successful sync.
-- When WFM's label matches the corrected label, the day shows `WFM updated` and the override marker disappears. The next sync also removes sheet corrections whose comment was cleared. Days outside the paste's covered agent/date pairs remain untouched.
+- Matching WFM statuses in sheet comments now explain without an override. App corrections whose label matches WFM still show `WFM updated`. The next sync removes sheet corrections whose comment was cleared. Days outside the paste's covered agent/date pairs remain untouched.
 - Attendance day drawer → Correct status saves a selected known status and a required note locally. App corrections survive sync and take precedence over sheet comments. Undo returns to the sheet's current correction or original WFM status.
 - Settings → Corrections lists every corrected, explained or WFM-confirmed day across cycles, with agent, date, WFM/used status and sheet/app source.
 

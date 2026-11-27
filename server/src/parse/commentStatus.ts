@@ -2,7 +2,11 @@ import type { Status } from "../api/dto.js";
 import { labelOf } from "./normalize.js";
 
 /** Whole labels only. Consume longer labels before their nested shorter labels. */
-export function commentStatus(note: string, map: Record<string, Status>) {
+export function commentStatus(
+  note: string,
+  map: Record<string, Status>,
+  wfmStatus: Status = "Unknown",
+) {
   if (!note.trim()) return { label: null, status: null, explained: false };
   let remaining = labelOf(note);
   const found = new Set<string>();
@@ -14,7 +18,7 @@ export function commentStatus(note: string, map: Record<string, Status>) {
       "gu",
     );
     remaining = remaining.replace(match, () => {
-      found.add(label);
+      if (map[label] !== wfmStatus) found.add(label);
       return " ";
     });
   }
@@ -22,6 +26,7 @@ export function commentStatus(note: string, map: Record<string, Status>) {
   return {
     label,
     status: label ? map[label] : null,
-    explained: !!note.trim() && found.size === 0,
+    explained: found.size !== 1,
+    ...(found.size > 1 ? { ambiguous: true } : {}),
   };
 }

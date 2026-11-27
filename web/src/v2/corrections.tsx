@@ -153,7 +153,12 @@ export function Corrections() {
               <tr key={row.code + row.date}>
                 <td>{row.name}</td>
                 <td>{fullDate(row.date)}</td>
-                <td>{row.display}</td>
+                <td>
+                  {row.display}
+                  {row.warning && (
+                    <small className="correction-note">{row.warning}</small>
+                  )}
+                </td>
                 <td>{row.source}</td>
                 <td>{row.note}</td>
                 <td>

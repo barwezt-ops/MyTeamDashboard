@@ -4,6 +4,7 @@ _Last updated: 2026-11-27 for attendance corrections._
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **Owner-authorized follow-up:** fix PR #29 on its existing branch; implement optional MTD, tolerant formula errors and queue activation as a separate PR from main. Owner explicitly pre-approved merges after green CI in this order: #28, the B PR, #29, then `deploy/windows/update.cmd` and Sync All. This is a scoped exception to the no-self-merge/review stop rules. All test workers, including CI via package scripts, are serial.
 - **Attendance corrections:** built on `feature/attendance-corrections` from current `origin/main` (`e5d54f7`), one PR for owner review; do not merge or update the installed app. Sheet TL comments and app correction notes are local-only, excluded from logs and exports/backups. See `docs/attendance-corrections.md` for behavior, checks and synthetic screenshots.
 - **Corrections validation:** 249 Vitest tests passed, one existing skip; all 26 Playwright checks passed, then the final corrections/reports/Settings checks passed again (3). Lint, typecheck and isolated `build:smoke` pass. Suites ran with one worker because parallel runs exceeded existing host time/latency limits; no limits were changed. Corrections browser tests have a separate synthetic database to avoid resetting another screen test's data.
 - **Current main:** V2 PRs #20–#27 are now merged (verified from Git history). The older stack/checkpoint notes below describe their pre-merge state.
@@ -73,6 +74,7 @@ _Last updated: 2026-11-27 for attendance corrections._
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
+- 2026-11-27 follow-up A: consume longest labels, ignore labels mapping to WFM's status, then count remaining distinct labels. One corrects, zero explains, multiple explain with an ambiguity warning. This supersedes the earlier multiple-label refusal and same-mapped-status sheet override behavior. App corrections still win. The owner authorized the ordered merge and deployment checkpoint above.
 - 2026-11-27: Owner explicitly approved reading only `TL Comment` from the Attendance paste, superseding the blanket comment refusal for that exact column/source. Ops Comment/WFM Comment and other comment columns stay refused. Real comment/note text never belongs in Git, logs or automatic exports; local correction tables are deliberately excluded even from JSON backups. The owner can manually copy text.
 - 2026-11-27: Keep WFM attendance rows untouched; apply app > sheet corrections when reading. Match distinct whole configured labels case-insensitively, consuming longer overlapping labels first (Forced Annual is one label, not also Annual). Zero labels explains, two or more does nothing. Full-day nonworking corrections remove working-time incidents from effective facts; covered daily deltas adjust MTD totals while preserving unpasted totals. WFM confirmation compares labels, not just the broader mapped category (Annual and Forced Annual both map to PTO).
 - 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
@@ -194,6 +196,9 @@ _Last updated: 2026-11-27 for attendance corrections._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - PR #29 WFM mention follow-up
+- Ignored source-status mentions before counting correction labels; multiple other labels now explain with an explicit warning in the drawer and Corrections list. Added owner examples and browser assertions; test scripts use one worker by default.
 
 ### 2026-11-27 - TL comment and owner corrections
 - Built sheet corrections, explanations, WFM-updated state, owner precedence/Undo and Settings history on a new branch from main. Added lifecycle, privacy, API and browser checks plus synthetic screenshots of grid, Home and profile.

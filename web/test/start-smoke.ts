@@ -73,6 +73,11 @@ createServer((request, response) => {
   if (request.method === "POST" && request.url === "/reset") resetTeam(teamDb);
   if (request.method === "POST" && request.url === "/corrections-fixture") {
     resetTeam(correctionsDb);
+    correctionsDb
+      .prepare(
+        "INSERT INTO attendance_sheet_comments VALUES ('99106','2026-11-22','Active - Site, Annual or Sick',NULL,NULL,2)",
+      )
+      .run();
     // Fake review case only; production has no fixture routes.
     correctionsDb
       .prepare(

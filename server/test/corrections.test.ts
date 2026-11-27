@@ -148,7 +148,8 @@ it("matches distinct whole labels case-insensitively, consuming longest overlaps
     expect(commentStatus(text, map)).toEqual({
       label: null,
       status: null,
-      explained: false,
+      explained: true,
+      ambiguous: true,
     });
   for (const text of ["annualized", "sickness", "UPLift", privateText])
     expect(commentStatus(text, map).explained).toBe(true);
@@ -237,6 +238,49 @@ it("uses a sheet correction everywhere, retains WFM, adjusts MTD by daily deltas
   expect(error).not.toHaveBeenCalled();
 });
 
+it("ignores mentions of WFM's status before counting other labels and explains ambiguity", () => {
+  seed();
+  for (const [note, label] of [
+    ["WFM marked NCNS, was on Forced Annual", "Forced Annual"],
+    ["NCNS, Annual", "Annual"],
+    ["NCNS, Forced Annual", "Forced Annual"],
+  ]) {
+    paste(note);
+    expect(attendanceOf(db, { from: date, to: date })[0]).toMatchObject({
+      raw: label,
+      status: "PTO",
+      correction: { state: "corrected" },
+    });
+  }
+  for (const note of [
+    "NCNS, Sick or Annual",
+    "NCNS, Annual or Forced Annual",
+  ]) {
+    paste(note);
+    const day = attendanceOf(db, { from: date, to: date })[0];
+    expect(day).toMatchObject({
+      raw: "NCNS",
+      status: "Absent",
+      correction: {
+        state: "explained",
+        warning: "names more than one status, not corrected",
+      },
+    });
+    expect(
+      gridView(load()).rows[0].cells.find((row) => row.date === date)?.details,
+    ).toContainEqual([
+      "Explained",
+      "names more than one status, not corrected",
+    ]);
+  }
+  paste("NCNS confirmed");
+  expect(attendanceOf(db, { from: date, to: date })[0]).toMatchObject({
+    raw: "NCNS",
+    status: "Absent",
+    correction: { state: "explained", warning: "" },
+  });
+});
+
 it("explains flags/discrepancies without changing counts or shout-outs, and removal restores them", () => {
   seed();
   db.prepare("UPDATE schedule_days SET status='Off Day'").run();
@@ -284,22 +328,22 @@ it("explains flags/discrepancies without changing counts or shout-outs, and remo
   expect(discrepanciesOf(db).every((row) => !row.explanation)).toBe(true);
 });
 
-it("removes sheet overrides on the next paste, shows WFM updated only for the same label, and keeps app precedence", () => {
+it("removes sheet overrides on the next paste, explains same-status comments, and keeps app precedence", () => {
   seed();
   paste("Forced Annual");
-  paste("Forced Annual", "Annual"); // Same mapped PTO, different label: still an override.
+  paste("Forced Annual", "Annual"); // Same mapped PTO: now an explanation.
   expect(
     load().agents[0].calendar.find((row) => row.date === date)?.attendance
       ?.correction?.state,
-  ).toBe("corrected");
+  ).toBe("explained");
   paste("Forced Annual", "Forced Annual");
   expect(
     load().agents[0].calendar.find((row) => row.date === date)?.attendance
       ?.correction?.state,
-  ).toBe("updated");
+  ).toBe("explained");
   expect(
     gridView(load()).rows[0].cells.find((row) => row.date === date)?.label,
-  ).toBe("Forced Annual · WFM updated");
+  ).toBe("Forced Annual · Explained");
   paste("");
   expect(attendanceOf(db, { from: date, to: date })[0]).toMatchObject({
     raw: "NCNS",
@@ -331,7 +375,10 @@ it("removes sheet overrides on the next paste, shows WFM updated only for the sa
   paste("Annual or Sick");
   expect(
     attendanceOf(db, { from: date, to: date })[0].correction,
-  ).toBeUndefined();
+  ).toMatchObject({
+    state: "explained",
+    warning: "names more than one status, not corrected",
+  });
   paste("1st Half Annual", "NCNS", { late: 12 });
   expect(
     load().agents[0].calendar.find((row) => row.date === date)?.attendance,

@@ -62,10 +62,18 @@ test("sheet corrections across grid, Home, profile and Settings; app wins and un
   const table = page.getByRole("table", { name: "Corrections", exact: true });
   await expect(table).toContainText("NCNS → Sick · App correction");
   await expect(table).toContainText("Transport delay reported to the lead.");
+  await expect(table).toContainText(
+    "names more than one status, not corrected",
+  );
   await table.getByRole("button", { name: "Undo correction" }).click();
   await expect(table).toContainText(label);
   await expect(table).not.toContainText("Synthetic owner note");
   await page.goto("/attendance");
+  await page.getByRole("button", { name: /22 Nov:.*Explained/ }).click();
+  await expect(drawer).toContainText(
+    "names more than one status, not corrected",
+  );
+  await page.keyboard.press("Escape");
   await corrected.click();
   await expect(drawer).toContainText(label);
   clean();

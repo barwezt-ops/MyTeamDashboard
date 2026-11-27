@@ -49,7 +49,7 @@ You are working on a private-use team dashboard: a Node/Express + SQLite service
 7. **No invented business rules.** `thresholds` ships empty; only the owner (via TL/SOP) sets numbers. Same rules for every agent, no per-agent exceptions.
 8. **Fail loudly, never wipe on failure.** A failed sync logs to `sync_log`, shows on Settings/the sync badge, and leaves existing data untouched. Syncs only replace the dates the source actually covers.
 9. **Never overwrite user data in sync:** discrepancy `state`/`tl_comment` and `notes` are owner-entered.
-   Attendance app corrections are owner data too and always beat sheet corrections; Undo restores the sheet. Retain WFM rows, resolve effective status on reads, and keep WFM provenance visible. One distinct known whole status label in a TL comment applies a correction (case-insensitive, longest overlapping label first); zero labels explains flags without changing counts; two or more labels apply neither. Sheet comment changes/removal take effect on the next successful paste sync. Matching WFM labels show `WFM updated` without an override marker.
+   Attendance app corrections are owner data too and always beat sheet corrections; Undo restores the sheet. Retain WFM rows, resolve effective status on reads, and keep WFM provenance visible. Consume longest whole labels first, then ignore any mapping to that day's WFM status. One remaining label corrects; zero explains without changing counts; two or more explains with `names more than one status, not corrected`. Sheet changes/removal take effect on the next successful sync.
 10. **Timezone is Africa/Cairo** (it observes DST). Each sync locks in one Cairo date at start.
 
 ## Where things are

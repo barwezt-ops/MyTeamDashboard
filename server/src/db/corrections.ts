@@ -11,6 +11,7 @@ export type Correction = {
   wfmStatus: Status;
   wfmMissing: string | null;
   state: "corrected" | "explained" | "updated";
+  warning?: string;
 };
 export type CorrectionListRow = Correction & {
   code: string;
@@ -22,7 +23,7 @@ export type CorrectionListRow = Correction & {
 type StoredCorrection = Pick<
   Correction,
   "source" | "note" | "label" | "status"
-> & { code: string; date: string };
+> & { code: string; date: string; warning?: string };
 export const statusLabel = (label: string) =>
   label.replace(/\b[a-z]+\b/g, (word) =>
     ["upl", "ncns", "awol", "pto"].includes(word)
@@ -43,12 +44,14 @@ export function correctionsOf(db: Db) {
   const rows = db
     .prepare(
       `
-    SELECT code,date,note,label,status,'sheet' AS source FROM attendance_sheet_comments s
-    WHERE (label IS NOT NULL OR explained=1) AND NOT EXISTS (
+    SELECT code,date,note,label,status,'sheet' AS source,
+      CASE WHEN explained=2 THEN 'names more than one status, not corrected' ELSE '' END AS warning
+    FROM attendance_sheet_comments s
+    WHERE (label IS NOT NULL OR explained>0) AND NOT EXISTS (
       SELECT 1 FROM attendance_corrections a WHERE a.code=s.code AND a.date=s.date
     )
     UNION ALL
-    SELECT code,date,note,label,status,'app' AS source FROM attendance_corrections
+    SELECT code,date,note,label,status,'app' AS source,'' AS warning FROM attendance_corrections
   `,
     )
     .all() as StoredCorrection[];

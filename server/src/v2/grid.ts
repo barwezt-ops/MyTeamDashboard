@@ -43,6 +43,9 @@ export function dayText(
     ];
   return [
     ["Status", attendanceLabel(facts)],
+    ...(facts.correction?.warning
+      ? [["Explained", facts.correction.warning] as [string, string]]
+      : []),
     ...(facts.correction
       ? [
           [

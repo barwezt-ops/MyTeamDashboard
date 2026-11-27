@@ -140,7 +140,11 @@ export function prepareAttendancePaste(
       code: codeOf(text(row.code)),
       date: pasteDate(row.date, config.dateOrder)!,
       note: text(row.tlComment),
-      ...commentStatus(text(row.tlComment), config.statusMap),
+      ...commentStatus(
+        text(row.tlComment),
+        config.statusMap,
+        parseStatus(text(row.status), config.statusMap).status,
+      ),
     }),
   );
   const dates = [...new Set(records.map((row) => row.date))].sort();
@@ -215,7 +219,12 @@ export function storeAttendancePaste(
       );
       for (const row of paste.comments) {
         removeComment.run(row.code, row.date);
-        if (row.note) comment.run({ ...row, explained: Number(row.explained) });
+        // 0 = unapplied, 1 = explained, 2 = explained because several other labels remain.
+        if (row.note)
+          comment.run({
+            ...row,
+            explained: row.ambiguous ? 2 : Number(row.explained),
+          });
       }
       db.prepare(
         "INSERT INTO attendance_paste_state (id,fingerprint,last_changed_at,team_code_count) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,last_changed_at=excluded.last_changed_at,team_code_count=excluded.team_code_count",
