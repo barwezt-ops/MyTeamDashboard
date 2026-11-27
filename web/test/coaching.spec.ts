@@ -60,7 +60,7 @@ test("coaching hub: overview, prep, log, follow-ups, history and fairness", asyn
   await expect(page.getByRole("status").last()).toContainText("copied");
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied.split(/\r?\n/)[0]).toBe(
-    "Agent\tDate\tWhat happened\tWhat was said\tAgreed next step\tFollow-up date",
+    "Date\tWhat happened\tWhat was said\tAgreed next step\tFollow-up date",
   );
   expect(copied).toContain("Synthetic coaching facts");
   const download = page.waitForEvent("download");

@@ -44,7 +44,7 @@ test("agent profile: facts, documents, notes, follow-ups and dismissal", async (
     page
       .getByRole("dialog", { name: "Escalation draft" })
       .getByLabel("Text", { exact: true }),
-  ).toHaveValue(/Recorded incidents this cycle/);
+  ).toHaveValue(/What I've already done[\s\S]*What I need/);
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "New note" }).click();

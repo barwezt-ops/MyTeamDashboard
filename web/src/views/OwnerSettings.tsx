@@ -431,7 +431,7 @@ export function OwnerSettings({
   // Each form resets only when its own saved values change, so saving one
   // keeps what is being typed in the others.
   const key = (...fields: (keyof V2Settings)[]) =>
-    JSON.stringify(fields.map((field) => saved[field]));
+    JSON.stringify(fields.map((field) => [field, saved[field]]));
   return (
     <div className="owner-settings">
       <Thresholds
