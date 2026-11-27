@@ -23,6 +23,7 @@ import { profileView } from "./profile.js";
 import { coachingView, prepView } from "./coaching.js";
 import { qualityView } from "./quality.js";
 import { cycleSummary, eodReport, rosterReport } from "./reports.js";
+import { statusMapView } from "./statusMap.js";
 import { reportDay } from "./home.js";
 import { shortName } from "./templates.js";
 import { boardView } from "./board.js";
@@ -157,6 +158,10 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
         });
       },
     ),
+  );
+  router.get(
+    "/status-map",
+    endpoint({}, (_input, _req, res) => res.json(statusMapView(db, config))),
   );
   router.get(
     "/settings",

@@ -22,6 +22,7 @@ import {
 import { SegmentedControl } from "../components/design";
 import { useHead } from "../v2/context";
 import { OwnerSettings } from "./OwnerSettings";
+import { StatusMap } from "./StatusMap";
 
 function result(run: SyncRun | null | undefined) {
   if (run?.ok === true)
@@ -37,7 +38,6 @@ const warningText = (warning: string) =>
     ? mtdMismatch(warning.slice(mtdMismatchWarning.length).split(",").length)
     : warning;
 type ReadConfig = {
-  statusMap?: Record<string, string>;
   sources?: {
     attendance?: { paste?: { startHour: number; endHour: number } };
   };
@@ -253,31 +253,7 @@ export function Settings({
           <Empty>No sync jobs have run yet.</Empty>
         )}
       </Section>
-      <Section
-        title="Status map"
-        action={
-          <span className="panel-note">Edit statusMap in the config file</span>
-        }
-      >
-        <DataTable label="Status map">
-          <thead>
-            <tr>
-              <th>Label in the sheet</th>
-              <th>Shown as</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries((data.config as ReadConfig).statusMap ?? {}).map(
-              ([label, shown]) => (
-                <tr key={label}>
-                  <td className="mono">{label}</td>
-                  <td>{shown}</td>
-                </tr>
-              ),
-            )}
-          </tbody>
-        </DataTable>
-      </Section>
+      <StatusMap />
       <Section title="Source configuration">
         <details className="panel-body">
           <summary>View configuration</summary>

@@ -434,6 +434,21 @@ td.bad {
   padding-bottom: 7px;
 }
 
+.subject-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.subject-line code {
+  flex: 1 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.panel-subhead {
+  margin: 4px 18px 8px;
+  font-size: 12.5px;
+}
 .mismatch {
   padding: 14px 18px;
   border-radius: 14px;
