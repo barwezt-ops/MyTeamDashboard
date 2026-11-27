@@ -24,6 +24,23 @@ export function cycleInfo(asOf: string, today: string, startDay: number) {
   return { ...range, totalDays, elapsed, daysLeft: totalDays - elapsed };
 }
 
+/**
+ * Coachings per agent that are due by now. One is due only once a whole one is,
+ * so with a target of two the first falls due mid-cycle and the second on the
+ * last day.
+ */
+export const expectedCoachings = (
+  target: number,
+  elapsed: number,
+  totalDays: number,
+) => Math.floor((target * elapsed) / totalDays);
+
+/** The day the first coaching of a cycle falls due. */
+export const firstCoachingDue = (
+  target: number,
+  range: { from: string; totalDays: number },
+) => plusDays(range.from, Math.ceil(range.totalDays / target) - 1);
+
 export const previousCycle = (range: Range, startDay: number) =>
   coachingCycle(plusDays(range.from, -1), startDay);
 

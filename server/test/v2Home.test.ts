@@ -53,10 +53,25 @@ describe("Home", () => {
           ["URGENT", "SOON", "LATER"].indexOf(b),
       ),
     );
-    expect(view.paceSummary?.reason).toMatch(/agents behind coaching pace/);
-    expect(view.needs.some((row) => row.kind === "pace")).toBe(false);
     expect(counts(data)).toEqual({ urgent: 2, coachingDue: 23 });
-    expect(view.coaching).toMatchObject({ done: 9, total: 32, atZero: 9 });
+    // Day 6 of 30: nothing is due yet, so nobody is behind.
+    expect(view.paceSummary).toBeNull();
+    expect(view.needs.some((row) => row.kind === "pace")).toBe(false);
+    expect(view.coaching).toMatchObject({
+      done: 9,
+      total: 32,
+      atZero: 9,
+      expected: 0,
+      behind: 0,
+      firstDue: "2026-12-05",
+    });
+  });
+
+  it("puts agents behind pace from mid-cycle into one line", () => {
+    const middle = homeView(dashboardData(db, config, "2026-12-05"));
+    expect(middle.coaching).toMatchObject({ expected: 16, behind: 9 });
+    expect(middle.paceSummary?.reason).toBe("9 agents behind coaching pace");
+    expect(middle.needs.some((row) => row.kind === "pace")).toBe(false);
   });
 
   it("shows today's floor and a short line only against a baseline", () => {

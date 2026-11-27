@@ -6,7 +6,12 @@ import { decodeCsv } from "../src/fetch/fetchCsv.js";
 import { agentsOf, lastRun, lastDashboardSyncAt } from "../src/db/repo.js";
 import { createSync } from "../src/sync/service.js";
 import { prepareAttendancePaste } from "../src/sync/attendancePaste.js";
-import { cycleInfo, recentCycles } from "../src/v2/cycle.js";
+import {
+  cycleInfo,
+  expectedCoachings,
+  firstCoachingDue,
+  recentCycles,
+} from "../src/v2/cycle.js";
 import { dashboardData } from "../src/v2/data.js";
 import type { DayFacts } from "../src/v2/facts.js";
 import { stepOutcome } from "../src/v2/outcomes.js";
@@ -324,8 +329,24 @@ describe("flags", () => {
       ),
     ).toMatchObject({
       reason: "1 of 2 coachings this cycle",
-      detail: "Expected by today: 2.0",
+      detail: "Expected by today: 2",
     });
+  });
+
+  it("expects a coaching only once a whole one is due", () => {
+    // A 30-day cycle with a target of two.
+    expect(
+      [1, 14, 15, 29, 30].map((day) => expectedCoachings(2, day, 30)),
+    ).toEqual([0, 0, 1, 1, 2]);
+    expect(firstCoachingDue(2, { from: "2026-11-21", totalDays: 30 })).toBe(
+      "2026-12-05",
+    );
+    expect(firstCoachingDue(2, { from: "2026-10-21", totalDays: 31 })).toBe(
+      "2026-11-05",
+    );
+    expect(
+      say.coachingStanding({ behind: 0, expected: 0, firstDue: "2026-12-05" }),
+    ).toBe("No coaching is due yet. The first is due on 5 Dec.");
   });
 
   it("brings a dismissed flag back only when new facts arrive", () => {
@@ -346,23 +367,32 @@ describe("flags", () => {
     expect(urgent().map((flag) => flag.id)).toEqual([late]);
   });
 
-  it("reopens coaching pace only when another coaching falls behind", () => {
+  it("reopens coaching pace only when another coaching falls due", () => {
     seedV2Fixture(db);
     const pace = "99002|2026-10-21|pace";
     const open = (today: string) =>
       snapshot(today).flags.some((flag) => flag.id === pace);
-    // On day 5 less than one whole coaching is expected.
-    const early = "2026-10-25";
-    const flag = snapshot(early).flags.find((row) => row.id === pace)!;
+    // Nothing is due before mid-cycle.
+    expect(open("2026-10-25")).toBe(false);
+    expect(open("2026-11-04")).toBe(false);
+    const middle = "2026-11-05";
+    const flag = snapshot(middle).flags.find((row) => row.id === pace)!;
+    expect(flag.detail).toBe("Expected by today: 1");
     db.prepare("INSERT INTO flag_dismissals VALUES (?,?,?,?)").run(
       pace,
       JSON.stringify(flag.facts),
       "Planned",
-      "2026-10-25T12:00:00Z",
+      "2026-11-05T12:00:00Z",
     );
-    expect(open("2026-10-26")).toBe(false);
-    expect(open("2026-11-04")).toBe(false);
-    expect(open("2026-11-05")).toBe(true);
+    expect(open("2026-11-19")).toBe(false);
+    // The second falls due on the last day.
+    expect(open("2026-11-20")).toBe(true);
+    // Logging the first one does not hide the second falling due.
+    db.prepare(
+      "INSERT INTO coachings VALUES (9,'99002','2026-11-06','corrective','[\"attendance\"]','[]','Sample fact','','Sample step',1,'none',NULL,'2026-11-06T12:00:00Z')",
+    ).run();
+    expect(open("2026-11-19")).toBe(false);
+    expect(open("2026-11-20")).toBe(true);
   });
 });
 

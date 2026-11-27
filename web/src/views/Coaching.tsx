@@ -35,7 +35,7 @@ function Overview({ view, go }: { view: CoachingView; go: Go }) {
           <ProgressRing
             done={totals.done}
             total={totals.total}
-            expected={Math.round(totals.expected * 10) / 10}
+            expected={totals.expected}
           />
         </div>
         <dl>

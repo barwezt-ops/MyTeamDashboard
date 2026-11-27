@@ -97,6 +97,18 @@ export function perfectCaption(count: number) {
   return `${people(count)} ${count === 1 ? "hasn't" : "haven't"} missed a minute all cycle.`;
 }
 
+/** Where the team stands against the coachings due by now. */
+export function coachingStanding(input: {
+  behind: number;
+  expected: number;
+  firstDue: string;
+}) {
+  if (input.behind) return `${plural(input.behind, "agent")} behind pace.`;
+  return input.expected
+    ? "Everyone is on pace."
+    : `No coaching is due yet. The first is due on ${shortDate(input.firstDue)}.`;
+}
+
 export function coachingPace(done: number, due: number, daysLeft: number) {
   const left = Math.max(0, due - done);
   if (!left) return "Every coaching for this cycle is done.";

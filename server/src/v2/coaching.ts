@@ -173,11 +173,7 @@ export function coachingView(data: DashboardData) {
     totals,
     daysToFinish,
     pace: say.coachingPace(totals.done, totals.total, daysToFinish),
-    summary: `${totals.done} of ${totals.total} done this cycle. ${
-      totals.behind
-        ? `${say.plural(totals.behind, "agent")} behind pace.`
-        : "Everyone is on pace."
-    }`,
+    summary: `${totals.done} of ${totals.total} done this cycle. ${say.coachingStanding(totals)}`,
     agents,
     followUps: followUps(data),
     history: rows,

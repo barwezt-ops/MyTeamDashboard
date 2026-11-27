@@ -7,6 +7,7 @@ import { plusDays } from "../parse/normalize.js";
 import {
   cycleInfo,
   datesBetween,
+  expectedCoachings,
   previousCycle,
   recentCycles,
   within,
@@ -191,8 +192,11 @@ export function dashboardData(
     const coaching = coachingsFor(code);
     const followUps = followUpsFor(code);
     const done = coaching.filter((row) => within(row.date, cycle)).length;
-    const expected =
-      (settings.coachingTarget * cycle.elapsed) / cycle.totalDays;
+    const expected = expectedCoachings(
+      settings.coachingTarget,
+      cycle.elapsed,
+      cycle.totalDays,
+    );
     const notes = notesOf(db, "code=?", [code]);
     const due: DueFollowUp[] = [
       ...followUps

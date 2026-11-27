@@ -89,7 +89,7 @@ function FirstRow({ view }: { view: HomeView }) {
         <ProgressRing
           done={coaching.done}
           total={coaching.total}
-          expected={Math.round(coaching.expected * 10) / 10}
+          expected={coaching.expected}
         />
         <p>
           <strong
@@ -100,8 +100,10 @@ function FirstRow({ view }: { view: HomeView }) {
           · {coaching.atZero} {coaching.atZero === 1 ? "agent" : "agents"} at 0
         </p>
         <small>
-          Gold tick = where you should be today ·{" "}
-          <Link to="/coaching">Coaching →</Link>
+          {coaching.expected
+            ? `Gold tick = ${coaching.expected} due by today`
+            : `Nothing due yet · first due ${shortDate(coaching.firstDue)}`}{" "}
+          · <Link to="/coaching">Coaching →</Link>
         </small>
       </section>
     </div>

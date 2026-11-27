@@ -1,6 +1,6 @@
 // The Home screen: yesterday's results next to today's plan.
 import { plusDays } from "../parse/normalize.js";
-import { datesBetween } from "./cycle.js";
+import { datesBetween, firstCoachingDue } from "./cycle.js";
 import type { DashboardData, V2Agent } from "./data.js";
 import { isLate, isMissing, isUnplanned, sum, type DayFacts } from "./facts.js";
 import { heatStatus } from "./heat.js";
@@ -24,6 +24,7 @@ export function coachingTotals(data: DashboardData) {
     total: target * active.length,
     due: target * active.length - done,
     expected: active.reduce((s, agent) => s + agent.coachingExpected, 0),
+    firstDue: firstCoachingDue(target, data.cycle),
     behind: active.filter(
       (a) => a.coachingDone < target && a.coachingDone < a.coachingExpected,
     ).length,

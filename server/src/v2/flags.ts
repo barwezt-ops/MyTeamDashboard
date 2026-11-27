@@ -223,9 +223,10 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       "SOON",
       "Coach",
       `${done} of ${target} coachings this cycle`,
-      `Expected by today: ${expected.toFixed(1)}`,
-      // A new fact only when another whole coaching falls behind.
-      numbered("behind", Math.ceil(expected - done)),
+      `Expected by today: ${expected}`,
+      // One fact per coaching that is due and not done, so a dismissed item
+      // returns when the next coaching falls due.
+      Array.from({ length: expected - done }, (_, i) => `due#${done + i + 1}`),
     );
   for (const pattern of input.patterns)
     add(
