@@ -444,6 +444,7 @@ describe("patterns and agreed steps", () => {
     shift: null,
     login: null,
     logout: null,
+    ncnsStreak: null,
     ...extra,
   });
   it("reports weekday, after-OFF and break patterns from recorded days", () => {

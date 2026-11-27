@@ -19,6 +19,8 @@ export type DayFacts = {
   shift: string | null;
   login: string | null;
   logout: string | null;
+  /** The source's running NCNS count on that day. */
+  ncnsStreak: number | null;
 };
 
 // The paste repeats the status label in time cells on days off.
@@ -26,6 +28,9 @@ const clock = (value: unknown) =>
   typeof value === "string" && /^\d{1,2}:\d{2}(?::\d{2})?$/.test(value)
     ? value.slice(0, 5).padStart(5, "0")
     : null;
+
+const count = (value: unknown) =>
+  /^\d+(?:\.\d+)?$/.test(String(value ?? "")) ? Number(value) : null;
 
 export function dayFacts(
   row: AttendanceDay,
@@ -47,6 +52,7 @@ export function dayFacts(
     shift: clock(details?.scheduledShift),
     login: clock(details?.login),
     logout: clock(details?.logout),
+    ncnsStreak: count(details?.ncnsStreak),
   };
 }
 

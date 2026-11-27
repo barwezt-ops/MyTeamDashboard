@@ -187,6 +187,15 @@ export function shortDate(date: string) {
     timeZone: "UTC",
   }).format(new Date(date + "T00:00:00Z"));
 }
+/** "12 Jan 2025", for dates outside the cycle being shown. */
+export function fullDate(date: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(date + "T00:00:00Z"));
+}
 export function weekdayDate(date: string) {
   return new Intl.DateTimeFormat("en-GB", {
     weekday: "short",

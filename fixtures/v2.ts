@@ -55,6 +55,7 @@ export function fakePaste(days: FakeDay[]) {
       missing: fraction(day.missing ?? 0),
       breakOver: fraction(day.breakExceeded ? (day.breakMinutes ?? 6) : 0),
       exceeded: day.breakExceeded ? "Exceeded" : "",
+      ncnsStreak: 0,
     };
   });
   const mtd = [...new Set(days.map((day) => day.code))].map((code) => {

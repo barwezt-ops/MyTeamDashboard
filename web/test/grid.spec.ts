@@ -66,6 +66,36 @@ test("attendance grid: tooltip, drawer, keyboard, filters and export", async ({
   clean();
 });
 
+const teamViewColumns = [
+  "Code",
+  "Name",
+  "Team Leader",
+  "HR Status",
+  "Latest Day",
+  "Status (Latest Day)",
+  "Scheduled Shift",
+  "Login",
+  "Logout",
+  "Lateness (Latest Day)",
+  "Missing (Latest Day)",
+  "Break Exceeded (Latest Day)",
+  "NCNS Streak",
+  "Days Late (Cycle)",
+  "Days With Missing (Cycle)",
+  "Breaks Exceeded (Cycle)",
+  "MTD Missing Hours",
+  "MTD OT Hours",
+  "MTD Lateness Mins",
+  "MTD Lateness Incidents",
+  "MTD Sick",
+  "MTD UPL",
+  "MTD Casual",
+  "MTD Annual",
+  "MTD NCNS",
+  "MTD AWOL",
+  "MTD Deducted Days",
+];
+
 test("team table: sort, columns, density, saved views and profile links", async ({
   page,
 }, info) => {
@@ -84,10 +114,21 @@ test("team table: sort, columns, density, saved views and profile links", async 
     table.getByRole("columnheader", { name: "Late", exact: true }),
   ).toHaveAttribute("aria-sort", "descending");
   await page.getByText("Columns", { exact: true }).click();
-  await page.getByRole("checkbox", { name: "Overtime" }).check();
+  // Every column of the sheet's Team View is offered.
+  for (const label of teamViewColumns)
+    await expect(
+      page.getByRole("checkbox", { name: label, exact: true }),
+    ).toHaveCount(label === "Name" ? 0 : 1);
+  await page.getByRole("checkbox", { name: "MTD OT Hours" }).check();
+  await page
+    .getByRole("checkbox", { name: "Break Exceeded (Latest Day)" })
+    .check();
   await expect(
-    table.getByRole("columnheader", { name: "Overtime" }),
+    table.getByRole("columnheader", { name: "MTD OT Hours" }),
   ).toBeVisible();
+  await expect(
+    table.locator("tbody tr").filter({ hasText: "Casey Hart" }),
+  ).toContainText("1h 16m");
   await expectAccessible(page);
   await page.getByText("Columns", { exact: true }).click();
   await page.getByRole("button", { name: "Compact" }).click();
@@ -97,7 +138,7 @@ test("team table: sort, columns, density, saved views and profile links", async 
   await page.reload();
   await page.getByLabel("Saved view").selectOption("Lateness review");
   await expect(
-    table.getByRole("columnheader", { name: "Overtime" }),
+    table.getByRole("columnheader", { name: "MTD OT Hours" }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Compact" })).toHaveAttribute(
     "aria-pressed",
