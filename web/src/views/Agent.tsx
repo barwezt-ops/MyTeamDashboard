@@ -10,7 +10,11 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, X } from "lucide-react";
 import type { ProfileView } from "../../../server/src/v2/profile";
 import { escalationText, mprText } from "../../../server/src/v2/documents";
-import { duration, shortDate } from "../../../server/src/v2/templates";
+import {
+  duration,
+  fullDate,
+  shortDate,
+} from "../../../server/src/v2/templates";
 import { api } from "../api";
 import {
   Avatar,
@@ -74,7 +78,10 @@ function Header({
             ["Team Leader", agent.teamLeader],
             [
               "Hired",
-              agent.hireDate && `${agent.hireDate} · ${agent.tenure ?? ""}`,
+              agent.hireDate &&
+                [fullDate(agent.hireDate), agent.tenure]
+                  .filter(Boolean)
+                  .join(" · "),
             ],
             ["HR status", agent.status],
           ].map(([label, value]) => (
@@ -496,7 +503,7 @@ function Details({ view, drawer }: { view: Profile; drawer: boolean }) {
             <tbody>
               {view.discrepancies.map((row) => (
                 <tr key={row.id}>
-                  <td className="mono">{row.date}</td>
+                  <td className="mono nowrap">{fullDate(row.date)}</td>
                   <td>{row.ruleId}</td>
                   <td>{row.missing || "—"}</td>
                   <td>{row.state}</td>
@@ -513,12 +520,15 @@ function Details({ view, drawer }: { view: Profile; drawer: boolean }) {
         <details className="panel dismissed">
           <summary>Dismissed flags ({view.dismissed.length})</summary>
           <ul className="facts">
-            {view.dismissed.map((row) => (
-              <li key={row.id}>
-                {row.id.split("|").slice(1).join(" · ")} · dismissed{" "}
-                {shortDate(row.at)}: {row.reason}
-              </li>
-            ))}
+            {view.dismissed.map((row) => {
+              const [, from, kind] = row.id.split("|");
+              return (
+                <li key={row.id}>
+                  Cycle from {shortDate(from)} · {kind} · dismissed{" "}
+                  {shortDate(row.at)}: {row.reason}
+                </li>
+              );
+            })}
           </ul>
         </details>
       )}

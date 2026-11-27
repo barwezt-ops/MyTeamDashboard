@@ -1,11 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -16,29 +9,23 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
-import {
-  navigation,
-  ShellHeader,
-  CommandPalette,
-  PendingScreen,
-} from "./components/Shell";
+import { navigation, ShellHeader, CommandPalette } from "./components/Shell";
 import { Styleguide } from "./views/Styleguide";
 import { Home } from "./views/Home";
 import { Attendance } from "./views/Attendance";
 import { Team } from "./views/Team";
+import { Coaching } from "./views/Coaching";
+import { Quality } from "./views/Quality";
+import { Queues } from "./views/Queues";
+import { Reports } from "./views/Reports";
 import { Toast } from "./components/design";
 import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
 import { api, useApi } from "./api";
 import { ErrorNotice, Loading } from "./components/ui";
 import { Login } from "./views/Login";
-import { Today } from "./views/Today";
 import { Discrepancies } from "./views/Discrepancies";
-import { Roster } from "./views/Roster";
 import { Agent } from "./views/Agent";
-const Trends = lazy(() =>
-  import("./views/Trends").then(({ Trends }) => ({ default: Trends })),
-);
 import { Settings } from "./views/Settings";
 
 interface User {
@@ -62,7 +49,6 @@ function Dashboard({
 }) {
   const scope: Scope = "mine";
   const [palette, setPalette] = useState(false);
-  const [date, setDate] = useState("");
   const [drawer, setDrawer] = useState<string | null>(null);
   const status = useApi<SyncStatus>("/sync/status");
   const location = useLocation();
@@ -121,8 +107,6 @@ function Dashboard({
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
   }, []);
-  const today = status.data?.date ?? "";
-  const chosen = date || today;
   return (
     <SharedContext.Provider value={shared}>
       <div className="app-shell">
@@ -197,17 +181,6 @@ function Dashboard({
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            {location.pathname === "/today" && (
-              <input
-                className="date-control"
-                type="date"
-                aria-label="Dashboard date"
-                value={chosen}
-                min={status.data?.window.from}
-                max={status.data?.window.to}
-                onChange={(event) => setDate(event.target.value)}
-              />
-            )}
           </div>
           <main className="content" id="main-content">
             <ShellHeader
@@ -221,76 +194,33 @@ function Dashboard({
             {status.error && location.pathname !== "/settings" && (
               <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>
             )}
-            <Suspense fallback={<Loading />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route
-                  path="/today"
-                  element={
-                    <Today scope={scope} date={chosen} openAgent={openAgent} />
-                  }
-                />
-                <Route
-                  path="/discrepancies"
-                  element={
-                    <Discrepancies scope={scope} openAgent={openAgent} />
-                  }
-                />
-                <Route
-                  path="/trends"
-                  element={
-                    today ? (
-                      <Trends
-                        scope={scope}
-                        today={today}
-                        openAgent={openAgent}
-                      />
-                    ) : (
-                      !status.error && <Loading />
-                    )
-                  }
-                />
-                <Route
-                  path="/roster"
-                  element={
-                    today ? (
-                      <Roster
-                        scope={scope}
-                        today={today}
-                        openAgent={openAgent}
-                      />
-                    ) : (
-                      !status.error && <Loading />
-                    )
-                  }
-                />
-                <Route path="/agent/:code" element={<Agent />} />
-                <Route path="/attendance" element={<Attendance />} />
-                <Route path="/team" element={<Team />} />
-                <Route path="/styleguide" element={<Styleguide />} />
-                <Route
-                  path="/coaching"
-                  element={<PendingScreen title="Coaching" phase={6} />}
-                />
-                <Route
-                  path="/quality"
-                  element={<PendingScreen title="Quality" phase={7} />}
-                />
-                <Route
-                  path="/queues"
-                  element={<PendingScreen title="Queues" phase={7} />}
-                />
-                <Route
-                  path="/reports"
-                  element={<PendingScreen title="Reports" phase={8} />}
-                />
-                <Route
-                  path="/settings"
-                  element={<Settings status={status} logout={logout} />}
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route
+                path="/discrepancies"
+                element={<Discrepancies scope={scope} openAgent={openAgent} />}
+              />
+              <Route path="/agent/:code" element={<Agent />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/styleguide" element={<Styleguide />} />
+              <Route path="/coaching" element={<Coaching />} />
+              <Route path="/quality" element={<Quality />} />
+              <Route path="/queues" element={<Queues />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route
+                path="/settings"
+                element={
+                  <Settings
+                    status={status}
+                    logout={logout}
+                    dark={dark}
+                    toggle={toggle}
+                  />
+                }
+              />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </main>
         </div>
         {palette && (

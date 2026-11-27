@@ -2,6 +2,7 @@
 // owner has set: three or more lateness incidents in a cycle.
 import { z } from "zod";
 import type { Db } from "../db/db.js";
+import { coachingTypes, followUpStates, measures, reasons } from "./choices.js";
 
 const count = z.number().int().positive().nullable().default(null);
 const fields = z.strictObject({
@@ -20,6 +21,24 @@ const fields = z.strictObject({
     .record(z.string().min(1).max(100), z.number().int().nonnegative())
     .default({}),
   reportTemplate: z.string().max(20000).default(""),
+  /** The account named in the attendance email's subject. */
+  reportAccount: z.string().trim().max(200).default(""),
+  /** The attendance email's subject; empty uses the default layout. */
+  emailSubject: z.string().trim().max(300).default(""),
+  /** The MPR preparation layout; empty uses the default. */
+  mprTemplate: z.string().max(20000).default(""),
+  /** Hours for automatic attendance reads; empty uses the config file. */
+  attendanceHours: z
+    .strictObject({
+      start: z.number().int().min(0).max(23),
+      end: z.number().int().min(0).max(24),
+    })
+    .refine(
+      (hours) => hours.start !== hours.end,
+      "Set different attendance start and end hours",
+    )
+    .nullable()
+    .default(null),
   /** Saved Team table views. */
   views: z
     .array(
@@ -59,19 +78,7 @@ export function saveSettings(db: Db, settings: V2Settings) {
   ).run(JSON.stringify(settings));
 }
 
-export const reasons = [
-  "attendance",
-  "quality",
-  "behaviour",
-  "recognition",
-] as const;
-export const coachingTypes = [
-  "corrective",
-  "recognition",
-  "follow-up",
-] as const;
-export const measures = ["none", "lateness", "missing", "breaks"] as const;
-export const followUpStates = ["open", "done", "kept", "not kept"] as const;
+export { reasons, coachingTypes, measures, followUpStates };
 
 const unique = (values: string[]) => new Set(values).size === values.length;
 export const coachingSchema = z

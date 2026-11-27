@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import type { HomeView } from "../../../server/src/v2/home";
 import { duration, shortDate } from "../../../server/src/v2/templates";
@@ -18,13 +18,8 @@ import {
 import { DataTable, Empty, Section } from "../components/ui";
 import { useHead, useShared, useView } from "../v2/context";
 import { copy } from "../v2/copy";
-import {
-  CopyTableButton,
-  LoadError,
-  Person,
-  Skeleton,
-  useCopy,
-} from "../v2/parts";
+import { LoadError, Person, Skeleton, useCopy } from "../v2/parts";
+import { copyEod } from "../v2/eod";
 
 const dayName = (date: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -94,7 +89,7 @@ function FirstRow({ view }: { view: HomeView }) {
         <ProgressRing
           done={coaching.done}
           total={coaching.total}
-          expected={Math.round(coaching.expected * 10) / 10}
+          expected={coaching.expected}
         />
         <p>
           <strong
@@ -105,16 +100,27 @@ function FirstRow({ view }: { view: HomeView }) {
           · {coaching.atZero} {coaching.atZero === 1 ? "agent" : "agents"} at 0
         </p>
         <small>
-          Gold tick = where you should be today ·{" "}
-          <Link to="/coaching">Coaching →</Link>
+          {coaching.expected
+            ? `Gold tick = ${coaching.expected} due by today`
+            : `Nothing due yet · first due ${shortDate(coaching.firstDue)}`}{" "}
+          · <Link to="/coaching">Coaching →</Link>
         </small>
       </section>
     </div>
   );
 }
 
+/** Where a flag's button leads. */
+const actionPath = (flag: HomeView["needs"][number]) =>
+  flag.action === "Coach"
+    ? `/coaching?view=prep&agent=${encodeURIComponent(flag.code)}`
+    : flag.action === "Review" && flag.kind.includes("followup")
+      ? "/coaching?view=followups"
+      : "";
+
 function NeedsYou({ view }: { view: HomeView }) {
   const { openAgent } = useShared();
+  const navigate = useNavigate();
   const urgent = view.needs.filter((flag) => flag.severity === "URGENT");
   const open = view.needs.length + (view.paceSummary ? 1 : 0);
   const pace = view.paceSummary && (
@@ -158,7 +164,11 @@ function NeedsYou({ view }: { view: HomeView }) {
           flag.severity === "URGENT" ? "danger small" : "secondary small"
         }
         aria-label={`${flag.action} ${flag.name}: ${flag.reason}`}
-        onClick={() => openAgent(flag.code)}
+        onClick={() => {
+          const path = actionPath(flag);
+          if (path) navigate(path);
+          else openAgent(flag.code);
+        }}
       >
         {flag.action}
       </button>
@@ -294,6 +304,7 @@ function Queues({ view }: { view: HomeView }) {
 }
 
 function Exceptions({ view }: { view: HomeView }) {
+  const run = useCopy();
   const title =
     view.reportLabel === "yesterday"
       ? "Yesterday, in exceptions"
@@ -309,33 +320,14 @@ function Exceptions({ view }: { view: HomeView }) {
       number="04"
       className="home-panel home-exceptions"
       action={
-        view.exceptions.length ? (
-          <CopyTableButton
-            table={() => ({
-              headers: [
-                "Date",
-                "Agent",
-                "Queue",
-                "Status",
-                "Login",
-                "Late",
-                "Missing",
-                "Break",
-              ],
-              rows: view.exceptions.map((row) => [
-                view.reportDay,
-                row.name,
-                row.line ?? "",
-                row.status,
-                row.login ?? "",
-                row.late ?? "",
-                row.missing ?? "",
-                row.breakExceeded ? "Exceeded" : "",
-              ]),
-            })}
+        view.hasReport ? (
+          <button
+            type="button"
+            className="secondary small"
+            onClick={() => run(() => copyEod(view.reportDay), "Report copied.")}
           >
             Copy for EOD
-          </CopyTableButton>
+          </button>
         ) : undefined
       }
     >
@@ -378,7 +370,7 @@ function Exceptions({ view }: { view: HomeView }) {
                 <td className="mono">{row.login ?? "—"}</td>
                 {cell(row.late, "warn")}
                 {cell(row.missing, "bad")}
-                {cell(row.breakExceeded ? "Exceeded" : null, "warn")}
+                {cell(row.break, "warn")}
               </tr>
             ))}
           </tbody>
@@ -450,9 +442,14 @@ function Lateness({ view }: { view: HomeView }) {
   );
 }
 
+/** Names on the shout-out card before it is expanded. */
+const namesShown = 4;
+
 function ShoutOut({ view }: { view: HomeView }) {
   const run = useCopy();
   const { caption, people, text } = view.shoutout;
+  const [all, setAll] = useState(false);
+  const hidden = people.length - namesShown;
   return (
     <section
       className="shout home-panel home-shout"
@@ -463,8 +460,8 @@ function ShoutOut({ view }: { view: HomeView }) {
         shout-out
       </h2>
       <p>{caption}</p>
-      <ul className="panel-scroll" tabIndex={people.length ? 0 : -1}>
-        {people.map((person) => (
+      <ul>
+        {(all ? people : people.slice(0, namesShown)).map((person) => (
           <li key={person.code}>
             <span aria-hidden="true">
               <Avatar {...person} />
@@ -473,6 +470,16 @@ function ShoutOut({ view }: { view: HomeView }) {
           </li>
         ))}
       </ul>
+      {hidden > 0 && (
+        <button
+          type="button"
+          className="shout-more"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+        >
+          {all ? "Show fewer" : `and ${hidden} more`}
+        </button>
+      )}
       {!!people.length && (
         <button
           type="button"

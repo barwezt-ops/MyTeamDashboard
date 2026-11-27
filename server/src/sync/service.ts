@@ -3,7 +3,7 @@ import { syncQueues, syncQa } from "../v2/sources.js";
 import type { Config, SourceKey } from "../config.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/db.js";
-import type { Job } from "../api/dto.js";
+import { mtdMismatchWarning, type Job } from "../api/dto.js";
 import {
   agentsOf,
   attendanceOf,
@@ -32,6 +32,7 @@ import {
   attendancePastePreview,
   attendancePasteStale,
   loadAttendancePaste,
+  mtdDailyMismatch,
   storeAttendancePaste,
 } from "./attendancePaste.js";
 import { coveredRange, replaceAttendance } from "./syncAttendance.js";
@@ -135,17 +136,36 @@ export function createSync(
     runner.runStep("attendance", async () => {
       if (usesPaste) {
         const paste = await loadAttendancePaste(config, dataDir, agentsOf(db));
+        const { cycleStartDay } = readSettings(
+          db,
+          config.coachingCycleStartDay,
+        );
         const changed = storeAttendancePaste(
           db,
           paste,
           date,
           now().toISOString(),
-          readSettings(db, config.coachingCycleStartDay).cycleStartDay,
+          cycleStartDay,
+        );
+        const mismatch = mtdDailyMismatch(
+          db,
+          paste,
+          cycleStartDay,
+          new Set(
+            agentsOf(db)
+              .filter((agent) => agent.ownerGroup === "mine")
+              .map((agent) => agent.code),
+          ),
         );
         return {
           rowsRead: paste.rowsRead,
           rowsKept: paste.records.length,
-          warnings: changed ? [] : ["no change"],
+          warnings: [
+            ...(changed ? [] : ["no change"]),
+            ...(mismatch.length
+              ? [mtdMismatchWarning + mismatch.join(",")]
+              : []),
+          ],
         };
       }
       const { rows, rowsRead, archive } = await load("attendance");

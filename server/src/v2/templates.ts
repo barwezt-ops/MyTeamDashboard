@@ -93,8 +93,20 @@ export function latenessCaption(
 }
 
 export function perfectCaption(count: number) {
-  if (!count) return "No clean attendance record yet this cycle.";
-  return `${people(count)} ${count === 1 ? "hasn't" : "haven't"} missed a minute all cycle.`;
+  if (!count) return "Nobody has perfect attendance yet this cycle.";
+  return `${people(count)} ${count === 1 ? "has" : "have"} perfect attendance this cycle.`;
+}
+
+/** Where the team stands against the coachings due by now. */
+export function coachingStanding(input: {
+  behind: number;
+  expected: number;
+  firstDue: string;
+}) {
+  if (input.behind) return `${plural(input.behind, "agent")} behind pace.`;
+  return input.expected
+    ? "Everyone is on pace."
+    : `No coaching is due yet. The first is due on ${shortDate(input.firstDue)}.`;
 }
 
 export function coachingPace(done: number, due: number, daysLeft: number) {
@@ -130,9 +142,24 @@ export function weekCaption(exceptions: number, days: number) {
 
 export function shoutOut(names: string[], from: string, to: string) {
   return names.length
-    ? `Shout-out: ${names.join(", ")}. No lateness, missing time or unplanned absence from ${shortDate(from)} to ${shortDate(to)}.`
+    ? `Shout-out: ${names.join(", ")}. Perfect attendance from ${shortDate(from)} to ${shortDate(to)}.`
     : "";
 }
+
+/** How far over an exceeded break went, when the source says. */
+export function breakOver(minutes: number | null) {
+  if (!minutes) return "Exceeded";
+  return minutes < 0.5 ? "<1m" : duration(minutes);
+}
+/** One exceeded break inside a list of a day's incidents. */
+export const breakIncident = (minutes: number | null) =>
+  minutes ? `break exceeded by ${breakOver(minutes)}` : "break exceeded";
+/** Added after a count of exceeded breaks. */
+export const overInTotal = (minutes: number) =>
+  minutes ? `${breakOver(minutes)} over in total` : "";
+
+export const mtdMismatch = (count: number) =>
+  `MTD and daily rows disagree for ${count} agent(s): the paste may be missing rows`;
 
 export const behindPace = (count: number) =>
   `${plural(count, "agent")} behind coaching pace`;
@@ -160,12 +187,19 @@ export function shortDate(date: string) {
     timeZone: "UTC",
   }).format(new Date(date + "T00:00:00Z"));
 }
-export function weekdayDate(date: string) {
+/** "12 Jan 2025", for dates outside the cycle being shown. */
+export function fullDate(date: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(date + "T00:00:00Z"));
+}
+/** "Thu", shown above a date in a column heading. */
+export function weekdayName(date: string) {
   return new Intl.DateTimeFormat("en-GB", {
     weekday: "short",
-    day: "numeric",
     timeZone: "UTC",
-  })
-    .format(new Date(date + "T00:00:00Z"))
-    .replace(",", "");
+  }).format(new Date(date + "T00:00:00Z"));
 }

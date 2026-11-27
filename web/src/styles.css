@@ -302,10 +302,8 @@ p {
   color: var(--muted);
   line-height: 1.5;
 }
-.context-chip,
 .sync-badge,
-.group-tag,
-.number-chip {
+.group-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -314,11 +312,6 @@ p {
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
-}
-.context-chip {
-  border: 1px solid var(--border);
-  background: var(--panel);
-  color: var(--muted);
 }
 .sync-badge.good {
   background: var(--accent-bg);
@@ -332,32 +325,10 @@ p {
   background: var(--waiting-bg);
   color: var(--waiting);
 }
-.group-tag,
-.number-chip {
+.group-tag {
   background: var(--blue-bg);
   color: var(--blue);
 }
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-.stat {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 15px 16px;
-  min-width: 0;
-}
-.stat span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-weight: 610;
-  font-size: 12px;
-}
-.stat i,
 .pill-dot {
   width: 7px;
   height: 7px;
@@ -365,15 +336,6 @@ p {
   background: var(--tone, var(--status));
   display: inline-block;
   flex: none;
-}
-.stat strong {
-  display: block;
-  margin-top: 7px;
-  font-size: 30px;
-  line-height: 1.1;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.05em;
 }
 .panel {
   background: var(--panel);
@@ -395,11 +357,6 @@ p {
   font-weight: 720;
   letter-spacing: -0.012em;
 }
-.overview {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 16px;
-}
 .empty {
   color: var(--muted);
   padding: 16px 16px 24px;
@@ -411,74 +368,6 @@ p {
 .empty svg {
   flex: none;
   opacity: 0.75;
-}
-.action-list {
-  max-height: 276px;
-  overflow: auto;
-  border-top: 1px solid var(--border);
-}
-.action-row {
-  width: 100%;
-  text-align: left;
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 15px;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.action-row:last-child {
-  border: 0;
-}
-.action-row:hover {
-  background: var(--hover);
-}
-.action-row strong,
-.action-row small {
-  display: block;
-}
-.action-row small {
-  color: var(--muted);
-}
-.action-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  color: var(--waiting);
-  background: var(--waiting-bg);
-}
-.action-icon.info {
-  color: var(--blue);
-  background: var(--blue-bg);
-}
-.coverage {
-  display: grid;
-  gap: 13px;
-  padding: 4px 16px 18px;
-}
-.coverage > div {
-  display: grid;
-  grid-template-columns: 42px 1fr 24px;
-  gap: 12px;
-  align-items: center;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-.coverage div div {
-  height: 8px;
-  border-radius: 10px;
-  background: var(--hover);
-}
-.coverage i {
-  display: block;
-  height: 100%;
-  background: #1e9c7c;
-  border-radius: inherit;
-}
-.coverage strong {
-  text-align: right;
 }
 .table-scroll {
   overflow: auto;
@@ -626,8 +515,7 @@ button.secondary.active {
   color: var(--muted);
   font-size: 12px;
 }
-.button-row,
-.presets {
+.button-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -724,31 +612,10 @@ button.secondary.active {
 .spin {
   animation: spin 1s infinite linear;
 }
-.roster-cards,
 .source-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-}
-.compact-list {
-  max-height: 220px;
-  overflow: auto;
-  border-top: 1px solid var(--border);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.compact-list li {
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--border);
-}
-.compact-list li:last-child {
-  border-bottom: 0;
-}
-.compact-list small {
-  display: block;
-  color: var(--muted);
-  margin-top: 2px;
 }
 .chart {
   padding: 0 16px 16px;
@@ -939,8 +806,7 @@ summary {
     padding-left: 16px;
     padding-right: 16px;
   }
-  .source-cards,
-  .roster-cards {
+  .source-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -990,8 +856,6 @@ summary {
     padding: 16px 10px;
     gap: 14px;
   }
-  .overview,
-  .roster-cards,
   .source-cards {
     grid-template-columns: 1fr;
   }

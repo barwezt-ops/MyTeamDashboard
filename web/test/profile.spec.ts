@@ -44,7 +44,7 @@ test("agent profile: facts, documents, notes, follow-ups and dismissal", async (
     page
       .getByRole("dialog", { name: "Escalation draft" })
       .getByLabel("Text", { exact: true }),
-  ).toHaveValue(/Recorded incidents this cycle/);
+  ).toHaveValue(/What I've already done[\s\S]*What I need/);
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "New note" }).click();
@@ -84,7 +84,7 @@ test("agent profile opens in a drawer and reports unknown agents", async ({
   page,
 }) => {
   const clean = await openTeam(page);
-  await page.getByRole("button", { name: /^Coach Avery S\./ }).click();
+  await page.getByRole("button", { name: "Open Avery S." }).first().click();
   const drawer = page.getByRole("dialog", { name: "Agent profile" });
   await expect(
     drawer.getByRole("heading", { name: "Avery Stone" }),

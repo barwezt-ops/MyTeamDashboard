@@ -136,7 +136,9 @@ export function outcomeText(
     measure === "missing"
       ? `${say.duration(outcome.value)} missing`
       : measure === "breaks"
-        ? say.plural(outcome.value, "day") + " with an exceeded break"
+        ? say.plural(outcome.value, "day") +
+          " with an exceeded break" +
+          (outcome.minutes ? ` (${say.breakOver(outcome.minutes)} over)` : "")
         : say.plural(outcome.value, "lateness incident");
   const target =
     measure === "missing"
@@ -180,7 +182,9 @@ export function profileView(
               .filter((type) => own.absences[type])
               .map((type) => `${own.absences[type]} ${type}`)
               .join(" · ")
-          : "",
+          : key === "breaks"
+            ? say.overInTotal(agent.counts.breakMinutes)
+            : "",
     };
   });
   const mtd = agent.mtd as Record<string, unknown> | null;
@@ -264,6 +268,7 @@ export function profileView(
       previous: agent.priorQaAverage,
       evaluations: [...agent.qa].reverse().slice(0, 12),
     },
+    mprTemplate: data.settings.mprTemplate,
     earlierNotes: agent.notes,
     notes: agent.privateNotes.map((row) => ({
       id: row.id,

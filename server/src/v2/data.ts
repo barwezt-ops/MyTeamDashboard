@@ -7,6 +7,7 @@ import { plusDays } from "../parse/normalize.js";
 import {
   cycleInfo,
   datesBetween,
+  expectedCoachings,
   previousCycle,
   recentCycles,
   within,
@@ -184,6 +185,7 @@ export function dashboardData(
         sum(missing, "missing"),
       missingDays: missing.length,
       breakCount: current.filter((day) => day.breakExceeded).length,
+      breakMinutes: sum(current, "breakMinutes"),
       absences: current.filter((day) => day.status === "Absent").length,
       reportedDays: current.length,
     };
@@ -191,8 +193,11 @@ export function dashboardData(
     const coaching = coachingsFor(code);
     const followUps = followUpsFor(code);
     const done = coaching.filter((row) => within(row.date, cycle)).length;
-    const expected =
-      (settings.coachingTarget * cycle.elapsed) / cycle.totalDays;
+    const expected = expectedCoachings(
+      settings.coachingTarget,
+      cycle.elapsed,
+      cycle.totalDays,
+    );
     const notes = notesOf(db, "code=?", [code]);
     const due: DueFollowUp[] = [
       ...followUps
@@ -267,6 +272,10 @@ export function dashboardData(
       counts,
       calendar,
       next14: datesBetween(today, plusDays(today, 13)).map((date) => ({
+        date,
+        schedule: plan(date),
+      })),
+      upcoming: datesBetween(today, plusDays(today, 30)).map((date) => ({
         date,
         schedule: plan(date),
       })),

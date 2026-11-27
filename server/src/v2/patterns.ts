@@ -1,7 +1,8 @@
 // Factual patterns shown as LATER items. They report what was recorded and how
 // often, nothing else.
 import { plusDays, weekday, weekdays } from "../parse/normalize.js";
-import { isLate, isMissing, type DayFacts } from "./facts.js";
+import { isLate, isMissing, sum, type DayFacts } from "./facts.js";
+import { overInTotal } from "./templates.js";
 
 export type Pattern = { id: string; text: string; facts: string[] };
 
@@ -46,10 +47,13 @@ export function findPatterns(
       facts: afterOff.map((day) => day.date),
     });
   const streak = breakStreak(days);
+  const total = sum(streak, "breakMinutes");
   if (streak.length >= 2)
     patterns.push({
       id: "break-streak",
-      text: `Break exceeded ${streak.length} days running.`,
+      text: `Break exceeded ${streak.length} days running${
+        total ? `, ${overInTotal(total)}` : ""
+      }.`,
       facts: streak.map((day) => day.date),
     });
   return patterns;
