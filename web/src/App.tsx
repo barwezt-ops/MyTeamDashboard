@@ -27,6 +27,8 @@ import { Home } from "./views/Home";
 import { Attendance } from "./views/Attendance";
 import { Team } from "./views/Team";
 import { Coaching } from "./views/Coaching";
+import { Quality } from "./views/Quality";
+import { Queues } from "./views/Queues";
 import { Toast } from "./components/design";
 import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
@@ -270,14 +272,8 @@ function Dashboard({
                 <Route path="/team" element={<Team />} />
                 <Route path="/styleguide" element={<Styleguide />} />
                 <Route path="/coaching" element={<Coaching />} />
-                <Route
-                  path="/quality"
-                  element={<PendingScreen title="Quality" phase={7} />}
-                />
-                <Route
-                  path="/queues"
-                  element={<PendingScreen title="Queues" phase={7} />}
-                />
+                <Route path="/quality" element={<Quality />} />
+                <Route path="/queues" element={<Queues />} />
                 <Route
                   path="/reports"
                   element={<PendingScreen title="Reports" phase={8} />}
