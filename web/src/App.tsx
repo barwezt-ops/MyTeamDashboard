@@ -16,12 +16,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
-import {
-  navigation,
-  ShellHeader,
-  CommandPalette,
-  PendingScreen,
-} from "./components/Shell";
+import { navigation, ShellHeader, CommandPalette } from "./components/Shell";
 import { Styleguide } from "./views/Styleguide";
 import { Home } from "./views/Home";
 import { Attendance } from "./views/Attendance";
@@ -29,6 +24,7 @@ import { Team } from "./views/Team";
 import { Coaching } from "./views/Coaching";
 import { Quality } from "./views/Quality";
 import { Queues } from "./views/Queues";
+import { Reports } from "./views/Reports";
 import { Toast } from "./components/design";
 import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
@@ -274,13 +270,17 @@ function Dashboard({
                 <Route path="/coaching" element={<Coaching />} />
                 <Route path="/quality" element={<Quality />} />
                 <Route path="/queues" element={<Queues />} />
-                <Route
-                  path="/reports"
-                  element={<PendingScreen title="Reports" phase={8} />}
-                />
+                <Route path="/reports" element={<Reports />} />
                 <Route
                   path="/settings"
-                  element={<Settings status={status} logout={logout} />}
+                  element={
+                    <Settings
+                      status={status}
+                      logout={logout}
+                      dark={dark}
+                      toggle={toggle}
+                    />
+                  }
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

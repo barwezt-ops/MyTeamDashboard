@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import type { Job, SyncRun, SyncStatus } from "../../../server/src/api/dto";
 import { api, message } from "../api";
@@ -10,9 +11,11 @@ import {
   Empty,
   ErrorNotice,
   Loading,
-  PageHeader,
   Section,
 } from "../components/ui";
+import { SegmentedControl } from "../components/design";
+import { useHead } from "../v2/context";
+import { OwnerSettings } from "./OwnerSettings";
 
 function result(run: SyncRun | null | undefined) {
   if (run?.ok === true)
@@ -22,15 +25,38 @@ function result(run: SyncRun | null | undefined) {
     <span className="sync-badge waiting">{run ? "Running" : "No runs"}</span>
   );
 }
+type ReadConfig = {
+  statusMap?: Record<string, string>;
+  sources?: {
+    attendance?: { paste?: { startHour: number; endHour: number } };
+  };
+};
+
 export function Settings({
   status,
   logout,
+  dark,
+  toggle,
 }: {
   status: { data?: SyncStatus; error?: string; reload: () => void };
   logout: () => void;
+  dark: boolean;
+  toggle: () => void;
 }) {
   const [request, setRequest] = useState<Job | null>(null);
   const [error, setError] = useState("");
+  const { hash } = useLocation();
+  const loaded = !!status.data;
+  useEffect(() => {
+    if (!loaded || !hash) return;
+    // The forms above the target load first, so wait for them.
+    const timer = window.setTimeout(
+      () => document.querySelector(hash)?.scrollIntoView(),
+      400,
+    );
+    return () => window.clearTimeout(timer);
+  }, [hash, loaded]);
+  useHead("Settings", "Thresholds, sources and your layout, in one place.");
   if (status.error)
     return <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>;
   if (!status.data) return <Loading />;
@@ -60,14 +86,26 @@ export function Settings({
   }
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Check source health and manage synchronization."
-      >
-        <button className="secondary" onClick={logout}>
-          Sign out
-        </button>
-      </PageHeader>
+      <div className="toolbar">
+        <SegmentedControl
+          label="Theme"
+          value={dark ? "Dark" : "Light"}
+          options={["Light", "Dark"]}
+          onChange={(theme) => {
+            if ((theme === "Dark") !== dark) toggle();
+          }}
+        />
+        <span className="toolbar-end">
+          <button className="secondary small" onClick={logout}>
+            Sign out
+          </button>
+        </span>
+      </div>
+      <OwnerSettings
+        configHours={
+          (data.config as ReadConfig).sources?.attendance?.paste ?? null
+        }
+      />
       <Section
         title="Sync now"
         action={<span className="muted">Cairo time</span>}
@@ -184,6 +222,31 @@ export function Settings({
         ) : (
           <Empty>No sync jobs have run yet.</Empty>
         )}
+      </Section>
+      <Section
+        title="Status map"
+        action={
+          <span className="panel-note">Edit statusMap in the config file</span>
+        }
+      >
+        <DataTable label="Status map">
+          <thead>
+            <tr>
+              <th>Label in the sheet</th>
+              <th>Shown as</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries((data.config as ReadConfig).statusMap ?? {}).map(
+              ([label, shown]) => (
+                <tr key={label}>
+                  <td className="mono">{label}</td>
+                  <td>{shown}</td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </DataTable>
       </Section>
       <Section title="Source configuration">
         <details className="panel-body">

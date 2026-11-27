@@ -18,13 +18,8 @@ import {
 import { DataTable, Empty, Section } from "../components/ui";
 import { useHead, useShared, useView } from "../v2/context";
 import { copy } from "../v2/copy";
-import {
-  CopyTableButton,
-  LoadError,
-  Person,
-  Skeleton,
-  useCopy,
-} from "../v2/parts";
+import { LoadError, Person, Skeleton, useCopy } from "../v2/parts";
+import { copyEod } from "../v2/eod";
 
 const dayName = (date: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -307,6 +302,7 @@ function Queues({ view }: { view: HomeView }) {
 }
 
 function Exceptions({ view }: { view: HomeView }) {
+  const run = useCopy();
   const title =
     view.reportLabel === "yesterday"
       ? "Yesterday, in exceptions"
@@ -322,33 +318,14 @@ function Exceptions({ view }: { view: HomeView }) {
       number="04"
       className="home-panel home-exceptions"
       action={
-        view.exceptions.length ? (
-          <CopyTableButton
-            table={() => ({
-              headers: [
-                "Date",
-                "Agent",
-                "Queue",
-                "Status",
-                "Login",
-                "Late",
-                "Missing",
-                "Break",
-              ],
-              rows: view.exceptions.map((row) => [
-                view.reportDay,
-                row.name,
-                row.line ?? "",
-                row.status,
-                row.login ?? "",
-                row.late ?? "",
-                row.missing ?? "",
-                row.breakExceeded ? "Exceeded" : "",
-              ]),
-            })}
+        view.hasReport ? (
+          <button
+            type="button"
+            className="secondary small"
+            onClick={() => run(() => copyEod(view.reportDay), "Report copied.")}
           >
             Copy for EOD
-          </CopyTableButton>
+          </button>
         ) : undefined
       }
     >

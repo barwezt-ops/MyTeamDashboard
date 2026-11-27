@@ -125,6 +125,24 @@ Mapping needs your approval. Only agent code, evaluation date, score (%) and for
 
 A failure in either source is reported as a failed sync, after attendance and the discrepancy rules have already run.
 
+## Using the V2 screens
+
+| Screen     | What it answers                                                              |
+| ---------- | ---------------------------------------------------------------------------- |
+| Home       | Yesterday's results next to today's plan, and who needs you                  |
+| Attendance | Every agent and day of a cycle, with CSV export                              |
+| Team       | One row per agent, sortable, with saved views and changes against last cycle |
+| Coaching   | Pace, prep sheets, the coaching log, follow-ups, history and fairness counts |
+| Quality    | QA scores, once the QA sheet is mapped                                       |
+| Queues     | Today's board, two weeks of coverage, leave and line changes                 |
+| Reports    | End-of-day table, cycle summary, MPR prep and roster changes                 |
+
+**Settings** holds what you control in the app: thresholds (only a threshold you set can make something urgent), cycle start day, attendance read hours, staffing baselines per line, your report layout and the theme. These, with coaching entries, private notes, follow-ups, dismissals and line history, are included in backups. Sync never overwrites them.
+
+**Report layout.** Copy the header row and one sample row from your spreadsheet into **Settings → Report layout**, then replace the sample values with placeholders such as `{date}` and `{exception.name}`. A line with a `{row.…}` placeholder repeats for every agent; one with `{exception.…}` repeats for agents with an exception.
+
+When running from the installed checkout, use `npm run build:smoke` to check a build. `server/dist` there points into the installed release, so `npm run build` would overwrite the running app.
+
 ## Free VM deploy (optional, needs a card)
 
 ### 1. Create the project and budget
@@ -438,4 +456,4 @@ npm run test-link -- --paste-tabs
 npm run sync -- --job=attendance --dry-run --paste
 ```
 
-After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly all day by default (`paste.startHour: 0`, `paste.endHour: 24` in Cairo). A window such as 12 to 2 starts at noon and ends at 02:00 the next day, with the end hour excluded. A paste with fewer than half as many matched Attendance codes as the last successful paste fails before writing attendance or MTD data. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.
+After reviewing the dry run, set `access` to `google`, `layout` to `long`, `headerRows` to `1`, and `enabled` to `true`. Restart and use **Settings → Sync now → Attendance**. Automatic sync runs hourly all day by default (`paste.startHour: 0`, `paste.endHour: 24` in Cairo). A window such as 12 to 2 starts at noon and ends at 02:00 the next day, with the end hour excluded. Hours chosen in **Settings → Cycle and attendance reads** take the place of the config file's. A paste with fewer than half as many matched Attendance codes as the last successful paste fails before writing attendance or MTD data. The coaching cycle defaults to the 21st through the 20th and uses `coachingCycleStartDay`.
