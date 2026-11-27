@@ -135,11 +135,17 @@ A failure in either source is reported as a failed sync, after attendance and th
 | Coaching   | Pace, prep sheets, the coaching log, follow-ups, history and fairness counts |
 | Quality    | QA scores, once the QA sheet is mapped                                       |
 | Queues     | Today's board, two weeks of coverage, leave and line changes                 |
-| Reports    | End-of-day table, cycle summary, MPR prep and roster changes                 |
+| Reports    | End of day, attendance email, cycle summary, MPR prep and roster changes     |
 
-**Settings** holds what you control in the app: thresholds (only a threshold you set can make something urgent), cycle start day, attendance read hours, staffing baselines per line, your report layout and the theme. These, with coaching entries, private notes, follow-ups, dismissals and line history, are included in backups. Sync never overwrites them.
+**Settings** holds what you control in the app: thresholds (only a threshold you set can make something urgent), cycle start day, attendance read hours, staffing baselines per line, the report, email and MPR layouts, and the theme. These, with coaching entries, private notes, follow-ups, dismissals and line history, are included in backups. Sync never overwrites them. The status map is read-only there; labels seen for your team but not mapped are listed first.
 
-**Report layout.** Copy the header row and one sample row from your spreadsheet into **Settings → Report layout**, then replace the sample values with placeholders such as `{date}` and `{exception.name}`. A line with a `{row.…}` placeholder repeats for every agent; one with `{exception.…}` repeats for agents with an exception.
+**Report layout.** Copy the header row and one sample row from your spreadsheet into **Settings → Report layout**, then replace the sample values with placeholders such as `{date}` and `{exception.line}`. A line with a `{row.…}` placeholder repeats for every agent; one with `{exception.…}` repeats for agents with an exception. The end-of-day report never carries agent names: name placeholders read `Agent`, and counts such as `{team.late_agents}` read "1 Agent" or "3 Agents".
+
+**Attendance email.** Reports lists the day's missing time as Code, Name, Team Leader, Account, Date, Missing and a blank TL Comment, copied as a table that pastes formatted into Gmail. Set the account in **Settings → Attendance email**; the subject defaults to `Attendance | {account} | {D Month YYYY}`.
+
+**MPR layout.** Leave it empty for the default, or arrange your own with the listed placeholders. Private notes are included only when you tick them.
+
+**Coaching and recognition.** With a target of two per cycle, the first coaching falls due mid-cycle and the second on the last day. Perfect attendance ends with lateness, missing time, UPL (including forced UPL), casual, NCNS or AWOL, whole or half day; annual leave, sick, public holidays and days off are allowed.
 
 When running from the installed checkout, use `npm run build:smoke` to check a build. `server/dist` there points into the installed release, so `npm run build` would overwrite the running app.
 
