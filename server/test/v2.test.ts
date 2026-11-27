@@ -289,6 +289,27 @@ describe("flags", () => {
     );
   });
 
+  it("makes NCNS or AWOL urgent from the first day once set to one", () => {
+    seedV2Fixture(db);
+    saveSettings({ absentDays: 1 });
+    const absence = () =>
+      snapshot().flags.filter((flag) => flag.kind === "absence");
+    expect(absence()).toEqual([]);
+    for (const raw of ["NCNS", "AWOL"]) {
+      db.prepare(
+        "UPDATE attendance_days SET raw=?,status='Absent' WHERE code='99002'",
+      ).run(raw);
+      expect(absence()).toMatchObject([
+        {
+          severity: "URGENT",
+          action: "Coach",
+          reason: "1 NCNS/AWOL day this cycle",
+          clause: "has 1 NCNS/AWOL day this cycle",
+        },
+      ]);
+    }
+  });
+
   it("applies each threshold once the owner sets it", () => {
     seedV2Fixture(db);
     db.prepare(
