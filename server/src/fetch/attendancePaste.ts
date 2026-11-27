@@ -70,6 +70,10 @@ const mtdCounts = new Set([
   ),
 ]);
 const headerRow = (tab: PasteTab) => (tab === "MTD" ? 4 : 1);
+export const pasteColumn = (tab: PasteTab, field: string) =>
+  field.startsWith("count:")
+    ? field.slice(6)
+    : ((fields[tab] as Record<string, string>)[field] ?? field);
 const qualified = (tab: PasteTab, range: string) => "'" + tab + "'!" + range;
 
 function mapColumns(tab: PasteTab, headers: Cell[], reportOnly: boolean) {
@@ -182,7 +186,19 @@ export async function readAttendancePasteTabs(
         }
       }
     }
-    return { tab, headers, selected: mapColumns(tab, headers, reportOnly) };
+    const emptyMtd =
+      tab === "MTD" &&
+      !headers.some((value) => String(value ?? "").trim()) &&
+      !headerData[tabs.length]
+        .flat()
+        .some((value) => String(value ?? "").trim());
+    return {
+      tab,
+      headers,
+      selected: emptyMtd
+        ? new Map<string, number>()
+        : mapColumns(tab, headers, reportOnly),
+    };
   });
   const ranges = plans.flatMap((plan, tabIndex) => {
     const sorted = [...plan.selected].sort((a, b) => a[1] - b[1]);
@@ -195,18 +211,20 @@ export async function readAttendancePasteTabs(
     }
     return groups;
   });
-  const raw = await batch(
-    ranges.map(({ tabIndex, columns }) => {
-      const tab = plans[tabIndex].tab;
-      return qualified(
-        tab,
-        columnAt(columns[0][1]) +
-          (headerRow(tab) + 1) +
-          ":" +
-          columnAt(columns.at(-1)![1]),
-      );
-    }),
-  );
+  const raw = ranges.length
+    ? await batch(
+        ranges.map(({ tabIndex, columns }) => {
+          const tab = plans[tabIndex].tab;
+          return qualified(
+            tab,
+            columnAt(columns[0][1]) +
+              (headerRow(tab) + 1) +
+              ":" +
+              columnAt(columns.at(-1)![1]),
+          );
+        }),
+      )
+    : [];
   const rows = plans.map(() => [] as PasteRow[]);
   for (const [i, { tabIndex, columns }] of ranges.entries()) {
     for (const [offset, values] of raw[i].entries()) {

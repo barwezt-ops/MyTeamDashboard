@@ -4,6 +4,8 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **Owner-authorized attendance follow-up B:** branch `fix/optional-mtd-paste-errors` starts from main, separate from PR #29. Empty MTD is valid; formula errors are sanitized and listed in Settings. The line/queue tab passed headers/row-count-only inspection and was enabled in ignored private config. Source IDs and row data were not published.
+- **Authorized sequence:** after green CI, merge #28, this B PR, then #29; deploy with `deploy/windows/update.cmd`, run All and verify live aggregates. The owner explicitly made this scoped exception to the no-self-merge rule. Test workers are serial, including CI via package scripts.
 - **V2 status:** plan-v2 Phases 1–8 are built on stacked branches with one open PR each, none merged: #20 design system (approved), #21 data layer, #22 Home, #23 grid and Team, #24 agent profile, #25 Coaching, #26 Quality and Queues, #27 Reports, Settings and polish. Merge in that order; after each merge, point the next PR at `main`.
 - **Branches:** `v2-phase-1-design-system` → `-2-data` → `-3-home` → `-4-grid` → `-5-profile` → `-6-coaching` → `-7-quality-queues` → `-8-reports-settings` (all prefixed `v2-phase`).
 - **Review follow-up:** the owner reviewed PRs #21–#27 and approved them with 15 fixes and decisions (plan-v2 section 8). All are done as follow-up commits on `v2-phase-8-reports-settings` (PR #27), waiting for review. The earlier branches are unchanged, so merge the whole stack before using any one phase.
@@ -16,6 +18,7 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - **Next task:** the owner reviews the follow-up, merges the V2 PRs, updates the installed app, runs an attendance sync (which fills in break minutes for the pasted days), sets the account, report layout, thresholds and staffing in Settings, connects the line/queue tab, and sends the QA link.
 
 ## 2. Features
+- **Optional MTD and cell diagnostics:** blank MTD headers/data do not block Attendance. Per-cycle MTD availability is saved with paste diagnostics; freshness and Settings say `MTD for this cycle not pasted yet`. MTD comparisons and the MTD shout-out gate are skipped when unavailable, while daily facts still count. Code/Date formula errors refuse only their row; other error cells become blank, with local code/date/column/error warnings. A tab fails above 20% affected relevant rows. Existing days survive refused rows and failed pastes.
 - **V2 review follow-up (2026-11-27):** whole-coaching pace; the perfect-attendance rule; break minutes everywhere; the MTD-against-daily warning (freshness line and Settings, by name); every Team View column in Team; a nameless end-of-day report; the attendance email table and subject; escalation headings, documentation order and an MPR layout in Settings; read-only status map with unmapped labels (`v2/statusMap.ts`, `GET /v2/status-map`); one date format; Attendance → Trends replacing the Trends screen (`views/AttendanceTrends.tsx`); Home exceptions and shout-out layout (`web/test/layout.spec.ts`).
 - **V2 Phase 8:** Reports (end of day in the owner's layout, cycle summary, MPR prep, roster changes, all copy and CSV), Settings (thresholds marked set or not set, cycle and attendance read hours, staffing baselines, report layout, theme, status map), Ctrl K “Copy EOD”, custom form controls and a quality-bar browser test (`v2/reports.ts`, `v2/template.ts`, `views/Reports.tsx`, `views/OwnerSettings.tsx`). `GET /v2/reports?cycle&date`.
 - **V2 Phase 7:** Quality (latest, cycle and previous average, recent scores, last evaluation, distribution, sorting, owner-set overdue mark, prep links) and Queues (today's board, 14-day coverage against owner baselines, 31-day leave list, line changes). `GET /v2/quality`, `GET /v2/queues`.
@@ -69,6 +72,8 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
+- 2026-11-27 follow-up B: the owner pastes new-cycle Attendance before MTD exists. Empty MTD is explicitly valid; never borrow old-cycle totals. Persist latest paste availability and cell diagnostics in an additive `attendance_paste_state.diagnostics` column, preserve source snapshots, and use daily counts without MTD until supplied. Standard formula-error tokens are safe diagnostics; free cell text is never logged. Row error rate counts rows, not cells, and includes unreadable-code rows alongside relevant team rows.
+- 2026-11-27 follow-up B: the owner authorized enabling the existing queue source after headers-only test-link, then merging #28/B/#29 on green CI and deploying. The queue headers matched the expected Code/Name/Account/Line and seven weekday columns; no patient/caller header was detected. Private configuration stays ignored.
 - 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
 - 2026-11-26: Bundle Fontsource fonts; use muted small labels and darker warning tag text for contrast while keeping the supplied decorative tokens. Native dialogs provide modal focus behavior.
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
@@ -187,6 +192,10 @@ _Last updated: 2026-11-27 for the V2 review follow-up on PR #27._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - Optional MTD and tolerant paste errors
+- Added empty-MTD reads, cycle-scoped availability, daily fallback without stale MTD reuse, aggregate sync warnings and a Settings cell-warning table. Added boundary, preservation, shout-out, API and browser tests; test scripts run serially by default.
+- Ran the configured queue test-link read-only, reported headers and row count, then enabled only the queue source in private config with a local ignored backup.
 
 ### 2026-11-27 - V2 review follow-up (new session)
 - Took over from the previous session with a clean tree at `03d10cc`.

@@ -53,6 +53,7 @@ it("reads only approved fields as serial values and stops before data reads on p
     AT: "Medical allowance",
   });
   const calls: string[][] = [];
+  let emptyMtd = false;
   const request: typeof fetch = async (input) => {
     const url = new URL(String(input));
     if (url.hostname === "oauth2.googleapis.com")
@@ -64,9 +65,11 @@ it("reads only approved fields as serial values and stops before data reads on p
     return Response.json({
       valueRanges: ranges.map((range) => {
         if (range === "'Attendance'!1:1") return { values: [attendance] };
-        if (range === "'MTD'!4:4") return { values: [mtd] };
+        if (range === "'MTD'!4:4") return { values: emptyMtd ? [] : [mtd] };
         if (range === "'MTD'!D1:E3")
-          return { values: [["Total Missing Hours", "Total OT Hours"]] };
+          return {
+            values: emptyMtd ? [] : [["Total Missing Hours", "Total OT Hours"]],
+          };
         if (range === "'Team View'!1:1") return { values: [["Code"]] };
         const [, start, end] = /!([A-Z]+)\d+:([A-Z]+)$/.exec(range)!;
         const row = [];
@@ -118,6 +121,19 @@ it("reads only approved fields as serial values and stops before data reads on p
       "'MTD'!B5:B",
       "'Team View'!A2:A",
     ]);
+    emptyMtd = true;
+    const optional = await readAttendancePasteTabs(
+      "FakePaste",
+      directory,
+      ["Attendance", "MTD"],
+      false,
+      request,
+    );
+    expect(optional.map((tab) => tab.rows.length)).toEqual([1, 0]);
+    expect(calls.at(-1)?.some((range) => range.startsWith("'MTD'!"))).toBe(
+      false,
+    );
+    emptyMtd = false;
     attendance[indexOf("AX")] = "Patient record";
     const before = calls.length;
     await expect(
@@ -199,7 +215,7 @@ it("replaces only pasted code/date pairs, keeps daily MTD snapshots and detects 
     );
     expect(() =>
       prepareAttendancePaste(rows, [{ code, ot: "#REF!" }], config, agents),
-    ).toThrow("calculation errors");
+    ).toThrow("more than 20%");
     expect(
       db
         .prepare("SELECT raw FROM attendance_days WHERE code=? ORDER BY date")
