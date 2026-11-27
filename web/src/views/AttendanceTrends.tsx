@@ -14,6 +14,7 @@ import {
 import {
   statuses,
   trendStatuses,
+  type Status,
   type TrendStatus,
   type TrendsData,
 } from "../../../server/src/api/dto";
@@ -25,7 +26,6 @@ import { shortDate } from "../../../server/src/v2/templates";
 import { query } from "../api";
 import { SegmentedControl } from "../components/design";
 import { DataTable, Empty, ErrorNotice, Section } from "../components/ui";
-import { statusColors } from "../theme";
 import { useView } from "../v2/context";
 import { Person, Skeleton } from "../v2/parts";
 
@@ -37,7 +37,38 @@ const presets: [TrendPeriod, string][] = [
 ];
 type Sort = "name" | "discrepancies" | TrendStatus;
 
-export default function AttendanceTrends({ today }: { today: string }) {
+// Stacked bars sit against each other, so every status needs its own shade.
+const fills: Record<Status, string> = {
+  Present: "#2A7350",
+  Scheduled: "#9CC7AC",
+  "Off Day": "#D5CCBB",
+  PTO: "#8AA6D1",
+  Sick: "#2B4C7E",
+  UPL: "#C4701F",
+  Casual: "#EBB98A",
+  Absent: "#9C3527",
+  "On Hold": "#8A7E6C",
+  "Not Hired": "#6B6153",
+  Inactive: "#4F473C",
+  "1st Half Annual": "#B7C9E6",
+  "2nd Half Annual": "#6C89B8",
+  "1st Half Forced Annual": "#D3DFF2",
+  "2nd Half Forced Annual": "#4F6C9C",
+  "1st Half UPL": "#E0923F",
+  "2nd Half UPL": "#A55A17",
+  "1st Half Forced UPL": "#7E430F",
+  "2nd Half Forced UPL": "#5E320B",
+  Unknown: "#6B3F7A",
+};
+
+export default function AttendanceTrends({
+  today,
+  names,
+}: {
+  today: string;
+  /** Short names by code, as the grid shows them. */
+  names: Record<string, string>;
+}) {
   const [period, setPeriod] = useState<TrendPeriod>("30");
   const [sort, setSort] = useState<{ field: Sort; direction: number }>({
     field: "name",
@@ -168,7 +199,7 @@ export default function AttendanceTrends({ today }: { today: string }) {
                         key={status}
                         dataKey={status}
                         stackId="status"
-                        fill={statusColors[status]}
+                        fill={fills[status]}
                       />
                     ))}
                   </BarChart>
@@ -194,7 +225,7 @@ export default function AttendanceTrends({ today }: { today: string }) {
                     <tr key={row.code}>
                       <td className="nowrap">
                         <Person
-                          name={row.firstName || row.code}
+                          name={names[row.code] || row.firstName || row.code}
                           code={row.code}
                         />{" "}
                         <span className="quiet mono">{row.code}</span>

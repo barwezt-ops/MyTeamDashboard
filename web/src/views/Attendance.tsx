@@ -357,7 +357,12 @@ export function Attendance() {
         <Suspense
           fallback={<Skeleton className="screen-size" label="trends" />}
         >
-          <Trends today={view.today} />
+          <Trends
+            today={view.today}
+            names={Object.fromEntries(
+              view.rows.map((row) => [row.code, row.name]),
+            )}
+          />
         </Suspense>
       </>
     );

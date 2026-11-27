@@ -41,7 +41,16 @@ const lines = (text: string): Table => ({
   rows: text.split("\n").map((line) => [line]),
 });
 
-function ReportTable({ table, label }: { table: Table; label: string }) {
+function ReportTable({
+  table,
+  label,
+  blank = "—",
+}: {
+  table: Table;
+  label: string;
+  /** What an empty cell shows on screen. */
+  blank?: string;
+}) {
   return (
     <DataTable label={label}>
       <thead>
@@ -56,7 +65,7 @@ function ReportTable({ table, label }: { table: Table; label: string }) {
           <tr key={i}>
             {row.map((value, j) => (
               <td key={j} className="nowrap">
-                {value || "—"}
+                {value || blank}
               </td>
             ))}
           </tr>
@@ -141,7 +150,7 @@ function Email({ email }: { email: ReportsData["email"] }) {
         )}
       </div>
       {table.rows.length ? (
-        <ReportTable table={table} label="Attendance email table" />
+        <ReportTable table={table} label="Attendance email table" blank="" />
       ) : (
         <Empty>No missing time recorded on {shortDate(date)}.</Empty>
       )}
