@@ -64,7 +64,7 @@ export function ShellHeader({
             <Search size={14} />
             Find an agent<kbd>Ctrl K</kbd>
           </button>
-          <Link className="primary" to="/coaching">
+          <Link className="primary" to="/coaching?view=log">
             Log coaching
           </Link>
         </div>
@@ -100,7 +100,7 @@ export function CommandPalette({
     { to: "/roster", label: "Roster changes" },
     { to: "/discrepancies", label: "Review discrepancies" },
     { to: "/trends", label: "Trends" },
-    { to: "/coaching", label: "Log coaching" },
+    { to: "/coaching?view=log", label: "Log coaching" },
     { to: "/reports", label: "Copy EOD" },
   ].filter((item) => matches(item.label));
   const people =

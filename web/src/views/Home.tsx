@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import type { HomeView } from "../../../server/src/v2/home";
 import { duration, shortDate } from "../../../server/src/v2/templates";
@@ -113,8 +113,17 @@ function FirstRow({ view }: { view: HomeView }) {
   );
 }
 
+/** Where a flag's button leads. */
+const actionPath = (flag: HomeView["needs"][number]) =>
+  flag.action === "Coach"
+    ? `/coaching?view=prep&agent=${encodeURIComponent(flag.code)}`
+    : flag.action === "Review" && flag.kind.includes("followup")
+      ? "/coaching?view=followups"
+      : "";
+
 function NeedsYou({ view }: { view: HomeView }) {
   const { openAgent } = useShared();
+  const navigate = useNavigate();
   const urgent = view.needs.filter((flag) => flag.severity === "URGENT");
   const open = view.needs.length + (view.paceSummary ? 1 : 0);
   const pace = view.paceSummary && (
@@ -158,7 +167,11 @@ function NeedsYou({ view }: { view: HomeView }) {
           flag.severity === "URGENT" ? "danger small" : "secondary small"
         }
         aria-label={`${flag.action} ${flag.name}: ${flag.reason}`}
-        onClick={() => openAgent(flag.code)}
+        onClick={() => {
+          const path = actionPath(flag);
+          if (path) navigate(path);
+          else openAgent(flag.code);
+        }}
       >
         {flag.action}
       </button>

@@ -1048,3 +1048,188 @@ table[aria-label="Team"] thead th:first-child {
 .drawer .profile {
   padding-top: 28px;
 }
+
+/* Coaching hub */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.tabs a {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.tabs a[aria-current="page"] {
+  background: var(--surface);
+  color: var(--text);
+}
+.coaching-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px 40px;
+  padding: 24px;
+}
+.big-ring .progress-ring {
+  width: 180px;
+  height: 180px;
+}
+.big-ring .progress-ring strong {
+  font-size: 44px;
+}
+.coaching-overview dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 0;
+}
+.coaching-overview dt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.coaching-overview dd {
+  margin: 4px 0 0;
+  font:
+    500 36px/1 "Fraunces",
+    serif;
+}
+.coaching-overview > p {
+  flex: 1 1 240px;
+  margin: 0;
+}
+.agent-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+}
+.agent-cards li {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.agent-cards small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.coaching-bars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.coaching-bars i {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+}
+.coaching-bars i.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.coaching-bars span {
+  font:
+    400 11px "Geist Mono",
+    monospace;
+  margin-left: 4px;
+}
+.prep {
+  display: grid;
+  gap: 16px;
+}
+.prep-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+.prep-facts article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+.prep-facts h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.prep-facts p {
+  margin: 0;
+}
+.prep-facts ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.log-form {
+  padding: 0 18px 18px;
+  max-width: 860px;
+}
+.form-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.log-form fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 4px 12px 8px;
+  min-width: 0;
+}
+.log-form legend {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 0 4px;
+}
+.log-form fieldset.evidence {
+  flex-direction: column;
+  max-height: 220px;
+  overflow: auto;
+}
+.log-form fieldset.evidence label.check {
+  min-height: 28px;
+}
+.panel-intro {
+  margin: 0;
+  padding: 0 18px 12px;
+  color: var(--muted);
+}
+td.count-bar {
+  width: 30%;
+  min-width: 100px;
+}
+td.count-bar i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+tfoot th,
+tfoot td {
+  font-weight: 600;
+  border-top: 1px solid var(--line);
+}

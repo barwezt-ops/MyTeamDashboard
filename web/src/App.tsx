@@ -26,6 +26,7 @@ import { Styleguide } from "./views/Styleguide";
 import { Home } from "./views/Home";
 import { Attendance } from "./views/Attendance";
 import { Team } from "./views/Team";
+import { Coaching } from "./views/Coaching";
 import { Toast } from "./components/design";
 import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
@@ -268,10 +269,7 @@ function Dashboard({
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/team" element={<Team />} />
                 <Route path="/styleguide" element={<Styleguide />} />
-                <Route
-                  path="/coaching"
-                  element={<PendingScreen title="Coaching" phase={6} />}
-                />
+                <Route path="/coaching" element={<Coaching />} />
                 <Route
                   path="/quality"
                   element={<PendingScreen title="Quality" phase={7} />}
