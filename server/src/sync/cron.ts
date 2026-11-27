@@ -11,6 +11,7 @@ import type { Config } from "../config.js";
 import { lastDailyStart, lastRun, lastSuccess } from "../db/repo.js";
 import { localDate } from "../parse/normalize.js";
 import type { SyncService } from "./service.js";
+import { readSettings } from "../v2/settings.js";
 export function startCron(config: Config, sync: SyncService) {
   const options = { timezone: config.timezone };
   return [
@@ -140,10 +141,14 @@ export function startLiveJobs(
         }).format(time),
       );
       const last = lastRun(db, "attendance");
+      // Hours chosen in Settings take the place of the config file's.
+      const chosen = readSettings(db).attendanceHours;
+      const start = chosen?.start ?? paste.startHour;
+      const end = chosen?.end ?? paste.endHour;
       const withinHours =
-        paste.startHour < paste.endHour
-          ? hourInCairo >= paste.startHour && hourInCairo < paste.endHour
-          : hourInCairo >= paste.startHour || hourInCairo < paste.endHour;
+        start < end
+          ? hourInCairo >= start && hourInCairo < end
+          : hourInCairo >= start || hourInCairo < end;
       if (withinHours && (!last || Date.parse(last.startedAt) < slot))
         return sync.start("attendance");
     }

@@ -2,10 +2,16 @@
 // SOON covers due follow-ups and coaching pace. LATER is information.
 import { createHash } from "node:crypto";
 import { plusDays } from "../parse/normalize.js";
-import { isLate, isMissing, type DayFacts } from "./facts.js";
+import { isLate, isMissing, sum, type DayFacts } from "./facts.js";
 import { breakStreak, type Pattern } from "./patterns.js";
 import type { V2Settings } from "./settings.js";
-import { duration, plural, shortDate, spokenMinutes } from "./templates.js";
+import {
+  duration,
+  overInTotal,
+  plural,
+  shortDate,
+  spokenMinutes,
+} from "./templates.js";
 
 export const severities = ["URGENT", "SOON", "LATER"] as const;
 export type Severity = (typeof severities)[number];
@@ -166,7 +172,12 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       "URGENT",
       "Coach",
       `Break exceeded ${streak.length} days running`,
-      `Flag at ${settings.breakConsecutive}`,
+      [
+        `Flag at ${settings.breakConsecutive}`,
+        overInTotal(sum(streak, "breakMinutes")),
+      ]
+        .filter(Boolean)
+        .join(" · "),
       streak.map((day) => day.date),
       `exceeded breaks ${streak.length} days running`,
     );
@@ -223,9 +234,10 @@ export function candidateFlags(input: FlagInput): Candidate[] {
       "SOON",
       "Coach",
       `${done} of ${target} coachings this cycle`,
-      `Expected by today: ${expected.toFixed(1)}`,
-      // A new fact only when another whole coaching falls behind.
-      numbered("behind", Math.ceil(expected - done)),
+      `Expected by today: ${expected}`,
+      // One fact per coaching that is due and not done, so a dismissed item
+      // returns when the next coaching falls due.
+      Array.from({ length: expected - done }, (_, i) => `due#${done + i + 1}`),
     );
   for (const pattern of input.patterns)
     add(

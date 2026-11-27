@@ -77,7 +77,13 @@ export function Backups() {
         {file && preview && (
           <div>
             <p>
-              Backup created {new Date(preview.createdAt).toLocaleString()}.
+              Backup created{" "}
+              {new Intl.DateTimeFormat("en-GB", {
+                timeZone: "Africa/Cairo",
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(preview.createdAt))}
+              .
             </p>
             <p>
               Confirming replaces notes and roster history and reapplies the

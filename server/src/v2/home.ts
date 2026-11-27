@@ -1,8 +1,15 @@
 // The Home screen: yesterday's results next to today's plan.
 import { plusDays } from "../parse/normalize.js";
-import { datesBetween } from "./cycle.js";
+import { datesBetween, firstCoachingDue } from "./cycle.js";
 import type { DashboardData, V2Agent } from "./data.js";
-import { isLate, isMissing, isUnplanned, sum, type DayFacts } from "./facts.js";
+import {
+  breaksPerfectAttendance,
+  isLate,
+  isMissing,
+  isUnplanned,
+  sum,
+  type DayFacts,
+} from "./facts.js";
 import { heatStatus } from "./heat.js";
 import { planFor, queuesFor, working } from "./queues.js";
 import * as say from "./templates.js";
@@ -24,6 +31,7 @@ export function coachingTotals(data: DashboardData) {
     total: target * active.length,
     due: target * active.length - done,
     expected: active.reduce((s, agent) => s + agent.coachingExpected, 0),
+    firstDue: firstCoachingDue(target, data.cycle),
     behind: active.filter(
       (a) => a.coachingDone < target && a.coachingDone < a.coachingExpected,
     ).length,
@@ -81,7 +89,7 @@ export function exceptionRows(data: DashboardData, date: string) {
       login: say.clockTime(facts.login),
       late: facts.late ? say.duration(facts.late) : null,
       missing: facts.missing ? say.duration(facts.missing) : null,
-      breakExceeded: facts.breakExceeded,
+      break: facts.breakExceeded ? say.breakOver(facts.breakMinutes) : null,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -96,7 +104,7 @@ export function homeView(data: DashboardData) {
     data.agents.map((agent) => [agent.code, say.shortName(agent)]),
   );
   const day = reportDay(data);
-  const reportLabel = day === yesterday ? "yesterday" : say.weekdayDate(day);
+  const reportLabel = day === yesterday ? "yesterday" : say.shortDate(day);
   const recorded = recordedDays(data);
   const on = (date: string) => recorded.get(date) ?? [];
   const facts = (date: string) => on(date).map((row) => row.facts);
@@ -193,7 +201,13 @@ export function homeView(data: DashboardData) {
       () => say.plural(missingAgents, "agent"),
       "bad",
     ),
-    tile("breaks", "Break exceeds", String, (note) => note, "warn"),
+    tile(
+      "breaks",
+      "Break exceeds",
+      String,
+      (note) => say.overInTotal(sum(facts(day), "breakMinutes")) || note,
+      "warn",
+    ),
     {
       key: "qa" as const,
       label: "QA average",
@@ -316,10 +330,13 @@ export function homeView(data: DashboardData) {
     const rows = agent.calendar.flatMap((row) =>
       row.attendance && row.date < today ? [row.attendance] : [],
     );
+    const { counts } = agent;
     return (
       agent.active &&
       rows.some((row) => row.status === "Present") &&
-      !rows.some((row) => isLate(row) || isMissing(row) || isUnplanned(row))
+      !rows.some(breaksPerfectAttendance) &&
+      // WFM's own totals also count, in case a daily row has not been pasted.
+      !(counts.lateCount || counts.lateMinutes || counts.missingMinutes)
     );
   });
   const cycleThrough = dates.filter((date) => date >= cycle.from).at(-1);
