@@ -8,6 +8,8 @@ export type Outcome = {
   /** Lateness incidents, missing minutes or exceeded-break days. */
   value: number;
   target: number;
+  /** Minutes over, for the exceeded-break measure when reported. */
+  minutes?: number;
 };
 
 export function stepOutcome(
@@ -36,5 +38,11 @@ export function stepOutcome(
         : window.length
           ? "kept"
           : "no data";
-  return { result, value, target: coaching.target };
+  const over = coaching.measure === "breaks" ? sum(window, "breakMinutes") : 0;
+  return {
+    result,
+    value,
+    target: coaching.target,
+    ...(over ? { minutes: over } : {}),
+  };
 }

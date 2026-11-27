@@ -51,9 +51,32 @@ export function dayText(
       "Missing",
       facts.missing === null ? "Not reported" : say.duration(facts.missing),
     ],
-    ["Break", facts.breakExceeded ? "Exceeded" : "Not exceeded"],
+    [
+      "Break",
+      !facts.breakExceeded
+        ? "Not exceeded"
+        : facts.breakMinutes
+          ? `${say.breakOver(facts.breakMinutes)} over`
+          : "Exceeded",
+    ],
   ];
 }
+
+export function gridCells(agent: V2Agent, today: string) {
+  return agent.calendar.map((day) => ({
+    date: day.date,
+    status: heatStatus(day.attendance, day.schedule?.status ?? null),
+    // Planned days that have not been reported are drawn as outlines.
+    planned: !day.attendance && day.date >= today,
+    late: day.attendance?.late || null,
+    missing: day.attendance?.missing || null,
+    breakExceeded: day.attendance?.breakExceeded ?? false,
+    breakMinutes: day.attendance?.breakMinutes ?? null,
+    absence: day.attendance?.absence ?? null,
+    details: dayText(day, today),
+  }));
+}
+export type GridCell = ReturnType<typeof gridCells>[number];
 
 export function gridView(data: DashboardData) {
   const { today, cycle } = data;
@@ -71,20 +94,13 @@ export function gridView(data: DashboardData) {
         name: say.shortName(agent),
         line: agent.line ?? noLine,
         flags: needsAttention(agent),
-        cells: agent.calendar.map((day) => ({
-          date: day.date,
-          status: heatStatus(day.attendance, day.schedule?.status ?? null),
-          // Planned days that have not been reported are drawn as outlines.
-          planned: !day.attendance && day.date >= today,
-          late: day.attendance?.late || null,
-          missing: day.attendance?.missing || null,
-          details: dayText(day, today),
-        })),
+        cells: gridCells(agent, today),
         totals: {
           lateCount: agent.counts.lateCount,
           lateMinutes: agent.counts.lateMinutes,
           missingMinutes: agent.counts.missingMinutes,
           breaks: agent.counts.breakCount,
+          breakMinutes: agent.counts.breakMinutes,
           ...absenceCounts(recorded),
         },
       };

@@ -129,6 +129,16 @@ export function lastSuccess(db: Db, job: string) {
   return row?.time ?? null;
 }
 
+/** Warnings of the latest successful run, which describes the stored data. */
+export function lastWarnings(db: Db, job: string): string[] {
+  const row = db
+    .prepare(
+      "SELECT warnings FROM sync_log WHERE job=? AND ok=1 ORDER BY id DESC LIMIT 1",
+    )
+    .get(job) as { warnings: string | null } | undefined;
+  return row?.warnings ? JSON.parse(row.warnings) : [];
+}
+
 export function lastDailyStart(db: Db) {
   const row = db
     .prepare(

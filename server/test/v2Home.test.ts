@@ -9,6 +9,11 @@ import { freshness } from "../../web/src/design.js";
 import { csv, tableHtml } from "../../web/src/v2/copy.js";
 import type { SyncStatus } from "../src/api/dto.js";
 import { seedTeam, teamConfig, TEAM_TODAY } from "../../fixtures/team.js";
+import {
+  fixtureConfig,
+  seedAgents,
+  seedAttendance,
+} from "../../fixtures/v2.js";
 
 const db = openDb(":memory:");
 seedTeam(db);
@@ -53,10 +58,25 @@ describe("Home", () => {
           ["URGENT", "SOON", "LATER"].indexOf(b),
       ),
     );
-    expect(view.paceSummary?.reason).toMatch(/agents behind coaching pace/);
-    expect(view.needs.some((row) => row.kind === "pace")).toBe(false);
     expect(counts(data)).toEqual({ urgent: 2, coachingDue: 23 });
-    expect(view.coaching).toMatchObject({ done: 9, total: 32, atZero: 9 });
+    // Day 6 of 30: nothing is due yet, so nobody is behind.
+    expect(view.paceSummary).toBeNull();
+    expect(view.needs.some((row) => row.kind === "pace")).toBe(false);
+    expect(view.coaching).toMatchObject({
+      done: 9,
+      total: 32,
+      atZero: 9,
+      expected: 0,
+      behind: 0,
+      firstDue: "2026-12-05",
+    });
+  });
+
+  it("puts agents behind pace from mid-cycle into one line", () => {
+    const middle = homeView(dashboardData(db, config, "2026-12-05"));
+    expect(middle.coaching).toMatchObject({ expected: 16, behind: 9 });
+    expect(middle.paceSummary?.reason).toBe("9 agents behind coaching pace");
+    expect(middle.needs.some((row) => row.kind === "pace")).toBe(false);
   });
 
   it("shows today's floor and a short line only against a baseline", () => {
@@ -108,7 +128,7 @@ describe("Home", () => {
   it("names the latest reported day when attendance is behind", () => {
     const later = homeView(dashboardData(db, config, "2026-11-28"));
     expect(later.reportDay).toBe("2026-11-25");
-    expect(later.kpis[0].label).toBe("Late Wed 25");
+    expect(later.kpis[0].label).toBe("Late 25 Nov");
     const empty = openDb(":memory:");
     const bare = homeView(dashboardData(empty, config, TEAM_TODAY));
     expect(bare.kpis[0]).toMatchObject({
@@ -119,6 +139,60 @@ describe("Home", () => {
     expect(bare.shoutout.text).toBe("");
     empty.close();
   });
+});
+
+it("applies the owner's perfect attendance rule", () => {
+  // Days off, annual leave, sick and public holidays are allowed.
+  const allowed = [
+    "Off",
+    "Annual",
+    "Sick",
+    "Public Holiday",
+    "Forced Annual",
+    "1st Half Annual",
+    "2nd Half Forced Annual",
+  ];
+  // Everything else on the owner's list ends it, whole or half day.
+  const ending = [
+    "UPL",
+    "Forced UPL",
+    "Casual",
+    "NCNS",
+    "AWOL",
+    "1st Half UPL",
+    "2nd Half Forced UPL",
+  ];
+  const own = openDb(":memory:");
+  try {
+    const statuses = [...allowed, ...ending];
+    const codes = statuses.map((_, i) => String(99201 + i));
+    seedAgents(
+      own,
+      codes.map((code) => [code, `Sample ${code}`]),
+    );
+    seedAttendance(
+      own,
+      codes.flatMap((code, i) => [
+        { code, date: "2026-11-23" },
+        { code, date: "2026-11-24", status: statuses[i] },
+      ]),
+      TEAM_TODAY,
+    );
+    const clean = () =>
+      homeView(
+        dashboardData(own, fixtureConfig(), TEAM_TODAY),
+      ).shoutout.people.map((p) => p.code);
+    expect(clean()).toEqual(codes.slice(0, allowed.length));
+    // WFM's own totals count even when the daily row shows nothing.
+    own
+      .prepare(
+        "UPDATE attendance_mtd_snapshots SET fields=json_set(fields,'$.latenessIncidents',1,'$.lateness','00:04:00') WHERE code=?",
+      )
+      .run(codes[0]);
+    expect(clean()).toEqual(codes.slice(1, allowed.length));
+  } finally {
+    own.close();
+  }
 });
 
 it("colours days with a text status and short names", () => {
@@ -153,7 +227,7 @@ it("describes source freshness in one line", () => {
   const now = Date.parse("2026-11-26T12:00:00Z");
   expect(freshness(status, now)).toEqual({
     tone: "good",
-    text: "Attendance & MTD through Wed 25 · QA synced 2h ago",
+    text: "Attendance & MTD through 25 Nov · QA synced 2h ago",
   });
   expect(
     freshness({ ...status, attendanceThrough: "2026-11-23" }, now).tone,
@@ -165,6 +239,17 @@ it("describes source freshness in one line", () => {
       jobs: { ...status.jobs, qa: { lastRun: { ok: false } } },
     } as unknown as SyncStatus,
     now,
+  );
+  const disagree = freshness(
+    {
+      ...status,
+      mtdMismatch: [{ code: "99101", name: "Avery Stone" }],
+    },
+    now,
+  );
+  expect(disagree.tone).toBe("waiting");
+  expect(disagree.text).toContain(
+    "MTD and daily rows disagree for 1 agent(s): the paste may be missing rows",
   );
   expect(failed.tone).toBe("bad");
   expect(failed.text).toContain("Last sync failed");

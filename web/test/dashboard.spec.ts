@@ -47,44 +47,33 @@ test("sign in, review views, add an agent note, and copy the email table", async
     page.getByRole("heading", { name: "Needs you", exact: true }),
   ).toBeVisible();
   await screenshot("home-empty-light");
-  await page.goto("/today");
-  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
-  await expect(page.getByRole("table", { name: "Agents" })).toBeVisible();
+  // The retired screens send you Home.
+  for (const path of ["/today", "/trends", "/roster"]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/$/);
+  }
+  await page.goto("/team");
+  const team = page.getByRole("table", { name: "Team" });
+  await expect(team.getByRole("row", { name: /Avery/ })).toBeVisible();
+  // Only the owner's team: covered agents stay out.
   await expect(
-    page
-      .locator(".stat")
-      .filter({ hasText: "Not on schedule" })
-      .locator("strong"),
-  ).toHaveText("0");
-  await expect(
-    page.locator(".stat").filter({ hasText: "Unknown" }).locator("strong"),
-  ).toHaveText("1");
-  await expect(
-    page.getByRole("row", { name: /Morgan|Casey|Taylor/ }),
+    team.getByRole("row", { name: /Morgan|Casey|Taylor/ }),
   ).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("row", { name: /Riley/ })
-      .getByText("Unknown", { exact: true }),
-  ).toBeVisible();
-  await screenshot("today-light");
-  await theme(false);
-  await screenshot("today-dark");
-  await theme(true);
-  await page
-    .getByRole("table", { name: "Agents" })
-    .getByRole("button", { name: "Avery" })
-    .click();
+  await screenshot("team-light");
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Find an agent or screen" });
+  for (const gone of ["Today list", "Trends", "Roster changes"])
+    await expect(
+      palette.getByRole("button", { name: gone, exact: true }),
+    ).toHaveCount(0);
+  await palette.getByRole("button", { name: /^Avery/ }).click();
   const agent = page.getByRole("dialog", { name: "Agent profile" });
   await expect(agent.getByText("Avery Sample")).toBeVisible();
   await agent.getByRole("button", { name: "Add note" }).click();
-  await agent.getByLabel("What happened").fill("Sample follow-up");
-  await agent
-    .getByLabel("What was said")
-    .fill("Synthetic note for smoke testing.");
-  await agent.getByLabel("Agreed next step").fill("Confirm next shift");
-  await agent.getByLabel("Follow-up date").fill("2026-11-21");
-  await agent.getByRole("button", { name: "Save note" }).click();
+  const note = page.getByRole("dialog", { name: "Add private note" });
+  await note.getByLabel("Note", { exact: true }).fill("Sample follow-up");
+  await note.getByLabel("Tags, separated by commas").fill("sample");
+  await note.getByRole("button", { name: "Save note" }).click();
   await expect(
     agent.getByText("Sample follow-up", { exact: true }),
   ).toBeVisible();
@@ -105,7 +94,7 @@ test("sign in, review views, add an agent note, and copy the email table", async
       await page.keyboard.press("Control+k");
       await page
         .getByRole("dialog")
-        .getByRole("button", { name: "Trends", exact: true })
+        .getByRole("button", { name: "Attendance trends" })
         .click();
     } else if (view === "Attendance") {
       await navigation.getByRole("link", { name: view, exact: true }).click();

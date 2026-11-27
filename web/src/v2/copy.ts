@@ -50,8 +50,6 @@ export async function copy(text: string, html?: string) {
     ]);
   else await navigator.clipboard.writeText(text);
 }
-export const copyTable = (table: Table) =>
-  copy(tableText(table), tableHtml(table));
 
 /** Cells that a spreadsheet could read as a formula are prefixed. */
 export function csv({ headers, rows }: Table) {

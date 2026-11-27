@@ -80,13 +80,13 @@ const events: Record<string, Record<string, Event>> = {
   "99102": {
     "21": { missing: 22 },
     "23": { missing: 18 },
-    "25": { missing: 32, breakExceeded: true },
+    "25": { missing: 32, breakExceeded: true, breakMinutes: 11 },
   },
   "99103": { "25": { late: 8, missing: 8 } },
   "99104": {
-    "23": { breakExceeded: true },
-    "24": { breakExceeded: true },
-    "25": { breakExceeded: true },
+    "23": { breakExceeded: true, breakMinutes: 4 },
+    "24": { breakExceeded: true, breakMinutes: 9 },
+    "25": { breakExceeded: true, breakMinutes: 76 },
   },
   "99106": { "22": { late: 12 } },
   "99110": { "24": { late: 5 }, "25": { late: 7, breakExceeded: true } },
@@ -387,6 +387,20 @@ export function seedTeam(db: Db) {
     "backup",
   ])
     run.run(job, TEAM_TODAY + "T10:00:00Z", TEAM_TODAY + "T10:00:00Z");
+}
+
+/** Empties every table of a fixture database and seeds the team again. */
+export function resetTeam(db: Db) {
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+    .pluck()
+    .all() as string[];
+  db.pragma("foreign_keys = OFF");
+  db.transaction(() => {
+    for (const table of tables) db.prepare(`DELETE FROM ${table}`).run();
+    seedTeam(db);
+  })();
+  db.pragma("foreign_keys = ON");
 }
 
 /** Source settings that make the fixture team look connected. */

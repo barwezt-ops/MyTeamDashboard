@@ -6,6 +6,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { openDb } from "../src/db/db.js";
 import { createApp } from "../src/index.js";
 import { createSync } from "../src/sync/service.js";
+import { mtdMismatchWarning } from "../src/api/dto.js";
 import type { DashboardData } from "../src/v2/data.js";
 import { fixtureConfig, seedAgents, seedV2Fixture } from "../../fixtures/v2.js";
 
@@ -188,4 +189,30 @@ it("merges partial settings and dismisses only the facts it was shown", async ()
   expect((await request("POST", "/flags/dismiss", dismissal)).status).toBe(204);
   expect((await data()).flags.map((row) => row.id)).not.toContain(flag.id);
   expect((await agent()).dismissals[0]).toMatchObject({ reason: "Discussed" });
+});
+
+it("names the team agents whose MTD and daily rows disagree", async () => {
+  const log = db.prepare(
+    "INSERT INTO sync_log(job,started_at,finished_at,ok,warnings) VALUES ('attendance',?,?,?,?)",
+  );
+  const run = (ok: number, warnings: string[]) =>
+    log.run(
+      "2026-11-20T10:00:00Z",
+      "2026-11-20T10:00:00Z",
+      ok,
+      JSON.stringify(warnings),
+    );
+  const status = async () =>
+    (await (
+      await fetch(base + "/sync/status", { headers: { Cookie: cookie } })
+    ).json()) as { mtdMismatch: unknown[] };
+  // Covered agents are left out of the owner's team view.
+  run(1, ["no change", mtdMismatchWarning + "99001,99003"]);
+  // A failed read leaves the data, and so the warning, as it was.
+  run(0, []);
+  expect((await status()).mtdMismatch).toEqual([
+    { code: "99001", name: "Avery Sample" },
+  ]);
+  run(1, []);
+  expect((await status()).mtdMismatch).toEqual([]);
 });

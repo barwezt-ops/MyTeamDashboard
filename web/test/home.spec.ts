@@ -18,7 +18,7 @@ test("Home answers the shift questions from real numbers", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByText("Attendance & MTD through Wed 25 · QA synced 2h ago"),
+    page.getByText("Attendance & MTD through 25 Nov · QA synced 2h ago"),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Home, 2 urgent" }),
@@ -48,26 +48,25 @@ test("Home answers the shift questions from real numbers", async ({
   await reviewScreen(page, info, "phase-3-home");
 
   await page.getByRole("button", { name: "Copy for EOD" }).click();
-  await expect(page.getByRole("status")).toContainText("Table copied.");
+  await expect(page.getByRole("status")).toContainText("Report copied.");
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied.split(/\r?\n/)[0]).toBe(
     "Date\tAgent\tQueue\tStatus\tLogin\tLate\tMissing\tBreak",
   );
-  expect(copied).toContain("2026-11-25\tAvery S.\tInbound A\tPresent");
+  expect(copied).toContain("25 Nov 2026\tAgent\tInbound A\tPresent");
+  expect(copied).not.toMatch(/Avery|Jordan/);
   await page.getByRole("button", { name: "Copy shout-out" }).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toContain("No lateness, missing time or unplanned absence");
+    .toContain("Perfect attendance from 21 Nov to 25 Nov.");
 
   await urgent.getByRole("button", { name: "Open both" }).click();
   await expect(
     page.getByRole("button", { name: /^Coach Avery S\./ }),
   ).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(
-    page.getByRole("dialog", { name: "Agent profile" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/coaching\?view=prep&agent=99101/);
+  await page.goto("/");
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await expectAccessible(page);
   clean();

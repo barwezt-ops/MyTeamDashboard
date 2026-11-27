@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import type { LinkReport } from "../../../server/src/fetch/checkLink";
 import type { SourceKey } from "../../../server/src/config";
 import { api, message } from "../api";
+import { fullDate } from "../../../server/src/v2/templates";
 import { DataTable, ErrorNotice, Section } from "../components/ui";
 
 export function CheckSheetLink() {
@@ -112,7 +113,11 @@ export function CheckSheetLink() {
             </div>
             <div>
               <dt>Sample date ({report.dateOrder})</dt>
-              <dd>{report.sampleDate ?? "Unavailable"}</dd>
+              <dd>
+                {report.sampleDate
+                  ? fullDate(report.sampleDate)
+                  : "Unavailable"}
+              </dd>
             </div>
           </dl>
           {!!report.mismatches.length && (

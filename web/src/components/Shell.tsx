@@ -14,9 +14,11 @@ import {
 import type { Agent, SyncStatus } from "../../../server/src/api/dto";
 import { useApi } from "../api";
 import { cairoHeader, freshness } from "../design";
-import { Empty, ErrorNotice, Loading, PageHeader, Section } from "./ui";
+import { Empty, ErrorNotice, Loading } from "./ui";
 import { Eyebrow, Modal, Summary } from "./design";
-import type { PageHead } from "../v2/context";
+import { useShared, type PageHead } from "../v2/context";
+import { copyEod } from "../v2/eod";
+import { message } from "../api";
 
 export const navigation = [
   { to: "/", label: "Home", Icon: Home },
@@ -64,7 +66,7 @@ export function ShellHeader({
             <Search size={14} />
             Find an agent<kbd>Ctrl K</kbd>
           </button>
-          <Link className="primary" to="/coaching">
+          <Link className="primary" to="/coaching?view=log">
             Log coaching
           </Link>
         </div>
@@ -91,17 +93,15 @@ export function CommandPalette({
   const [search, setSearch] = useState("");
   const agents = useApi<Omit<Agent, "fullName">[]>("/agents?scope=mine");
   const navigate = useNavigate();
+  const { notify } = useShared();
   const matches = (s: string) =>
     s.toLowerCase().includes(search.trim().toLowerCase());
   const screens = [
     ...navigation,
     { to: "/styleguide", label: "Styleguide" },
-    { to: "/today", label: "Today list" },
-    { to: "/roster", label: "Roster changes" },
+    { to: "/attendance?view=trends", label: "Attendance trends" },
     { to: "/discrepancies", label: "Review discrepancies" },
-    { to: "/trends", label: "Trends" },
-    { to: "/coaching", label: "Log coaching" },
-    { to: "/reports", label: "Copy EOD" },
+    { to: "/coaching?view=log", label: "Log coaching" },
   ].filter((item) => matches(item.label));
   const people =
     agents.data?.filter((agent) =>
@@ -128,6 +128,19 @@ export function CommandPalette({
             <span aria-hidden="true">↗</span>
           </button>
         ))}
+        {matches("Copy EOD") && (
+          <button
+            onClick={() => {
+              close();
+              void copyEod()
+                .then(() => notify("Report copied."))
+                .catch((error) => notify("Could not copy. " + message(error)));
+            }}
+          >
+            Copy EOD
+            <span aria-hidden="true">⧉</span>
+          </button>
+        )}
         <Eyebrow>Your team</Eyebrow>
         {agents.error ? (
           <ErrorNotice retry={agents.reload}>{agents.error}</ErrorNotice>
@@ -147,32 +160,11 @@ export function CommandPalette({
             </button>
           ))
         )}
-        {agents.data && !people.length && !screens.length && (
-          <Empty>No matching people or screens.</Empty>
-        )}
+        {agents.data &&
+          !people.length &&
+          !screens.length &&
+          !matches("Copy EOD") && <Empty>No matching people or screens.</Empty>}
       </div>
     </Modal>
-  );
-}
-export function PendingScreen({
-  title,
-  phase,
-}: {
-  title: string;
-  phase: number;
-}) {
-  return (
-    <>
-      <PageHeader
-        title={title}
-        description="Your team's operations, in one place."
-      />
-      <Section title={title}>
-        <Empty>
-          {title} arrives in Phase {phase}. The design system is ready for
-          review.
-        </Empty>
-      </Section>
-    </>
   );
 }

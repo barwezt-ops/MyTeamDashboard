@@ -19,6 +19,20 @@ import { counts, homeView } from "./home.js";
 import { gridView } from "./grid.js";
 import { teamView } from "./team.js";
 import { recentCycles } from "./cycle.js";
+import { profileView } from "./profile.js";
+import { coachingView, prepView } from "./coaching.js";
+import { qualityView } from "./quality.js";
+import {
+  attendanceEmail,
+  cycleSummary,
+  eodReport,
+  rosterReport,
+} from "./reports.js";
+import { statusMapView } from "./statusMap.js";
+import { reportDay } from "./home.js";
+import { shortName } from "./templates.js";
+import { boardView } from "./board.js";
+import { discrepanciesOf, eventsOf } from "../db/repo.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -78,6 +92,82 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
       const previous = dashboardData(db, config, today(), data.prior.from);
       res.json({ ...teamView(data, previous), cycles });
     }),
+  );
+  router.get(
+    "/agents/:code",
+    endpoint(
+      { params: z.strictObject({ code }), query: cycleQuery },
+      ({ params, query }, _req, res) => {
+        const { data, cycles } = forCycle(query.cycle);
+        const view = profileView(
+          data,
+          params.code,
+          discrepanciesOf(db, "d.code=?", [params.code]),
+        );
+        if (!view) return notFound(res, "Agent in your team");
+        res.json({ ...view, cycles });
+      },
+    ),
+  );
+  router.get(
+    "/coaching",
+    endpoint({}, (_input, _req, res) => res.json(coachingView(current()))),
+  );
+  router.get(
+    "/coaching/prep/:code",
+    endpoint(
+      { params: z.strictObject({ code }), query: cycleQuery },
+      ({ params, query }, _req, res) => {
+        const view = prepView(forCycle(query.cycle).data, params.code);
+        if (!view) return notFound(res, "Agent in your team");
+        res.json(view);
+      },
+    ),
+  );
+  router.get(
+    "/quality",
+    endpoint({}, (_input, _req, res) => res.json(qualityView(current()))),
+  );
+  router.get(
+    "/queues",
+    endpoint({}, (_input, _req, res) => res.json(boardView(current()))),
+  );
+  router.get(
+    "/reports",
+    endpoint(
+      {
+        query: z.strictObject({ cycle: day.optional(), date: day.optional() }),
+      },
+      ({ query }, _req, res) => {
+        const { data, cycles } = forCycle(query.date ?? query.cycle);
+        // The latest reported day inside the chosen cycle.
+        const latest = reportDay(data);
+        const date =
+          query.date ??
+          (latest < data.cycle.from
+            ? data.cycle.from
+            : latest > data.cycle.to
+              ? data.cycle.to
+              : latest);
+        res.json({
+          today: data.today,
+          cycle: { from: data.cycle.from, to: data.cycle.to },
+          cycles,
+          eod: eodReport(data, date),
+          email: attendanceEmail(data, date),
+          summary: cycleSummary(data),
+          roster: rosterReport(data, eventsOf(db, data.cycle.from)),
+          agents: data.agents
+            .filter((agent) => agent.active)
+            .map((agent) => ({ code: agent.code, name: shortName(agent) }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        });
+      },
+    ),
+  );
+  router.get(
+    "/status-map",
+    endpoint({}, (_input, _req, res) => res.json(statusMapView(db, config))),
   );
   router.get(
     "/settings",
