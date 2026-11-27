@@ -1,26 +1,20 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for V2 Phase 7 (Quality and Queues)._
+_Last updated: 2026-11-27 for V2 Phase 8 (all V2 phases built)._
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
-- **V2 Phase 7:** on `v2-phase-7-quality-queues`, stacked on Phase 6 (PR #25). Quality shows a placeholder until the QA source is mapped.
-- **V2 Phase 6:** on `v2-phase-6-coaching`, stacked on Phase 5 (PR #24). `/coaching?view=overview|prep|log|followups|history|fairness&agent=<code>`.
-- **V2 Phase 5:** on `v2-phase-5-profile`, stacked on Phase 4 (PR #23). The agent drawer and `/agent/:code` use the V2 profile.
-- **V2 Phase 4:** on `v2-phase-4-grid`, stacked on Phase 3 (PR #22). `/attendance` is the cycle grid, `/team` the Team table. The discrepancy queue stays at `/discrepancies` (linked from the grid) and the v1 roster view at `/roster`.
-- **V2 Phase 3 (Home):** on `v2-phase-3-home`, stacked on Phase 2 (PR #21). The v1 Today list moved to `/today` (command palette).
-- **V2 Phase 2 (data layer):** done on `v2-phase-2-data`, stacked on `v2-phase-1-design-system` (PR #20 approved, still open). This session took over from an interrupted agent: its uncommitted Phase 2 work was recovered, reviewed and finished, and nothing was discarded. Phases 3–8 follow on stacked branches.
-- **Tests on the Phase 7 branch:** 224 Vitest tests passed, one existing skip; 16 Playwright specs passed. Lint, typecheck and the isolated build pass.
-- **Installed app:** `server/dist` in this checkout is a junction into the live release. Never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
-- **V2 checkpoint:** Phase 1 design system and shell are implemented on `v2-phase-1-design-system`, open for review in PR #20. The owner approved the design with five fixes and authorized Phases 2?8 on stacked branches without merging. See `plan-v2.md` and `docs/design/phase-1-review.md`.
+- **V2 status:** plan-v2 Phases 1–8 are built on stacked branches with one open PR each, none merged: #20 design system (approved), #21 data layer, #22 Home, #23 grid and Team, #24 agent profile, #25 Coaching, #26 Quality and Queues, #27 Reports, Settings and polish. Merge in that order; after each merge, point the next PR at `main`.
+- **Branches:** `v2-phase-1-design-system` → `-2-data` → `-3-home` → `-4-grid` → `-5-profile` → `-6-coaching` → `-7-quality-queues` → `-8-reports-settings` (all prefixed `v2-phase`).
+- **Handover:** a session took over from an interrupted agent on 2026-11-26. Its unpushed Phase 2 work was recovered, reviewed and finished; nothing was discarded.
+- **Tests on the Phase 8 branch:** 228 Vitest tests passed, one existing skip; 20 Playwright specs passed. Lint, typecheck and the isolated build pass.
+- **Installed app:** still runs the pre-V2 release. `server/dist` in this checkout is a junction into it, so never run `npm run build` here; use `npm run build:smoke`. Run unit tests from PowerShell, not Git Bash (its `whoami.exe` breaks the Google token tests).
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
-- **Phase status:** plan.md Phases 0–5 done (PR #1). Post-plan workstreams B–F done (PRs #2–#6). **All merged to `main` on 2026-11-23.**
-- **Remaining for v1 (plan.md §18):** Phase 6 real attendance mapping (blocked on the attendance link). Windows local deployment support merged in PR #10.
-- **What works now (fixture mode and, once configured, live):** roster sync (weekly), schedule sync (daily), rules D5–D7, all dashboard views, notes, discrepancy comments/states, copy-as-email table, backups + restore, check-a-link, attendance dry run, password login.
-- **Windows setup checkpoint:** Node 20 x64 dependencies are installed and the private live config is in place with attendance disabled. Both source exports responded, all ten master headers match, and the dated schedule passed the anchor check. Installation is pending review and merge of the month-name date fix.
-- **Next task:** Pull the merged fix, rerun the master link check, then resume **Run on your Windows PC** at the installer. Verify health and run **Settings → Sync now → All**. Check the next daily sync and 02:00 Cairo backup after installation.
+- **v1 status:** plan.md Phases 0–5 and workstreams B–F are merged to `main`, as are Windows local deployment and the attendance paste sync.
+- **Next task:** the owner reviews and merges the V2 PRs, updates the installed app, sets thresholds, staffing and the report layout in Settings, connects the line/queue tab, and sends the QA link.
 
 ## 2. Features
+- **V2 Phase 8:** Reports (end of day in the owner's layout, cycle summary, MPR prep, roster changes, all copy and CSV), Settings (thresholds marked set or not set, cycle and attendance read hours, staffing baselines, report layout, theme, status map), Ctrl K “Copy EOD”, custom form controls and a quality-bar browser test (`v2/reports.ts`, `v2/template.ts`, `views/Reports.tsx`, `views/OwnerSettings.tsx`). `GET /v2/reports?cycle&date`.
 - **V2 Phase 7:** Quality (latest, cycle and previous average, recent scores, last evaluation, distribution, sorting, owner-set overdue mark, prep links) and Queues (today's board, 14-day coverage against owner baselines, 31-day leave list, line changes). `GET /v2/quality`, `GET /v2/queues`.
 - **V2 Phase 6:** Coaching overview (ring, pace, needs-it-most order), prep sheet with facts and question prompts, log form with linked evidence and optional measurable step, follow-ups, filterable history with Copy as documentation and CSV, and per-agent fairness counts (`v2/coaching.ts`, `views/Coaching.tsx`). `GET /v2/coaching`, `GET /v2/coaching/prep/:code?cycle`.
 - **V2 Phase 5:** profile header with new-hire stage, open flags with dismiss-with-reason, scorecard against the team average, cycle calendar, six-cycle trends, patterns, coaching timeline with kept/not kept, private tagged notes, discrepancy history, MPR prep and escalation drafts (`v2/profile.ts`, `v2/documents.ts`, `views/Agent.tsx`). `GET /v2/agents/:code`.
@@ -77,6 +71,8 @@ _Last updated: 2026-11-27 for V2 Phase 7 (Quality and Queues)._
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
 | Date | Decision | Why | Alternatives rejected |
 |---|---|---|---|
+| 2026-11-27 | The report layout is the owner's pasted table: a line with `{row.…}` repeats per agent and `{exception.…}` per exception. Home and Ctrl K copy the same layout. | One layout, filled from data. | Fixed report columns |
+| 2026-11-27 | Attendance read hours chosen in Settings override the config file. The status map stays read-only in the app. | Hours are an owner preference; mapping changes affect sync parsing and stay in config. | Editing the status map in the app |
 | 2026-11-27 | QA distribution bands (under 80, 80s, 90s) are display bins only. “Overdue” appears only once the owner sets the number of days. | No invented thresholds. | — |
 | 2026-11-27 | The leave calendar is a dated list of consecutive leave for the next 31 days. Coverage marks days filled from the weekly template. | A list reads on a phone and shows estimated days honestly. | — |
 | 2026-11-27 | Pace counts today as one of the days left. “Needs it most” sorts by open urgent flags and due follow-ups, then fewest coachings this cycle, then longest since the last. | plan-v2 section F order. | — |
@@ -125,14 +121,15 @@ _Last updated: 2026-11-27 for V2 Phase 7 (Quality and Queues)._
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
 ## 6. Known issues & tech debt
-- V2 Home and data features await subsequent phases. Navigation count examples appear only on `/styleguide` until live flags/coaching data exists. The queue template has not been fetched or mapped; QA remains disconnected.
+- The line/queue tab has not been connected and QA is waiting for its link.
 
 - The owner approved importing the prior coaching cycle. Its MTD totals are saved under the Cairo sync date with the source cycle recorded.
 | Issue | Impact | Planned fix |
 |---|---|---|
+| v1 Today, Trends, Roster and the discrepancy queue still use the older layouts | Reachable from links and Ctrl K only | Owner to decide whether to retire them (Q13) |
+| Team column choices reset when the cycle changes | Re-pick or use a saved view | Keep the choices across cycles |
 | One agent's MTD lateness differs from the daily sum on the installed data | The dashboard shows the MTD total beside daily dates | Owner to check the workbook |
 | `npm run build` writes through the `server/dist` junction | Would overwrite the installed app | Use `build:smoke` in this checkout |
-| V2 review checkpoint | Phase 2 intentionally stopped | Owner reviews desktop and phone screenshots |
 | Check-a-link rejects multi-account links (`/spreadsheets/u/1/d/...`) | Minor friction | Accept and normalise `/u/N/` |
 | Restore preview says "updated", not "X resolved flags will reopen" | Could surprise | Clearer preview wording |
 | D5 reopen keeps the first-seen date | Optional | Owner to decide |
@@ -159,6 +156,8 @@ _Last updated: 2026-11-27 for V2 Phase 7 (Quality and Queues)._
 | Q10 | Does a shout-out ("clean record") mean no lateness, missing time or unplanned absence, with planned leave allowed? | Phase 3 default | open |
 | Q11 | Does the Team View tab have any column the Team table lacks? Send its header row to approve new mappings. | no | open |
 | Q12 | Are the prep-sheet question prompts right for your conversations? They are listed in `v2/coaching.ts`. | no | open |
+| Q13 | Retire the older Today, Trends and Roster screens now that V2 covers them? | no | open |
+| Q14 | Do you have a fixed MPR or escalation layout? | no | open |
 
 ## 8. Review feedback
 - **PR #20 design approved with five fixes:** viewport-sticky sidebar and internal nav scroll, greeting-name initials, smaller phone KPI values without sparklines, Floor phone wordmark/logout in Settings, and bottom-nav safe-area clearance. Regression coverage checks all current pages at 390px. Phases 2?8 are authorized after this gate.
@@ -168,6 +167,9 @@ _Last updated: 2026-11-27 for V2 Phase 7 (Quality and Queues)._
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-27 - V2 Phase 8 Reports, Settings and polish
+- Built Reports and the owner settings, replaced browser-default controls, fixed older Settings panel spacing, and added the quality-bar, reports and settings tests with screenshots. Browser tests now share one signed-in session to stay under the sign-in limit. Screenshots from earlier phases were refreshed for the shared control styles.
 
 ### 2026-11-27 - V2 Phase 7 Quality and Queues
 - Built both screens with unit and browser tests and screenshots. The content column can no longer grow past the viewport.
