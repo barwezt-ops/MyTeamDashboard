@@ -10,7 +10,7 @@ export default defineConfig({
     reducedMotion: "reduce",
   },
   webServer: {
-    command: "npm run build && node --import tsx web/test/start-smoke.ts",
+    command: "npm run build:smoke && node --import tsx web/test/start-smoke.ts",
     url: "http://127.0.0.1:3210/api/health",
     timeout: 90_000,
     reuseExistingServer: false,

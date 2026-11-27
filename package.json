@@ -26,7 +26,8 @@
     "test-link": "tsx server/src/cli.ts test-link",
     "google-login": "tsx server/src/cli.ts google-login",
     "google-logout": "tsx server/src/cli.ts google-logout",
-    "hash-password": "tsx server/src/cli.ts hash-password"
+    "hash-password": "tsx server/src/cli.ts hash-password",
+    "build:smoke": "tsc -p server/tsconfig.json --outDir server/dist.test && node -e \"require('node:fs').copyFileSync('server/src/db/schema.sql', 'server/dist.test/db/schema.sql')\" && npm run build -w web"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

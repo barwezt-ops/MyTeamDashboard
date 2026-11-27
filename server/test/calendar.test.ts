@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ScheduleDay } from "../src/api/dto.js";
 import { calculateTrends } from "../src/api/trends.js";
 import { trendRange } from "../src/api/trendRange.js";
-import { loadConfig } from "../src/config.js";
+import { coveredConfig as loadConfig } from "./sample.js";
 import { openDb } from "../src/db/db.js";
 import { parseAttendance } from "../src/parse/attendance.js";
 import { parseSchedule } from "../src/parse/schedule.js";

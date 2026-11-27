@@ -46,3 +46,31 @@ CREATE TABLE IF NOT EXISTS attendance_paste_state (
   id INTEGER PRIMARY KEY CHECK (id=1), fingerprint TEXT NOT NULL, last_changed_at TEXT NOT NULL,
   team_code_count INTEGER
 );
+CREATE TABLE IF NOT EXISTS line_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, changed_at TEXT NOT NULL,
+  changed_on TEXT NOT NULL, line TEXT NOT NULL, account TEXT NOT NULL, template TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_line_code ON line_history(code,changed_at);
+CREATE TABLE IF NOT EXISTS qa_evaluations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, date TEXT NOT NULL,
+  score REAL NOT NULL CHECK(score>=0 AND score<=100), form TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS coachings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, date TEXT NOT NULL,
+  type TEXT NOT NULL CHECK(type IN ('corrective','recognition','follow-up')),
+  reasons TEXT NOT NULL, evidence TEXT NOT NULL, what_happened TEXT NOT NULL,
+  what_was_said TEXT NOT NULL, next_step TEXT NOT NULL, acknowledged INTEGER NOT NULL CHECK(acknowledged IN (0,1)),
+  measure TEXT NOT NULL DEFAULT 'none', target REAL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS coaching_followups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, coaching_id INTEGER NOT NULL REFERENCES coachings(id),
+  code TEXT NOT NULL, date TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','done','kept','not kept'))
+);
+CREATE TABLE IF NOT EXISTS private_notes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL, date TEXT NOT NULL,
+  body TEXT NOT NULL, tags TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS flag_dismissals (
+  id TEXT PRIMARY KEY, facts TEXT NOT NULL, reason TEXT NOT NULL, dismissed_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS owner_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);

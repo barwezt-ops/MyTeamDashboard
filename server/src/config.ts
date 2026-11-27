@@ -77,6 +77,8 @@ const attendance = source.extend({
       sheetId: z.string().regex(/^[\w-]+$/),
       startHour: z.number().int().min(0).max(23).default(0),
       endHour: z.number().int().min(0).max(24).default(24),
+      /** Label in the Exceeded column for an exceeded break ("Exceeded"). */
+      breakExceededLabel: z.string().trim().min(1).optional(),
     })
     .refine(
       (value) => value.startHour !== value.endHour,
@@ -108,6 +110,7 @@ export const configSchema = z
   .object({
     me: z.object({
       rosterName: z.string().trim().min(1),
+      firstName: z.string().trim().min(1).max(80).optional(),
       alsoCover: z.array(z.string().trim().min(1)),
       defaultScope: z.enum(["mine", "covered", "all"]),
     }),
@@ -129,7 +132,52 @@ export const configSchema = z
       pastDays: z.number().int().nonnegative(),
       futureDays: z.number().int().nonnegative(),
     }),
-    sources: z.object({ master, schedule, attendance }),
+    sources: z.object({
+      master,
+      schedule,
+      attendance,
+      lineQueue: source
+        .extend({
+          access: z.literal("public").default("public"),
+          mode: z.literal("export"),
+          enabled: z.boolean().default(false),
+          /** Header names, when the tab labels them differently. */
+          headers: z
+            .strictObject({
+              code: z.string().min(1),
+              line: z.string().min(1),
+              account: z.string().min(1),
+            })
+            .optional(),
+        })
+        .refine(
+          (s) => !s.enabled || (!!s.sheetId && !!s.gid),
+          "Queue source needs a sheet and tab ID before enabling",
+        )
+        .optional(),
+      qa: source
+        .extend({
+          access: z.literal("public").default("public"),
+          mode: z.literal("export"),
+          enabled: z.boolean().default(false),
+          mappingApproved: z.boolean().default(false),
+          columns: z
+            .strictObject({
+              code: z.string().min(1),
+              date: z.string().min(1),
+              score: z.string().min(1),
+              form: z.string().min(1).optional(),
+            })
+            .optional(),
+        })
+        .refine(
+          (s) =>
+            !s.enabled ||
+            (s.mappingApproved && !!s.columns && !!s.sheetId && !!s.gid),
+          "QA requires approved mapping and source IDs before enabling",
+        )
+        .optional(),
+    }),
     statusMap: z.record(z.string(), z.enum(statuses)),
     thresholds: z.partialRecord(
       z.enum(statuses),
@@ -201,7 +249,7 @@ export const configSchema = z
       });
   });
 export type Config = z.infer<typeof configSchema>;
-export type SourceKey = keyof Config["sources"];
+export type SourceKey = "master" | "schedule" | "attendance";
 export function loadConfig(
   path: string | undefined = undefined,
   mode: "fixture" | "live" = "fixture",

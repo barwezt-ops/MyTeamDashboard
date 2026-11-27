@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BrowserRouter,
   Link,
@@ -8,44 +8,33 @@ import {
   Routes,
   useLocation,
 } from "react-router-dom";
-import {
-  Activity,
-  CalendarDays,
-  ChartNoAxesCombined,
-  ChevronDown,
-  ClipboardList,
-  Layers3,
-  LogOut,
-  Moon,
-  Settings as Gear,
-  Sun,
-  UsersRound,
-} from "lucide-react";
+import { Moon, Sun } from "lucide-react";
+import { navigation, ShellHeader, CommandPalette } from "./components/Shell";
+import { Styleguide } from "./views/Styleguide";
+import { Home } from "./views/Home";
+import { Attendance } from "./views/Attendance";
+import { Team } from "./views/Team";
+import { Coaching } from "./views/Coaching";
+import { Quality } from "./views/Quality";
+import { Queues } from "./views/Queues";
+import { Reports } from "./views/Reports";
+import { Toast } from "./components/design";
+import { SharedContext, type PageHead } from "./v2/context";
 import type { Scope, SyncStatus } from "../../server/src/api/dto";
 import { api, useApi } from "./api";
-import { ErrorNotice, Loading, syncLabel } from "./components/ui";
+import { ErrorNotice, Loading } from "./components/ui";
 import { Login } from "./views/Login";
-import { Today } from "./views/Today";
 import { Discrepancies } from "./views/Discrepancies";
-import { Roster } from "./views/Roster";
 import { Agent } from "./views/Agent";
-const Trends = lazy(() =>
-  import("./views/Trends").then(({ Trends }) => ({ default: Trends })),
-);
 import { Settings } from "./views/Settings";
 
 interface User {
   rosterName: string;
+  firstName?: string;
+  coachingCycleStartDay: number;
   alsoCover: string[];
   defaultScope: Scope;
 }
-const navigation = [
-  { to: "/", label: "Today", Icon: CalendarDays },
-  { to: "/discrepancies", label: "Discrepancies", Icon: ClipboardList },
-  { to: "/trends", label: "Trends", Icon: ChartNoAxesCombined },
-  { to: "/roster", label: "Roster", Icon: UsersRound },
-  { to: "/settings", label: "Settings", Icon: Gear },
-];
 
 function Dashboard({
   user,
@@ -58,13 +47,49 @@ function Dashboard({
   toggle: () => void;
   logout: () => void;
 }) {
-  const [scope, setScope] = useState<Scope>(user.defaultScope);
-  const [date, setDate] = useState("");
+  const scope: Scope = "mine";
+  const [palette, setPalette] = useState(false);
   const [drawer, setDrawer] = useState<string | null>(null);
   const status = useApi<SyncStatus>("/sync/status");
   const location = useLocation();
   const openAgent = useCallback((code: string) => setDrawer(code), []);
   const closeAgent = useCallback(() => setDrawer(null), []);
+  const [head, setHead] = useState<PageHead>({});
+  const [revision, setRevision] = useState(0);
+  const [toast, setToast] = useState("");
+  const changed = useCallback(() => setRevision((value) => value + 1), []);
+  const closeToast = useCallback(() => setToast(""), []);
+  // A new successful run or a saved record reloads the open views.
+  const synced = status.data
+    ? Object.values(status.data.jobs)
+        .map((job) => job.lastSuccessAt ?? "")
+        .join()
+    : "";
+  const [firstSync, setFirstSync] = useState<string | null>(null);
+  if (synced && firstSync === null) setFirstSync(synced);
+  const version =
+    (firstSync !== null && synced !== firstSync) || revision
+      ? `${synced}#${revision}`
+      : "";
+  const shared = useMemo(
+    () => ({
+      setHead,
+      version,
+      changed,
+      openAgent,
+      notify: setToast,
+    }),
+    [version, changed, openAgent],
+  );
+  const badges = useApi<{ urgent: number; coachingDue: number }>("/v2/counts");
+  const reloadBadges = badges.reload;
+  useEffect(() => {
+    if (version) reloadBadges();
+  }, [version, reloadBadges]);
+  const badge: Record<string, number | undefined> = {
+    Home: badges.data?.urgent,
+    Coaching: badges.data?.coachingDue,
+  };
   useEffect(() => {
     const timer = window.setInterval(
       status.reload,
@@ -72,83 +97,81 @@ function Dashboard({
     );
     return () => window.clearInterval(timer);
   }, [status.reload, status.data?.running]);
-  const sync = status.data ? syncLabel(status.data) : null;
-  const today = status.data?.date ?? "";
-  const chosen = date || today;
-  const page =
-    navigation.find((item) => item.to === location.pathname)?.label ?? "Agent";
+  useEffect(() => {
+    const handle = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPalette((value) => !value);
+      }
+    };
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
+  }, []);
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <Link className="brand" to="/">
-          <span className="brand-icon">
-            <Layers3 size={20} />
-          </span>
-          <span>Team Dashboard</span>
-        </Link>
-        <div className="sidebar-main">
-          <nav aria-label="Dashboard">
-            {navigation.map(({ to, label, Icon }) => (
-              <NavLink key={to} to={to} end={to === "/"}>
-                <Icon size={18} />
-                <span>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-        <div className="sidebar-bottom">
-          <div className="user">
-            <span className="avatar">
-              {user.rosterName
-                .split(/\s+/)
-                .map((part) => part[0])
-                .slice(0, 2)
-                .join("")}
-            </span>
-            <span className="user-name">{user.rosterName}</span>
+    <SharedContext.Provider value={shared}>
+      <div className="app-shell">
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        <aside className="sidebar">
+          <Link className="brand" to="/">
+            <span>Floor</span>
+            <i className="brand-dot" aria-hidden="true" />
+          </Link>
+          <div className="sidebar-main">
+            <nav aria-label="Dashboard">
+              {navigation.map(({ to, label, Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === "/"}
+                  title={label}
+                  aria-label={
+                    badge[label]
+                      ? `${label}, ${badge[label]} ${label === "Home" ? "urgent" : "coachings due"}`
+                      : label
+                  }
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                  {!!badge[label] && (
+                    <span
+                      className={`nav-count ${label === "Home" ? "urgent" : ""}`}
+                      aria-hidden="true"
+                    >
+                      {badge[label]}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+            <Link
+              className="styleguide-link"
+              to="/styleguide"
+              title="Styleguide"
+            >
+              Aa <span>Styleguide</span>
+            </Link>
           </div>
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            onClick={logout}
-          >
-            <LogOut size={17} />
-          </button>
-        </div>
-      </aside>
-      <div className="workspace">
-        <div className="topbar">
-          <span className="breadcrumb">{page}</span>
-          <div className="top-controls">
-            {sync && (
-              <Link to="/settings" className={"sync-badge " + sync.tone}>
-                <Activity size={14} />
-                {sync.label}
-              </Link>
-            )}
-            <label className="top-input">
-              <span className="sr-only">Team scope</span>
-              <select
-                value={scope}
-                onChange={(event) => setScope(event.target.value as Scope)}
-              >
-                <option value="mine">My team</option>
-                <option value="covered">Covered team</option>
-                <option value="all">All stored agents</option>
-              </select>
-              <ChevronDown size={13} />
-            </label>
-            {location.pathname === "/" && (
-              <input
-                className="date-control"
-                type="date"
-                aria-label="Dashboard date"
-                value={chosen}
-                min={status.data?.window.from}
-                max={status.data?.window.to}
-                onChange={(event) => setDate(event.target.value)}
-              />
-            )}
+          <div className="sidebar-bottom">
+            <div className="user">
+              <span className="avatar">
+                {(user.firstName ?? user.rosterName.split(/\s+/)[0])
+                  .slice(0, 1)
+                  .toUpperCase()}
+              </span>
+              <span className="user-name">
+                {user.firstName ?? user.rosterName.split(/\s+/)[0]}
+              </span>
+            </div>
+          </div>
+        </aside>
+        <div className="workspace">
+          <div className="shell-tools">
+            <Link className="phone-brand" to="/">
+              Floor
+              <span aria-hidden="true" />
+            </Link>
             <button
               className="icon-button theme-button"
               aria-label={
@@ -159,54 +182,57 @@ function Dashboard({
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
-        </div>
-        <main className="content">
-          {status.error && location.pathname !== "/settings" && (
-            <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>
-          )}
-          <Suspense fallback={<Loading />}>
+          <main className="content" id="main-content">
+            <ShellHeader
+              firstName={user.firstName ?? user.rosterName.split(/\s+/)[0]}
+              cycleStartDay={user.coachingCycleStartDay ?? 21}
+              home={location.pathname === "/"}
+              head={head}
+              status={status}
+              search={() => setPalette(true)}
+            />
+            {status.error && location.pathname !== "/settings" && (
+              <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>
+            )}
             <Routes>
-              <Route
-                path="/"
-                element={
-                  <Today scope={scope} date={chosen} openAgent={openAgent} />
-                }
-              />
+              <Route path="/" element={<Home />} />
               <Route
                 path="/discrepancies"
                 element={<Discrepancies scope={scope} openAgent={openAgent} />}
               />
+              <Route path="/agent/:code" element={<Agent />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/team" element={<Team />} />
+              <Route path="/styleguide" element={<Styleguide />} />
+              <Route path="/coaching" element={<Coaching />} />
+              <Route path="/quality" element={<Quality />} />
+              <Route path="/queues" element={<Queues />} />
+              <Route path="/reports" element={<Reports />} />
               <Route
-                path="/trends"
+                path="/settings"
                 element={
-                  today ? (
-                    <Trends scope={scope} today={today} openAgent={openAgent} />
-                  ) : (
-                    !status.error && <Loading />
-                  )
+                  <Settings
+                    status={status}
+                    logout={logout}
+                    dark={dark}
+                    toggle={toggle}
+                  />
                 }
               />
-              <Route
-                path="/roster"
-                element={
-                  today ? (
-                    <Roster scope={scope} today={today} openAgent={openAgent} />
-                  ) : (
-                    !status.error && <Loading />
-                  )
-                }
-              />
-              <Route path="/agent/:code" element={<Agent today={today} />} />
-              <Route path="/settings" element={<Settings status={status} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-          </Suspense>
-        </main>
+          </main>
+        </div>
+        {palette && (
+          <CommandPalette
+            close={() => setPalette(false)}
+            openAgent={openAgent}
+          />
+        )}
+        {drawer && <Agent key={drawer} code={drawer} close={closeAgent} />}
+        {toast && <Toast close={closeToast}>{toast}</Toast>}
       </div>
-      {drawer && (
-        <Agent key={drawer} today={today} code={drawer} close={closeAgent} />
-      )}
-    </div>
+    </SharedContext.Provider>
   );
 }
 function App() {

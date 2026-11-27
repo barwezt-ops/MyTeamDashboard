@@ -17,7 +17,7 @@ import type { AddressInfo } from "node:net";
 import { Readable } from "node:stream";
 import bcrypt from "bcrypt";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { loadConfig } from "../src/config.js";
+import { coveredConfig as loadConfig } from "./sample.js";
 import { openDb } from "../src/db/db.js";
 import { attendanceOf, lastRun, saveAgent } from "../src/db/repo.js";
 import { checkSheetLink } from "../src/fetch/checkLink.js";

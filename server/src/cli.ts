@@ -1,3 +1,6 @@
+import { inspectHeaders } from "./v2/sources.js";
+import { fetchCsv } from "./fetch/fetchCsv.js";
+import { exportUrl, parseLink } from "./fetch/urls.js";
 import bcrypt from "bcrypt";
 import { loadConfig } from "./config.js";
 import { readBackup, writeBackup } from "./backup/files.js";
@@ -60,6 +63,30 @@ try {
         2,
       ),
     );
+  } else if (
+    process.argv[2] === "test-link" &&
+    process.argv.some((arg) => /^--source=(qa|lineQueue)$/.test(arg))
+  ) {
+    // Headers and row count only. Nothing is stored and no cells are printed.
+    const link = process.argv[3];
+    if (!link) throw new Error("Pass a Google Sheets view link");
+    const headerRows = Number(
+      process.argv
+        .find((arg) => arg.startsWith("--header-row="))
+        ?.slice("--header-row=".length) ?? 1,
+    );
+    if (!Number.isInteger(headerRows) || headerRows < 1)
+      throw new Error("Pass --header-row as a row number from 1");
+    const { sheetId, gid } = parseLink(link);
+    const { rows } = await fetchCsv(
+      exportUrl(sheetId, gid),
+      undefined,
+      undefined,
+      32 * 1024 * 1024,
+    );
+    const report = inspectHeaders(rows, headerRows);
+    console.log(JSON.stringify(report, null, 2));
+    if (report.stop) process.exitCode = 1;
   } else if (process.argv[2] === "test-link") {
     const link = process.argv[3];
     if (!link) throw new Error("Pass a Google Sheets view link");

@@ -301,3 +301,32 @@ describe("generated 200-agent, 120-day fixture", () => {
     }
   });
 });
+
+it("reports actual attendance coverage and MTD import dates for the owner's team", async () => {
+  db.prepare(
+    "INSERT INTO agents (code, owner_group) VALUES ('99091','mine'), ('99092','covered')",
+  ).run();
+  db.prepare(
+    "INSERT INTO attendance_days (code,date) VALUES ('99091','2026-11-19'), ('99092','2026-11-20')",
+  ).run();
+  db.prepare(
+    "INSERT INTO attendance_mtd_snapshots (code,sync_date,cycle_start,cycle_end,fields) VALUES ('99091','2026-11-20','2026-10-21','2026-11-20','{}')",
+  ).run();
+  try {
+    expect(await (await request("GET", "/sync/status")).json()).toMatchObject({
+      attendanceThrough: "2026-11-19",
+      mtdSyncedOn: "2026-11-20",
+    });
+    expect(await (await request("GET", "/me")).json()).toMatchObject({
+      firstName: "Alex",
+      coachingCycleStartDay: 21,
+    });
+  } finally {
+    for (const table of [
+      "attendance_days",
+      "attendance_mtd_snapshots",
+      "agents",
+    ])
+      db.prepare(`DELETE FROM ${table} WHERE code IN ('99091','99092')`).run();
+  }
+});

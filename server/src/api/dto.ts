@@ -143,7 +143,13 @@ export interface SyncRun {
   warnings: string[];
   error: string | null;
 }
+/** Sync warning that carries the codes whose MTD and daily rows disagree. */
+export const mtdMismatchWarning = "MTD_DAILY_MISMATCH:";
 export interface SyncStatus {
+  /** Team agents whose MTD lateness differs from their daily rows. */
+  mtdMismatch?: { code: Code; name: string }[];
+  attendanceThrough?: string | null;
+  mtdSyncedOn?: string | null;
   jobs: Record<
     string,
     { lastRun: SyncRun | null; lastSuccessAt: string | null }

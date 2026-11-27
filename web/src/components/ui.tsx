@@ -49,16 +49,21 @@ export function Section({
   children,
   action,
   className = "",
+  number,
 }: {
   title: string;
   children: ReactNode;
   action?: ReactNode;
   className?: string;
+  number?: string;
 }) {
   return (
     <section className={"panel " + className}>
       <header className="panel-heading">
-        <h2>{title}</h2>
+        <div className="panel-title">
+          {number && <span className="panel-number">{number}</span>}
+          <h2>{title}</h2>
+        </div>
         {action}
       </header>
       {children}
@@ -124,25 +129,6 @@ export function SearchBox({
     </label>
   );
 }
-export function StatCard({
-  label,
-  count,
-  tone,
-}: {
-  label: string;
-  count: number;
-  tone: string;
-}) {
-  return (
-    <article className="stat" style={{ "--tone": tone } as CSSProperties}>
-      <span>
-        <i />
-        {label}
-      </span>
-      <strong>{count}</strong>
-    </article>
-  );
-}
 export function DataTable({
   children,
   label,
@@ -153,7 +139,12 @@ export function DataTable({
   cards?: boolean;
 }) {
   return (
-    <div className={cards ? "table-scroll card-table" : "table-scroll"}>
+    <div
+      className={cards ? "table-scroll card-table" : "table-scroll"}
+      tabIndex={0}
+      role="region"
+      aria-label={`${label} scroll area`}
+    >
       <table aria-label={label} role="table">
         {children}
       </table>
@@ -177,37 +168,13 @@ export function CardCell({
     </td>
   );
 }
-export function formatDay(date: string) {
-  return new Intl.DateTimeFormat("en", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(date + "T00:00:00Z"));
-}
-export function dateOffset(date: string, days: number) {
-  return new Date(Date.parse(date) + days * 86400000)
-    .toISOString()
-    .slice(0, 10);
-}
-export function tenure(hire: string | null, asOf: string) {
-  if (!hire) return "—";
-  const [year, month, day] = hire.split("-").map(Number);
-  const [endYear, endMonth, endDay] = asOf.split("-").map(Number);
-  const months = Math.max(
-    0,
-    (endYear - year) * 12 + endMonth - month - Number(endDay < day),
-  );
-  return months + " mo";
-}
 export function syncLabel(status: SyncStatus) {
   if (status.running)
     return { tone: "waiting", label: "Syncing " + status.running };
   if (Object.values(status.jobs).some((job) => job.lastRun?.ok === false))
     return { tone: "bad", label: "Last sync failed" };
   if (status.attendanceStale)
-    return { tone: "bad", label: "Attendance paste is stale" };
+    return { tone: "waiting", label: "Attendance paste is stale" };
   const roster = status.jobs.roster?.lastSuccessAt;
   const last = status.jobs.schedule?.lastSuccessAt ?? roster;
   if (!last) return { tone: "waiting", label: "Awaiting first sync" };

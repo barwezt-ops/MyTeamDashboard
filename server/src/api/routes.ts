@@ -1,3 +1,5 @@
+import { readSettings } from "../v2/settings.js";
+import { v2Routes } from "../v2/routes.js";
 import { Router } from "express";
 import { z } from "zod";
 import type { Db } from "../db/db.js";
@@ -8,19 +10,21 @@ import {
   eventsOf,
   lastRun,
   lastSuccess,
+  lastWarnings,
   notesOf,
   recentRuns,
   scheduleOf,
 } from "../db/repo.js";
 import type { Config, SourceKey } from "../config.js";
 import type { SyncService } from "../sync/service.js";
-import type {
-  Agent,
-  AgentProfile,
-  DiscrepancyRow,
-  Scope,
-  SyncStatus,
-  TodayData,
+import {
+  mtdMismatchWarning,
+  type Agent,
+  type AgentProfile,
+  type DiscrepancyRow,
+  type Scope,
+  type SyncStatus,
+  type TodayData,
 } from "./dto.js";
 import { plusDays, weekday, weekdays } from "../parse/normalize.js";
 import { excluded } from "../parse/status.js";
@@ -88,6 +92,7 @@ function summary(agent: Agent) {
 }
 export function createRoutes(db: Db, config: Config, sync: SyncService) {
   const router = Router();
+  router.use("/v2", v2Routes(db, config, sync.today));
   const findAgent = (code: string) =>
     agentsOf(db).find((agent) => agent.code === code);
   function filtered(query: z.output<typeof filters>) {
@@ -124,7 +129,13 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
   }
   router.get(
     "/me",
-    endpoint({}, (_input, _req, res) => res.json(config.me)),
+    endpoint({}, (_input, _req, res) =>
+      res.json({
+        ...config.me,
+        coachingCycleStartDay: readSettings(db, config.coachingCycleStartDay)
+          .cycleStartDay,
+      }),
+    ),
   );
   router.get(
     "/today",
@@ -446,41 +457,91 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
         "rules",
         "backup",
         "daily",
+        "lineQueue",
+        "qa",
       ];
       const keys = ["master", "schedule", "attendance"] as SourceKey[];
       const date = sync.today();
       const { sheetId: _privatePasteId, ...pasteSettings } =
         config.sources.attendance.paste ?? {};
       void _privatePasteId;
+      const mismatched = new Set(
+        lastWarnings(db, "attendance")
+          .filter((warning) => warning.startsWith(mtdMismatchWarning))
+          .flatMap((warning) =>
+            warning.slice(mtdMismatchWarning.length).split(","),
+          ),
+      );
       const result: SyncStatus = {
+        mtdMismatch: agentsOf(db)
+          .filter(
+            (agent) =>
+              agent.ownerGroup === "mine" && mismatched.has(agent.code),
+          )
+          .map((agent) => ({
+            code: agent.code,
+            name: agent.fullName || agent.firstName,
+          })),
+        attendanceThrough: db
+          .prepare(
+            "SELECT MAX(d.date) FROM attendance_days d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
+          )
+          .pluck()
+          .get() as string | null,
+        mtdSyncedOn: db
+          .prepare(
+            "SELECT MAX(d.sync_date) FROM attendance_mtd_snapshots d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
+          )
+          .pluck()
+          .get() as string | null,
         jobs: Object.fromEntries(
           jobs.map((job) => [
             job,
             { lastRun: lastRun(db, job), lastSuccessAt: lastSuccess(db, job) },
           ]),
         ),
-        sources: keys.map((key) => {
-          const source = config.sources[key];
-          const url =
-            source.sheetId &&
-            source.access !== "file" &&
-            !(
-              key === "attendance" &&
-              source.access === "google" &&
-              config.sources.attendance.paste
-            )
-              ? "https://docs.google.com/spreadsheets/d/" +
-                source.sheetId +
-                "/edit#gid=" +
-                source.gid
-              : null;
-          return {
-            job: key === "master" ? "roster" : key,
-            label: source.label,
-            url,
-            enabled: key !== "attendance" || config.sources.attendance.enabled,
-          };
-        }),
+        sources: [
+          ...keys.map((key) => {
+            const source = config.sources[key];
+            const url =
+              source.sheetId &&
+              source.access !== "file" &&
+              !(
+                key === "attendance" &&
+                source.access === "google" &&
+                config.sources.attendance.paste
+              )
+                ? "https://docs.google.com/spreadsheets/d/" +
+                  source.sheetId +
+                  "/edit#gid=" +
+                  source.gid
+                : null;
+            return {
+              job: key === "master" ? "roster" : key,
+              label: source.label,
+              url,
+              enabled:
+                key !== "attendance" || config.sources.attendance.enabled,
+            };
+          }),
+          ...(["lineQueue", "qa"] as const).flatMap((key) => {
+            const source = config.sources[key];
+            return source?.enabled
+              ? [
+                  {
+                    job: key,
+                    label: source.label,
+                    url:
+                      "https://docs.google.com/spreadsheets/d/" +
+                      source.sheetId +
+                      "/edit#gid=" +
+                      source.gid,
+                    enabled: true,
+                  },
+                ]
+              : [];
+          }),
+        ],
         running: sync.active,
         attendancePaste: sync.attendancePasteEnabled,
         attendanceStale: sync.attendanceStale(),

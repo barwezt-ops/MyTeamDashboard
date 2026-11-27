@@ -7,7 +7,7 @@ import {
   scheduleOf,
 } from "../src/db/repo.js";
 import { openDb } from "../src/db/db.js";
-import { loadConfig } from "../src/config.js";
+import { coveredConfig as loadConfig } from "./sample.js";
 import { createSync } from "../src/sync/service.js";
 import { rosterChanges } from "../src/sync/syncRoster.js";
 import { fetchCsv, SourceAccessError } from "../src/fetch/fetchCsv.js";

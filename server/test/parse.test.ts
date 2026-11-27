@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { configSchema, loadConfig } from "../src/config.js";
+import { configSchema } from "../src/config.js";
+import { coveredConfig as loadConfig } from "./sample.js";
 import { sampleSourceDate } from "../src/fetch/sampleDate.js";
 import { checkColumns, indexOf } from "../src/parse/columns.js";
 import { clean, codeOf, localDate, parseDate } from "../src/parse/normalize.js";

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadConfig } from "../src/config.js";
+import { coveredConfig as loadConfig } from "./sample.js";
 import { openDb, type Db } from "../src/db/db.js";
 import { saveAgent } from "../src/db/repo.js";
 import { parseSchedule } from "../src/parse/schedule.js";

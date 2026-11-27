@@ -4,10 +4,10 @@ import { join, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 test("initializes a fresh database using only compiled build artifacts", () => {
-  const directory = mkdtempSync(resolve("server/dist/isolated-db-"));
+  const directory = mkdtempSync(resolve("server/dist.test/isolated-db-"));
   try {
     for (const file of ["db.js", "schema.sql"]) {
-      copyFileSync(resolve("server/dist/db", file), join(directory, file));
+      copyFileSync(resolve("server/dist.test/db", file), join(directory, file));
     }
     const output = execFileSync(
       process.execPath,

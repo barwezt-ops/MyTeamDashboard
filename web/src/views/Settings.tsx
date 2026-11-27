@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ExternalLink, RefreshCw } from "lucide-react";
-import type { Job, SyncRun, SyncStatus } from "../../../server/src/api/dto";
+import {
+  mtdMismatchWarning,
+  type Job,
+  type SyncRun,
+  type SyncStatus,
+} from "../../../server/src/api/dto";
+import { mtdMismatch } from "../../../server/src/v2/templates";
 import { api, message } from "../api";
 import { AttendancePreview } from "./AttendancePreview";
 import { Backups } from "./Backups";
@@ -10,9 +17,12 @@ import {
   Empty,
   ErrorNotice,
   Loading,
-  PageHeader,
   Section,
 } from "../components/ui";
+import { SegmentedControl } from "../components/design";
+import { useHead } from "../v2/context";
+import { OwnerSettings } from "./OwnerSettings";
+import { StatusMap } from "./StatusMap";
 
 function result(run: SyncRun | null | undefined) {
   if (run?.ok === true)
@@ -22,13 +32,42 @@ function result(run: SyncRun | null | undefined) {
     <span className="sync-badge waiting">{run ? "Running" : "No runs"}</span>
   );
 }
+/** The mismatch warning carries codes; the notice above names the agents. */
+const warningText = (warning: string) =>
+  warning.startsWith(mtdMismatchWarning)
+    ? mtdMismatch(warning.slice(mtdMismatchWarning.length).split(",").length)
+    : warning;
+type ReadConfig = {
+  sources?: {
+    attendance?: { paste?: { startHour: number; endHour: number } };
+  };
+};
+
 export function Settings({
   status,
+  logout,
+  dark,
+  toggle,
 }: {
   status: { data?: SyncStatus; error?: string; reload: () => void };
+  logout: () => void;
+  dark: boolean;
+  toggle: () => void;
 }) {
   const [request, setRequest] = useState<Job | null>(null);
   const [error, setError] = useState("");
+  const { hash } = useLocation();
+  const loaded = !!status.data;
+  useEffect(() => {
+    if (!loaded || !hash) return;
+    // The forms above the target load first, so wait for them.
+    const timer = window.setTimeout(
+      () => document.querySelector(hash)?.scrollIntoView(),
+      400,
+    );
+    return () => window.clearTimeout(timer);
+  }, [hash, loaded]);
+  useHead("Settings", "Thresholds, sources and your layout, in one place.");
   if (status.error)
     return <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>;
   if (!status.data) return <Loading />;
@@ -58,9 +97,42 @@ export function Settings({
   }
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Check source health and manage synchronization."
+      <div className="toolbar">
+        <SegmentedControl
+          label="Theme"
+          value={dark ? "Dark" : "Light"}
+          options={["Light", "Dark"]}
+          onChange={(theme) => {
+            if ((theme === "Dark") !== dark) toggle();
+          }}
+        />
+        <span className="toolbar-end">
+          <button className="secondary small" onClick={logout}>
+            Sign out
+          </button>
+        </span>
+      </div>
+      {!!data.mtdMismatch?.length && (
+        <div className="mismatch" role="status">
+          <strong>{mtdMismatch(data.mtdMismatch.length)}</strong>
+          <ul>
+            {data.mtdMismatch.map((agent) => (
+              <li key={agent.code}>
+                <Link to={"/agent/" + encodeURIComponent(agent.code)}>
+                  {agent.name} ({agent.code})
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <small>
+            Compared on the last attendance sync. Nothing was changed.
+          </small>
+        </div>
+      )}
+      <OwnerSettings
+        configHours={
+          (data.config as ReadConfig).sources?.attendance?.paste ?? null
+        }
       />
       <Section
         title="Sync now"
@@ -135,7 +207,7 @@ export function Settings({
                 {!!latest?.warnings.length && (
                   <ul className="warnings">
                     {latest.warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
+                      <li key={warning}>{warningText(warning)}</li>
                     ))}
                   </ul>
                 )}
@@ -169,7 +241,9 @@ export function Settings({
                   <td>{run.rowsKept ?? "—"}</td>
                   <td>
                     {run.error ||
-                      (run.warnings.length ? run.warnings.join(", ") : "—")}
+                      (run.warnings.length
+                        ? run.warnings.map(warningText).join(", ")
+                        : "—")}
                   </td>
                 </tr>
               ))}
@@ -179,6 +253,7 @@ export function Settings({
           <Empty>No sync jobs have run yet.</Empty>
         )}
       </Section>
+      <StatusMap />
       <Section title="Source configuration">
         <details className="panel-body">
           <summary>View configuration</summary>
