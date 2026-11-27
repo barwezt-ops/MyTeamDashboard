@@ -25,8 +25,6 @@ import { stepOutcome } from "./outcomes.js";
 import { breakStreak, findPatterns } from "./patterns.js";
 import { plannedDay, type LineHistory } from "./sources.js";
 import { readSettings } from "./settings.js";
-import { minutes } from "./templates.js";
-import { labelOf } from "../parse/normalize.js";
 import { attendanceLabel } from "../db/corrections.js";
 
 export type CoachingRow = {
@@ -83,11 +81,6 @@ function groupByCode<T extends { code: string }>(rows: T[]) {
   }
   return (code: string) => groups.get(code) ?? [];
 }
-
-const reportedNumber = (value: unknown) =>
-  value !== null && value !== undefined && /^\d+(?:\.\d+)?$/.test(String(value))
-    ? Number(value)
-    : null;
 
 export function dashboardData(
   db: Db,
@@ -159,6 +152,16 @@ export function dashboardData(
         breakLabel ?? "Exceeded",
       ),
     );
+    let ncnsStreak = 0;
+    for (const [index, day] of days.entries()) {
+      ncnsStreak =
+        day.absence === "NCNS"
+          ? (index > 0 && days[index - 1].date === plusDays(day.date, -1)
+              ? ncnsStreak
+              : 0) + 1
+          : 0;
+      day.ncnsStreak = ncnsStreak;
+    }
     const current = days.filter((day) => within(day.date, cycle));
     const dated = scheduleFor(code);
     const lines = historyOf(code);
@@ -167,84 +170,19 @@ export function dashboardData(
     const isOff = (date: string) =>
       (recordedOn.get(date)?.status ?? plan(date)?.status) === "Off Day";
 
-    // MTD totals are WFM's own figures. Use them once they cover the latest
-    // recorded day; otherwise add up the daily rows.
+    // WFM MTD stays visible for comparison only. Effective daily facts drive
+    // every operational count, including corrections and waivers.
     const latestMtd = mtdFor(code).at(-1);
     const mtd = latestMtd
       ? (JSON.parse(latestMtd.fields) as Record<string, unknown>)
       : null;
-    // Apply only known daily deltas to WFM totals; keep unpasted days counted.
-    if (mtd) {
-      const statusCounts = {
-        ...((mtd.counts ?? {}) as Record<string, number>),
-      };
-      for (const row of attendanceFor(code).filter(
-        (row) =>
-          within(row.date, cycle) &&
-          row.date < latestMtd!.sync_date &&
-          row.correction?.state === "corrected",
-      )) {
-        const correction = row.correction!;
-        const detail = details.get(code + "|" + row.date);
-        const original = dayFacts(
-          {
-            ...row,
-            raw: correction.wfmRaw,
-            status: correction.wfmStatus,
-            missing: correction.wfmMissing,
-            correction: undefined,
-          },
-          detail,
-          breakLabel ?? "Exceeded",
-        );
-        const used = dayFacts(row, detail, breakLabel ?? "Exceeded");
-        const subtract = (key: string, amount: number, time: boolean) => {
-          const value = time ? minutes(mtd[key]) : reportedNumber(mtd[key]);
-          if (value !== null) {
-            const next = Math.max(0, value - amount);
-            const seconds = Math.round(next * 60);
-            mtd[key] = time
-              ? `${Math.floor(seconds / 3600)}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
-              : next;
-          }
-        };
-        subtract("lateness", (original.late ?? 0) - (used.late ?? 0), true);
-        subtract(
-          "totalMissingHours",
-          (original.missing ?? 0) - (used.missing ?? 0),
-          true,
-        );
-        subtract(
-          "latenessIncidents",
-          Number(isLate(original)) - Number(isLate(used)),
-          false,
-        );
-        const oldLabel = labelOf(correction.wfmRaw),
-          newLabel = labelOf(row.raw);
-        if (oldLabel in statusCounts)
-          statusCounts[oldLabel] = Math.max(
-            0,
-            Number(statusCounts[oldLabel]) - 1,
-          );
-        statusCounts[newLabel] = Number(statusCounts[newLabel] ?? 0) + 1;
-      }
-      mtd.counts = statusCounts;
-    }
-    const useMtd =
-      !!latestMtd &&
-      latestMtd.sync_date >= plusDays(current.at(-1)?.date ?? cycle.from, 1);
     const late = current.filter(isLate);
     const missing = current.filter(isMissing);
     const counts = {
-      source: useMtd ? ("mtd" as const) : ("daily" as const),
-      lateCount:
-        (useMtd ? reportedNumber(mtd?.latenessIncidents) : null) ?? late.length,
-      // MTD lateness is a duration that equals the sum of the daily values.
-      lateMinutes:
-        (useMtd ? minutes(mtd?.lateness) : null) ?? sum(late, "late"),
-      missingMinutes:
-        (useMtd ? minutes(mtd?.totalMissingHours) : null) ??
-        sum(missing, "missing"),
+      source: "daily" as const,
+      lateCount: late.length,
+      lateMinutes: sum(late, "late"),
+      missingMinutes: sum(missing, "missing"),
       missingDays: missing.length,
       breakCount: current.filter((day) => day.breakExceeded).length,
       breakMinutes: sum(current, "breakMinutes"),

@@ -297,10 +297,26 @@ async function health(port) {
   return null;
 }
 
+export function launcherProbeTimeout(env = process.env) {
+  const value = env.DASHBOARD_LAUNCHER_PROBE_TIMEOUT_MS ?? "2500";
+  const timeout = Number(value);
+  if (
+    !/^\d+$/.test(value) ||
+    !Number.isSafeInteger(timeout) ||
+    timeout < 100 ||
+    timeout > 30_000
+  )
+    throw new Error(
+      "DASHBOARD_LAUNCHER_PROBE_TIMEOUT_MS must be an integer from 100 to 30000.",
+    );
+  return timeout;
+}
+
 function ping(p) {
+  const timeout = launcherProbeTimeout();
   return new Promise((resolve) => {
     const socket = createConnection(p.pipe);
-    socket.setTimeout(500, () => {
+    socket.setTimeout(timeout, () => {
       socket.destroy();
       resolve(false);
     });

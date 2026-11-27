@@ -5,6 +5,36 @@ import { expectAccessible } from "./accessibility";
 
 test.use({ baseURL: "http://127.0.0.1:3213", timezoneId: "Africa/Cairo" });
 
+test("waivers retain WFM minutes in grid, Home, profile and Settings", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const clean = await openTeam(page, "/attendance", "/waivers-fixture");
+  await page.getByRole("button", { name: /25 Nov:.*TL waiver/ }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "16m late · waived per TL comment",
+  );
+  await expect(page.getByRole("dialog")).toContainText(
+    "32m missing · waived per TL comment",
+  );
+  await page.keyboard.press("Escape");
+  await page.goto("/");
+  await expect(
+    page.getByRole("table", { name: "Yesterday, in exceptions" }),
+  ).toContainText("16m late · waived per TL comment");
+  await page.goto("/agent/99103");
+  await page.getByRole("button", { name: /25 Nov:.*TL waiver/ }).click();
+  await expect(page.locator(".day-card")).toContainText(
+    "32m missing · waived per TL comment",
+  );
+  await page.goto("/settings");
+  const table = page.getByRole("table", { name: "Corrections", exact: true });
+  await expect(table).toContainText("16m late · waived per TL comment");
+  await expect(table).toContainText("32m missing · waived per TL comment");
+  await expectAccessible(page);
+  clean();
+});
+
 test("sheet corrections across grid, Home, profile and Settings; app wins and undo returns to sheet", async ({
   page,
 }, info) => {

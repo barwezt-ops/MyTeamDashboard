@@ -33,6 +33,7 @@ import {
   attendancePasteStale,
   loadAttendancePaste,
   mtdDailyMismatch,
+  pasteDiagnostics,
   storeAttendancePaste,
 } from "./attendancePaste.js";
 import { coveredRange, replaceAttendance } from "./syncAttendance.js";
@@ -147,21 +148,27 @@ export function createSync(
           now().toISOString(),
           cycleStartDay,
         );
-        const mismatch = mtdDailyMismatch(
-          db,
-          paste,
-          cycleStartDay,
-          new Set(
-            agentsOf(db)
-              .filter((agent) => agent.ownerGroup === "mine")
-              .map((agent) => agent.code),
-          ),
-        );
+        const diagnostics = pasteDiagnostics(db);
+        const mismatch = !diagnostics?.mtdAvailable
+          ? []
+          : mtdDailyMismatch(
+              db,
+              paste,
+              cycleStartDay,
+              new Set(
+                agentsOf(db)
+                  .filter((agent) => agent.ownerGroup === "mine")
+                  .map((agent) => agent.code),
+              ),
+            );
         return {
           rowsRead: paste.rowsRead,
           rowsKept: paste.records.length,
           warnings: [
             ...attendancePastePreview(paste, config, date).warnings,
+            ...(diagnostics?.mtdMessage && paste.snapshots.length
+              ? [diagnostics.mtdMessage]
+              : []),
             ...(changed ? [] : ["no change"]),
             ...(mismatch.length
               ? [mtdMismatchWarning + mismatch.join(",")]

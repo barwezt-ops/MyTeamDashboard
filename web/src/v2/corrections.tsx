@@ -130,8 +130,8 @@ export function Corrections() {
   return (
     <Section title="Corrections">
       <p className="panel-body quiet">
-        Every corrected or explained day. Comments and notes stay local and are
-        excluded from exports and backups.
+        Every corrected, explained or waived day. Comments and notes stay local
+        and are excluded from exports and backups.
       </p>
       {(result.error || error) && (
         <ErrorNotice retry={result.reload}>{result.error || error}</ErrorNotice>
@@ -155,6 +155,11 @@ export function Corrections() {
                 <td>{fullDate(row.date)}</td>
                 <td>
                   {row.display}
+                  {row.waiverDisplay?.map((label) => (
+                    <small className="correction-note" key={label}>
+                      {label}
+                    </small>
+                  ))}
                   {row.warning && (
                     <small className="correction-note">{row.warning}</small>
                   )}
@@ -185,7 +190,7 @@ export function Corrections() {
       ) : (
         <Empty>
           {result.data
-            ? "No corrected or explained days."
+            ? "No corrected, explained or waived days."
             : "Loading corrections…"}
         </Empty>
       )}

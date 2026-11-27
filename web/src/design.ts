@@ -54,7 +54,7 @@ export function freshness(status: SyncStatus, now = Date.now()) {
     if (attendanceOn) stale = true;
   }
   if (status.mtdMissing) {
-    parts.push(mtdNotPasted);
+    parts.push(status.mtdMessage ?? mtdNotPasted);
     stale = true;
   }
   if (status.mtdMismatch?.length) {

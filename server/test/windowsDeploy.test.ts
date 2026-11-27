@@ -15,9 +15,21 @@ import {
   publish,
   startup,
   taskXml,
+  launcherProbeTimeout,
 } from "../../deploy/windows/common.mjs";
 
 const roots: string[] = [];
+
+it("uses the verified launcher wait by default and validates its environment override", () => {
+  expect(launcherProbeTimeout({})).toBe(2500);
+  expect(
+    launcherProbeTimeout({ DASHBOARD_LAUNCHER_PROBE_TIMEOUT_MS: "5000" }),
+  ).toBe(5000);
+  for (const value of ["", "NaN", "-1", "0", "99", "30001", "2.5", "Infinity"])
+    expect(() =>
+      launcherProbeTimeout({ DASHBOARD_LAUNCHER_PROBE_TIMEOUT_MS: value }),
+    ).toThrow("100 to 30000");
+});
 
 it.each(["run.js", "startup.js"])(
   "keeps %s compatible with Windows Script Host JScript",

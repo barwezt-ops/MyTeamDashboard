@@ -1,7 +1,7 @@
 // The attendance grid: every agent against every day of one cycle.
 import { absenceCounts } from "./absences.js";
 import type { DashboardData, V2Agent } from "./data.js";
-import { isLate, isMissing, sum } from "./facts.js";
+import { isLate, isMissing, sum, waiverLabels } from "./facts.js";
 import { heatStatus } from "./heat.js";
 import { reportDay } from "./home.js";
 import { noLine } from "./queues.js";
@@ -43,6 +43,9 @@ export function dayText(
     ];
   return [
     ["Status", attendanceLabel(facts)],
+    ...waiverLabels(facts).map(
+      (label) => ["Waiver", label] as [string, string],
+    ),
     ...(facts.correction?.warning
       ? [["Explained", facts.correction.warning] as [string, string]]
       : []),

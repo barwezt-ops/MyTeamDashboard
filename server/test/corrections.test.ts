@@ -7,7 +7,7 @@ import {
   scheduleOf,
 } from "../src/db/repo.js";
 import { calculateTrends } from "../src/api/trends.js";
-import { attendanceLabel } from "../src/db/corrections.js";
+import { attendanceLabel, commentWaivers } from "../src/db/corrections.js";
 import { commentStatus } from "../src/parse/commentStatus.js";
 import { attendancePasteStatusMap } from "../src/parse/status.js";
 import {
@@ -192,14 +192,14 @@ it("uses a sheet correction everywhere, retains WFM, adjusts MTD by daily deltas
       .get(code, date),
   ).toEqual({ raw: "NCNS", status: "Absent" });
   expect(agent.counts).toMatchObject({
-    source: "mtd",
+    source: "daily",
     lateCount: 0,
     lateMinutes: 0,
     missingMinutes: 0,
     absences: 0,
     breakCount: 0,
   });
-  expect(agent.mtd?.counts).toMatchObject({ ncns: 0, "forced annual": 1 });
+  expect(agent.mtd?.counts).toMatchObject({ ncns: 1, "forced annual": 0 });
   expect(
     agent.flags.some((flag) =>
       ["absence", "missing", "late", "breaks"].includes(flag.kind),
@@ -383,4 +383,133 @@ it("removes sheet overrides on the next paste, explains same-status comments, an
   expect(
     load().agents[0].calendar.find((row) => row.date === date)?.attendance,
   ).toMatchObject({ status: "1st Half Annual", late: 12, missing: 60 });
+});
+
+it("a corrected NCNS produces no NCNS flag, count or coaching absence even when WFM MTD still says NCNS", () => {
+  seed();
+  paste("WFM marked NCNS, was on Forced Annual");
+  const model = load(),
+    agent = model.agents[0];
+  expect(agent.counts).toMatchObject({ source: "daily", absences: 0 });
+  expect(model.flags.some((flag) => flag.kind === "absence")).toBe(false);
+  expect(teamView(model, model).rows[0].values.NCNS).toBe(0);
+  expect(
+    prepView(model, code)?.sections.find((section) =>
+      section.title.includes("Absence"),
+    )?.lines ?? [],
+  ).toEqual([]);
+  expect(homeView(model).shoutout.people.map((row) => row.code)).toContain(
+    code,
+  );
+  expect(
+    agent.calendar.find((row) => row.date === date)?.attendance?.ncnsStreak,
+  ).toBe(0);
+  db.prepare(
+    "INSERT INTO attendance_days VALUES (?,?,'NCNS','Absent',NULL,?)",
+  ).run(code, today, today);
+  db.prepare("INSERT INTO attendance_paste_details VALUES (?,?,?)").run(
+    code,
+    today,
+    JSON.stringify({ ncnsStreak: 5 }),
+  );
+  const later = load().agents[0];
+  expect(
+    later.calendar.find((row) => row.date === today)?.attendance?.ncnsStreak,
+  ).toBe(1);
+  expect(later.flags.find((flag) => flag.kind === "absence")?.facts).toEqual([
+    today + ":NCNS",
+  ]);
+});
+
+it("waives late and missing selectively, retains WFM minutes, combines with status corrections and follows sheet removal", () => {
+  seed();
+  paste("Please WAIVE lateness", "Active - Site", { late: 16, missing: 40 });
+  let model = load();
+  let day = model.agents[0].calendar.find(
+    (row) => row.date === date,
+  )!.attendance!;
+  expect(day).toMatchObject({
+    late: 0,
+    missing: 40,
+    wfmLate: 16,
+    correction: { state: "waived", waivers: { late: true, missing: false } },
+  });
+  expect(model.agents[0].counts).toMatchObject({
+    lateCount: 0,
+    lateMinutes: 0,
+    missingMinutes: 40,
+  });
+  expect(model.flags.some((flag) => flag.kind === "late")).toBe(false);
+  expect(model.flags.some((flag) => flag.kind === "missing")).toBe(true);
+  expect(
+    gridView(model).rows[0].cells.find((cell) => cell.date === date)!.details,
+  ).toContainEqual(["Waiver", "16m late · waived per TL comment"]);
+  paste("waive missing", "Active - Site", { late: 16, missing: 40 });
+  model = load();
+  expect(model.agents[0].counts).toMatchObject({
+    lateCount: 1,
+    lateMinutes: 16,
+    missingMinutes: 0,
+  });
+  expect(model.flags.some((flag) => flag.kind === "missing")).toBe(false);
+  paste("waive late and missing", "Active - Site", { late: 16, missing: 40 });
+  model = load();
+  day = model.agents[0].calendar.find((row) => row.date === date)!.attendance!;
+  expect(day).toMatchObject({
+    late: 0,
+    missing: 0,
+    wfmLate: 16,
+    wfmMissing: 40,
+  });
+  expect(homeView(model).shoutout.people.map((row) => row.code)).toContain(
+    code,
+  );
+  expect(
+    prepView(model, code)
+      ?.sections.flatMap((section) => section.lines)
+      .join(" "),
+  ).not.toContain("16 minutes late");
+  paste("Forced Annual; waive late and missing", "NCNS", {
+    late: 16,
+    missing: 40,
+  });
+  model = load();
+  expect(
+    model.agents[0].calendar.find((row) => row.date === date)?.attendance,
+  ).toMatchObject({
+    status: "PTO",
+    absence: null,
+    late: 0,
+    missing: 0,
+    correction: { state: "corrected", waivers: { late: true, missing: true } },
+  });
+  paste("", "Active - Site", { late: 16, missing: 40 });
+  expect(load().agents[0].counts).toMatchObject({
+    lateCount: 1,
+    lateMinutes: 16,
+    missingMinutes: 40,
+  });
+});
+
+it("recognizes only the owner's waiver words and retains sheet waivers under an app status correction", () => {
+  seed();
+  for (const note of ["late", "waive unrelated"])
+    expect(commentWaivers(note)).toEqual({ late: false, missing: false });
+  expect(commentWaivers("WAIVED LATENESS and missing")).toEqual({
+    late: true,
+    missing: true,
+  });
+  paste("waive late", "NCNS", { late: 16 });
+  db.prepare(
+    "INSERT INTO attendance_corrections VALUES (?,?,'active - site','Present',?)",
+  ).run(code, date, privateText);
+  const day = load().agents[0].calendar.find(
+    (row) => row.date === date,
+  )!.attendance!;
+  expect(day).toMatchObject({
+    status: "Present",
+    late: 0,
+    correction: { source: "app", waivers: { late: true } },
+  });
+  expect(JSON.stringify(exportBackup(db))).not.toContain(privateText);
 });

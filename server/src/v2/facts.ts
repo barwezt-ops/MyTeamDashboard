@@ -11,6 +11,8 @@ export type DayFacts = {
   correction?: Correction;
   /** Minutes late, or null when the source does not report it. */
   late: number | null;
+  wfmLate?: number | null;
+  wfmMissing?: number | null;
   /** Missing minutes after compensation, or null when not reported. */
   missing: number | null;
   /** Set by the source's label, which is what the flags count. */
@@ -39,6 +41,8 @@ export function dayFacts(
   details: Record<string, unknown> | undefined,
   breakLabel: string,
 ): DayFacts {
+  const wfmLate = minutes(details?.lateness);
+  const wfmMissing = minutes(row.correction?.wfmMissing ?? row.missing);
   if (row.correction?.state === "corrected" && !workStatus(row.status))
     details = undefined;
   const raw = labelOf(row.raw);
@@ -49,8 +53,9 @@ export function dayFacts(
     status: row.status,
     raw: row.raw,
     ...(row.correction ? { correction: row.correction } : {}),
-    late: minutes(details?.lateness),
-    missing: minutes(row.missing),
+    late: row.correction?.waivers?.late ? 0 : minutes(details?.lateness),
+    missing: row.correction?.waivers?.missing ? 0 : minutes(row.missing),
+    ...(row.correction?.waivers ? { wfmLate, wfmMissing } : {}),
     breakExceeded,
     breakMinutes: (breakExceeded && minutes(details?.breakOver)) || null,
     absence: raw === "ncns" ? "NCNS" : raw === "awol" ? "AWOL" : null,
@@ -59,6 +64,18 @@ export function dayFacts(
     logout: clock(details?.logout),
     ncnsStreak: count(details?.ncnsStreak),
   };
+}
+
+/** Original WFM minutes remain visible; private comment text never leaves here. */
+export function waiverLabels(day: DayFacts) {
+  return [
+    ...(day.correction?.waivers?.late
+      ? [`${day.wfmLate ?? 0}m late · waived per TL comment`]
+      : []),
+    ...(day.correction?.waivers?.missing
+      ? [`${day.wfmMissing ?? 0}m missing · waived per TL comment`]
+      : []),
+  ];
 }
 
 export const isLate = (day: DayFacts) => (day.late ?? 0) > 0;

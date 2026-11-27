@@ -183,13 +183,13 @@ it("applies the owner's perfect attendance rule", () => {
         dashboardData(own, fixtureConfig(), TEAM_TODAY),
       ).shoutout.people.map((p) => p.code);
     expect(clean()).toEqual(codes.slice(0, allowed.length));
-    // WFM's own totals count even when the daily row shows nothing.
+    // WFM MTD is for comparison; effective daily facts drive shout-outs.
     own
       .prepare(
         "UPDATE attendance_mtd_snapshots SET fields=json_set(fields,'$.latenessIncidents',1,'$.lateness','00:04:00') WHERE code=?",
       )
       .run(codes[0]);
-    expect(clean()).toEqual(codes.slice(1, allowed.length));
+    expect(clean()).toEqual(codes.slice(0, allowed.length));
   } finally {
     own.close();
   }

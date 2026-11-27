@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { commentStatus } from "../parse/commentStatus.js";
-import { mtdNotPasted } from "../api/dto.js";
+import { mtdNotPasted, mtdDifferentCycle } from "../api/dto.js";
 import type {
   Agent,
   AttendanceDay,
@@ -93,7 +93,7 @@ function checkedTeamRows(
   });
   if (badRows * 5 > relevant.length)
     throw new Error(tab + " has formula errors in more than 20% of rows.");
-  if (!team.length && (tab !== "MTD" || rows.length))
+  if (!team.length && tab !== "MTD")
     throw new Error(
       tab === "Attendance"
         ? "Attendance paste looks incomplete"
@@ -197,8 +197,25 @@ export function prepareAttendancePaste(
     ),
   }));
   const dates = [...new Set(records.map((row) => row.date))].sort();
+  const mtdCodes = [
+    ...new Set(
+      mtd
+        .filter((row) => !isError(row.code))
+        .map((row) => codeOf(text(row.code)))
+        .filter(Boolean),
+    ),
+  ].sort();
   const fingerprint = createHash("sha256")
-    .update(JSON.stringify({ records, details, snapshots, comments, warnings }))
+    .update(
+      JSON.stringify({
+        records,
+        details,
+        snapshots,
+        comments,
+        warnings,
+        mtdCodes,
+      }),
+    )
     .digest("hex");
   return {
     records,
@@ -206,6 +223,7 @@ export function prepareAttendancePaste(
     comments,
     dates,
     snapshots,
+    mtdCodes,
     warnings,
     fingerprint,
     rowsRead: attendance.length,
@@ -285,16 +303,45 @@ export function storeAttendancePaste(
       ).run(teamCodeCount);
     }
     const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
+    const dailyCodes = new Set(
+      (
+        db
+          .prepare(
+            "SELECT DISTINCT code FROM attendance_days WHERE date BETWEEN ? AND ?",
+          )
+          .all(cycle.from, cycle.to) as { code: string }[]
+      ).map((row) => row.code),
+    );
+    const mismatched = mtdDailyMismatch(
+      db,
+      paste,
+      cycleStartDay,
+      new Set(paste.snapshots.map((row) => row.code)),
+    );
+    const differentCycle =
+      paste.mtdCodes.some((code) => !dailyCodes.has(code)) ||
+      (paste.snapshots.length > 0 &&
+        mismatched.length * 2 > paste.snapshots.length);
+    const snapshots = differentCycle ? [] : paste.snapshots;
     db.prepare(
       "UPDATE attendance_paste_state SET diagnostics=? WHERE id=1",
     ).run(
       JSON.stringify({
         cycleStart: cycle.from,
         cycleEnd: cycle.to,
-        mtdAvailable: paste.snapshots.length > 0,
+        mtdAvailable: snapshots.length > 0,
+        mtdMessage: differentCycle
+          ? mtdDifferentCycle
+          : snapshots.length
+            ? null
+            : mtdNotPasted,
         warnings: paste.warnings,
       }),
     );
+    if (differentCycle)
+      db.prepare(
+        "DELETE FROM attendance_mtd_snapshots WHERE cycle_start=? AND cycle_end=?",
+      ).run(cycle.from, cycle.to);
     const already = db
       .prepare(
         "SELECT 1 FROM attendance_mtd_snapshots WHERE sync_date=? LIMIT 1",
@@ -307,7 +354,7 @@ export function storeAttendancePaste(
       const snapshot = db.prepare(
         "INSERT INTO attendance_mtd_snapshots VALUES (?,?,?,?,?)",
       );
-      for (const row of paste.snapshots)
+      for (const row of snapshots)
         snapshot.run(
           today,
           row.code,
@@ -321,8 +368,7 @@ export function storeAttendancePaste(
 }
 
 /**
- * Codes whose MTD lateness differs, by a minute or more, from the sum of the
- * stored daily rows in the same cycle. This only warns: nothing is changed.
+ * Compare WFM with WFM (before TL corrections), including MTD-only agents.
  */
 export function mtdDailyMismatch(
   db: Db,
@@ -332,23 +378,39 @@ export function mtdDailyMismatch(
 ) {
   if (!paste.snapshots.length) return [];
   const cycle = coachingCycle(paste.dates.at(-1)!, cycleStartDay);
-  const daily = new Map<string, number>();
+  const daily = new Map<
+    string,
+    { late: number; missing: number; incidents: number }
+  >();
   for (const row of db
     .prepare(
-      "SELECT code,fields FROM attendance_paste_details WHERE date BETWEEN ? AND ?",
+      "SELECT d.code,d.missing,p.fields FROM attendance_days d LEFT JOIN attendance_paste_details p ON p.code=d.code AND p.date=d.date WHERE d.date BETWEEN ? AND ?",
     )
-    .all(cycle.from, cycle.to) as { code: string; fields: string }[])
-    daily.set(
-      row.code,
-      (daily.get(row.code) ?? 0) +
-        (minutes(JSON.parse(row.fields).lateness) ?? 0),
-    );
+    .all(cycle.from, cycle.to) as {
+    code: string;
+    missing: string | null;
+    fields: string | null;
+  }[]) {
+    const total = daily.get(row.code) ?? { late: 0, missing: 0, incidents: 0 };
+    const late = minutes(JSON.parse(row.fields ?? "{}").lateness) ?? 0;
+    total.late += late;
+    total.missing += minutes(row.missing) ?? 0;
+    total.incidents += Number(late > 0);
+    daily.set(row.code, total);
+  }
   return paste.snapshots.flatMap(({ code, fields }) => {
     // A blank MTD cell means none. Text that is not a duration is skipped.
-    const total = fields.lateness === null ? 0 : minutes(fields.lateness);
+    const total = daily.get(code);
+    const differs = (value: unknown, actual: number) => {
+      const reported = value === null ? 0 : minutes(value);
+      return reported !== null && Math.abs(reported - actual) >= 1;
+    };
     return codes.has(code) &&
-      total !== null &&
-      Math.abs(total - (daily.get(code) ?? 0)) >= 1
+      (!total ||
+        differs(fields.lateness, total.late) ||
+        differs(fields.totalMissingHours, total.missing) ||
+        (fields.latenessIncidents !== null &&
+          Number(fields.latenessIncidents) !== total.incidents))
       ? [code]
       : [];
   });
@@ -415,9 +477,21 @@ export function pasteDiagnostics(db: Db) {
         cycleStart: string;
         cycleEnd: string;
         mtdAvailable: boolean;
+        mtdMessage?: string | null;
         warnings: AttendanceCellWarning[];
       })
     : null;
+}
+export function mtdMessageForCycle(
+  db: Db,
+  cycle: { from: string; to: string },
+) {
+  const diagnostics = pasteDiagnostics(db);
+  return diagnostics?.cycleStart === cycle.from &&
+    diagnostics.cycleEnd === cycle.to
+    ? (diagnostics.mtdMessage ??
+        (!diagnostics.mtdAvailable ? mtdNotPasted : undefined))
+    : undefined;
 }
 export function mtdForCycle(db: Db, cycle: { from: string; to: string }) {
   const diagnostics = pasteDiagnostics(db);
