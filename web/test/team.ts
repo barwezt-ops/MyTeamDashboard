@@ -6,6 +6,9 @@ import { expectAccessible } from "./accessibility";
 export const teamUrl = "http://127.0.0.1:3212";
 
 export async function openTeam(page: Page, path = "/") {
+  expect(
+    (await page.request.post("http://127.0.0.1:3219/reset")).status(),
+  ).toBe(204);
   await page.clock.install({ time: new Date("2026-11-26T12:00:00Z") });
   const errors: string[] = [];
   const external: string[] = [];

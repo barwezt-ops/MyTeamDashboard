@@ -64,10 +64,8 @@ test("Home answers the shift questions from real numbers", async ({
     page.getByRole("button", { name: /^Coach Avery S\./ }),
   ).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(
-    page.getByRole("dialog", { name: "Agent profile" }),
-  ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/coaching\?view=prep&agent=99101/);
+  await page.goto("/");
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await expectAccessible(page);
   clean();

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import bcrypt from "bcrypt";
 import {
   performanceToday,
@@ -9,7 +10,12 @@ import { openDb } from "../../server/dist.test/db/db.js";
 import { createSync } from "../../server/dist.test/sync/service.js";
 import { readEnv } from "../../server/dist.test/env.js";
 import { seedV2Fixture } from "../../fixtures/v2.js";
-import { seedTeam, teamConfig, TEAM_NOW } from "../../fixtures/team.js";
+import {
+  resetTeam,
+  seedTeam,
+  teamConfig,
+  TEAM_NOW,
+} from "../../fixtures/team.js";
 import { createApp } from "../../server/dist.test/index.js";
 
 process.env.PORT = "3210";
@@ -53,6 +59,12 @@ createApp(
   teamDb,
   createSync(teamDb, team, "fixture", () => new Date(TEAM_NOW)),
 ).listen(3212, "127.0.0.1");
+
+// Each V2 screen test starts from the same synthetic data.
+createServer((request, response) => {
+  if (request.method === "POST" && request.url === "/reset") resetTeam(teamDb);
+  response.writeHead(204).end();
+}).listen(3219, "127.0.0.1");
 
 const db = openDb(":memory:");
 const fixtureConfig = loadConfig();

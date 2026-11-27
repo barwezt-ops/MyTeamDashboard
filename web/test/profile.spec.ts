@@ -84,7 +84,7 @@ test("agent profile opens in a drawer and reports unknown agents", async ({
   page,
 }) => {
   const clean = await openTeam(page);
-  await page.getByRole("button", { name: /^Coach Avery S\./ }).click();
+  await page.getByRole("button", { name: "Open Avery S." }).first().click();
   const drawer = page.getByRole("dialog", { name: "Agent profile" });
   await expect(
     drawer.getByRole("heading", { name: "Avery Stone" }),
