@@ -195,7 +195,13 @@ it("replaces only pasted code/date pairs, keeps daily MTD snapshots and detects 
       { code: "99999", date: "invalid", status: "Unknown" },
     ];
     const snapshots = [
-      { code, status: "Maternity", ot: 1.25, "count:maternity": 1 },
+      {
+        code,
+        status: "Maternity",
+        ot: 1.25,
+        missing: 1 / 48,
+        "count:maternity": 1,
+      },
     ];
     const seed = db.prepare(
       "INSERT INTO attendance_days (code,date,raw) VALUES (?,?,?)",

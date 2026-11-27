@@ -32,7 +32,11 @@ import {
   weekdays,
   coachingCycle,
 } from "../parse/normalize.js";
-import { mtdForCycle, pasteDiagnostics } from "../sync/attendancePaste.js";
+import {
+  mtdForCycle,
+  mtdMessageForCycle,
+  pasteDiagnostics,
+} from "../sync/attendancePaste.js";
 import { excluded } from "../parse/status.js";
 import { exportDiscrepancies } from "./export.js";
 import { trendRange } from "./trendRange.js";
@@ -500,6 +504,9 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
       );
       const result: SyncStatus = {
         mtdMissing: !!sync.attendancePasteEnabled && !mtdSyncedOn,
+        mtdMessage: sync.attendancePasteEnabled
+          ? mtdMessageForCycle(db, cycle)
+          : undefined,
         pasteWarnings: (pasteDiagnostics(db)?.warnings ?? []).filter(
           (warning) => warning.code === null || ownCodes.has(warning.code),
         ),

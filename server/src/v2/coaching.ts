@@ -1,7 +1,13 @@
 // The Coaching hub: pace, who needs it, prep facts, follow-ups, history and
 // the fairness counts.
 import type { DashboardData, V2Agent } from "./data.js";
-import { isLate, isMissing, sum, type DayFacts } from "./facts.js";
+import {
+  isLate,
+  isMissing,
+  sum,
+  waiverLabels,
+  type DayFacts,
+} from "./facts.js";
 import { needsAttention } from "./grid.js";
 import { coachingTotals } from "./home.js";
 import { outcomeText } from "./profile.js";
@@ -221,7 +227,7 @@ export function prepView(data: DashboardData, code: string) {
         .filter((day) => day.correction)
         .map(
           (day) =>
-            `${say.shortDate(day.date)}: ${attendanceLabel(day)} · ${day.correction!.note}`,
+            `${say.shortDate(day.date)}: ${attendanceLabel(day)} · ${[...waiverLabels(day), day.correction!.note].join(" · ")}`,
         ),
     ),
     section(

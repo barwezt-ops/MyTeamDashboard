@@ -149,8 +149,10 @@ export interface SyncRun {
 /** Sync warning that carries the codes whose MTD and daily rows disagree. */
 export const mtdMismatchWarning = "MTD_DAILY_MISMATCH:";
 export const mtdNotPasted = "MTD for this cycle not pasted yet";
+export const mtdDifferentCycle = "MTD tab looks like a different cycle";
 export interface SyncStatus {
   mtdMissing?: boolean;
+  mtdMessage?: string;
   pasteWarnings?: AttendanceCellWarning[];
   /** Team agents whose MTD lateness differs from their daily rows. */
   mtdMismatch?: { code: Code; name: string }[];

@@ -6,7 +6,8 @@ Owner-approved scope, 27 November 2026. Branch: `feature/attendance-corrections`
 
 - Only `TL Comment` on the Attendance paste is allowed. Ops Comment, WFM Comment and other private columns remain refused.
 - Matching ignores case and consumes longer overlapping labels first: `Forced Annual` does not also match `Annual`. Ignore any matched label mapping to WFM's own status, then count remaining distinct labels: one corrects; zero explains; two or more explain with `names more than one status, not corrected` in the drawer and Corrections list. `WFM marked NCNS, was on Forced Annual` corrects to Forced Annual; `NCNS confirmed` explains without changing status. No inference or negation parsing is performed.
-- WFM source rows remain intact. Every corrected day carries the used status and provenance, for example `NCNS → Forced Annual · TL comment`. Grid, Home, profile, rules, counts, trends, shout-out, reports and coaching prep use the corrected status. Full-day nonworking corrections remove working-time incidents; MTD totals apply covered daily deltas so unpasted days still count.
+- WFM source rows remain intact. Every corrected day carries the used status and provenance, for example `NCNS → Forced Annual · TL comment`. Grid, Home, profile, rules, counts, trends, shout-out, reports and coaching prep use the corrected status. Full-day nonworking corrections remove working-time incidents. Follow-up: effective daily facts now drive operational counts; WFM MTD is retained for comparison, without delta adjustments driving flags or shout-outs.
+- `waive` plus `late`/`lateness` or `missing` in a TL comment excludes only those day values from counts, flags and shout-out. WFM minutes remain visible in grid, Home, profile, coaching prep and Corrections. Waivers can combine with sheet or app status corrections and follow sheet removal.
 - A note without a status leaves attendance counts unchanged. Its flags and discrepancies show Explained with the note, and explained facts no longer contribute to Needs you. Removing the comment restores normal treatment on the next successful sync.
 - Matching WFM statuses in sheet comments now explain without an override. App corrections whose label matches WFM still show `WFM updated`. The next sync removes sheet corrections whose comment was cleared. Days outside the paste's covered agent/date pairs remain untouched.
 - Attendance day drawer → Correct status saves a selected known status and a required note locally. App corrections survive sync and take precedence over sheet comments. Undo returns to the sheet's current correction or original WFM status.
@@ -18,7 +19,7 @@ Comment/note text stays in local SQLite. It is never logged or included in repor
 
 The local tables are additive: `attendance_sheet_comments` and `attendance_corrections`. Sync never writes the latter. JSON backup/restore deliberately does not transfer either table under the local-only rule.
 
-Tests cover longest whole-label matching, ambiguous/no-label comments, WFM preservation, effective facts/counts/MTD deltas, flags, shout-out, all read views, export/log privacy, sync removal/WFM confirmation, app precedence, validation and Undo. The browser check exercises the real drawer, Settings list, CSV and responsive accessibility checks.
+Tests cover longest whole-label matching, ambiguous/no-label comments, WFM preservation, effective daily counts, corrected-NCNS flag suppression, selective/combined waivers, stale MTD, flags, shout-out, all read views, export/log privacy, sync removal/WFM confirmation, app precedence, validation and Undo. Browser checks exercise the real drawer, Settings list, CSV, waiver visibility and responsive accessibility checks.
 
 ## Validation
 

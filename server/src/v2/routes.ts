@@ -41,6 +41,7 @@ import {
 import { attendanceLabel } from "../db/corrections.js";
 import { labelOf } from "../parse/normalize.js";
 import { refreshAttendanceRules } from "../rules/index.js";
+import { dayFacts, waiverLabels } from "./facts.js";
 
 export function v2Routes(db: Db, config: Config, today: () => string) {
   const router = Router();
@@ -79,6 +80,22 @@ export function v2Routes(db: Db, config: Config, today: () => string) {
             date: row.date,
             used: row.raw || row.status,
             display: attendanceLabel(row),
+            waiverDisplay: waiverLabels(
+              dayFacts(
+                row,
+                JSON.parse(
+                  (
+                    db
+                      .prepare(
+                        "SELECT fields FROM attendance_paste_details WHERE code=? AND date=?",
+                      )
+                      .get(row.code, row.date) as { fields: string } | undefined
+                  )?.fields ?? "{}",
+                ),
+                config.sources.attendance.paste?.breakExceededLabel ??
+                  "Exceeded",
+              ),
+            ),
           }))
           .sort(
             (a, b) =>

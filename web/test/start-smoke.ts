@@ -70,6 +70,24 @@ createApp(
   createSync(correctionsDb, team, "fixture", () => new Date(TEAM_NOW)),
 ).listen(3213, "127.0.0.1");
 createServer((request, response) => {
+  if (request.method === "POST" && request.url === "/waivers-fixture") {
+    resetTeam(correctionsDb);
+    correctionsDb
+      .prepare(
+        "UPDATE attendance_days SET raw='Active - Site',status='Present',missing='00:32:00' WHERE code='99103' AND date='2026-11-25'",
+      )
+      .run();
+    correctionsDb
+      .prepare(
+        "UPDATE attendance_paste_details SET fields=json_set(fields,'$.lateness','00:16:00') WHERE code='99103' AND date='2026-11-25'",
+      )
+      .run();
+    correctionsDb
+      .prepare(
+        "INSERT INTO attendance_sheet_comments VALUES ('99103','2026-11-25','Waive lateness and missing',NULL,NULL,1)",
+      )
+      .run();
+  }
   if (request.method === "POST" && request.url === "/reset") resetTeam(teamDb);
   if (request.method === "POST" && request.url === "/corrections-fixture") {
     resetTeam(correctionsDb);

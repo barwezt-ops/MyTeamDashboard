@@ -132,7 +132,7 @@ export function Settings({
       )}
       {data.mtdMissing && (
         <p className="notice" role="status">
-          {mtdNotPasted}
+          {data.mtdMessage ?? mtdNotPasted}
         </p>
       )}
       {!!data.pasteWarnings?.length && (

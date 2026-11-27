@@ -8,6 +8,7 @@ import {
   isMissing,
   isUnplanned,
   sum,
+  waiverLabels,
   type DayFacts,
 } from "./facts.js";
 import { heatStatus } from "./heat.js";
@@ -95,6 +96,7 @@ export function exceptionRows(
         ? attendanceLabel(facts)
         : (facts.absence ?? facts.status),
       note: facts.correction?.note ?? null,
+      waivers: waiverLabels(facts),
       login: say.clockTime(facts.login),
       late: facts.late ? say.duration(facts.late) : null,
       missing: facts.missing ? say.duration(facts.missing) : null,
@@ -345,7 +347,7 @@ export function homeView(data: DashboardData) {
       agent.active &&
       rows.some((row) => row.status === "Present") &&
       !rows.some(breaksPerfectAttendance) &&
-      // WFM's own totals also count, in case a daily row has not been pasted.
+      // Counts and day rows both use corrected, unwaived daily facts.
       !(counts.lateCount || counts.lateMinutes || counts.missingMinutes)
     );
   });

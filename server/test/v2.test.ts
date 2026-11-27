@@ -206,7 +206,7 @@ it("keeps MTD lateness equal to the sum of each agent's daily lateness", () => {
   );
   // The dashboard reports the same totals whether it reads MTD or daily rows.
   const fromMtd = agent("99001").counts;
-  expect(fromMtd).toMatchObject({ source: "mtd", lateMinutes: 38 });
+  expect(fromMtd).toMatchObject({ source: "daily", lateMinutes: 38 });
   db.prepare("DELETE FROM attendance_mtd_snapshots").run();
   expect(agent("99001").counts).toMatchObject({
     source: "daily",

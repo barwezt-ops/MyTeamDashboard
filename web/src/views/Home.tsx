@@ -366,6 +366,11 @@ function Exceptions({ view }: { view: HomeView }) {
                   >
                     {row.status}
                   </span>
+                  {row.waivers.map((label) => (
+                    <small className="correction-note" key={label}>
+                      {label}
+                    </small>
+                  ))}
                   {row.note && (
                     <small className="correction-note">{row.note}</small>
                   )}

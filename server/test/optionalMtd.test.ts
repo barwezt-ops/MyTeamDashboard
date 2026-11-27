@@ -7,6 +7,7 @@ import {
   mtdDailyMismatch,
   mtdForCycle,
   pasteDiagnostics,
+  mtdMessageForCycle,
 } from "../src/sync/attendancePaste.js";
 import { dashboardData } from "../src/v2/data.js";
 import { homeView } from "../src/v2/home.js";
@@ -92,7 +93,7 @@ it("imports Attendance without MTD, keeps historic snapshots, never borrows the 
     homeView(dashboardData(db, config, today)).shoutout.people.map(
       (row) => row.code,
     ),
-  ).not.toContain("99001");
+  ).toContain("99001");
   save(current); // Emptying MTD again must not silently reuse an earlier current-cycle snapshot.
   model = dashboardData(db, config, today);
   expect(model.agents[0].counts).toMatchObject({
@@ -194,4 +195,99 @@ it("combines empty MTD and sanitized cells with WFM-aware TL corrections", () =>
   expect(
     paste.details.find((row) => row.date === "2026-11-22")?.fields.logout,
   ).toBeNull();
+});
+
+it("rejects MTD codes without current-cycle attendance, including non-roster codes, and deletes misclassified current snapshots", () => {
+  seed();
+  const current = prepare(rows(), [{ code: "99001", lateness: 0 }]);
+  save(current);
+  expect(
+    mtdForCycle(db, { from: "2026-11-21", to: "2026-12-20" }),
+  ).not.toBeNull();
+  const stale = prepare(rows(), [
+    { code: "99001", lateness: 0 },
+    { code: "99999", lateness: 0 },
+  ]);
+  save(stale);
+  expect(pasteDiagnostics(db)).toMatchObject({
+    mtdAvailable: false,
+    mtdMessage: "MTD tab looks like a different cycle",
+  });
+  expect(
+    db
+      .prepare(
+        "SELECT COUNT(*) FROM attendance_mtd_snapshots WHERE cycle_start='2026-11-21'",
+      )
+      .pluck()
+      .get(),
+  ).toBe(0);
+  expect(mtdForCycle(db, { from: "2026-11-21", to: "2026-12-20" })).toBeNull();
+  expect(mtdMessageForCycle(db, { from: "2026-11-21", to: "2026-12-20" })).toBe(
+    "MTD tab looks like a different cycle",
+  );
+  expect(
+    mtdMessageForCycle(db, { from: "2026-12-21", to: "2027-01-20" }),
+  ).toBeUndefined();
+  expect(db.prepare("SELECT COUNT(*) FROM attendance_days").pluck().get()).toBe(
+    5,
+  );
+});
+
+it("checks MTD-only agents even when their MTD totals are zero", () => {
+  seed();
+  const input = prepare(rows().slice(0, 4), [{ code: "99005", lateness: 0 }]);
+  save(input);
+  expect(mtdDailyMismatch(db, input, 21, new Set(["99005"]))).toEqual([
+    "99005",
+  ]);
+  expect(pasteDiagnostics(db)?.mtdMessage).toBe(
+    "MTD tab looks like a different cycle",
+  );
+});
+
+it("rejects mismatches for more than half the matched agents, allows exactly half, and recovers after clearing or replacing MTD", () => {
+  seed();
+  const mtd = (bad: number) =>
+    rows()
+      .slice(0, 4)
+      .map((row, i) => ({ code: row.code, lateness: i < bad ? 30 / 1440 : 0 }));
+  save(prepare(rows(), mtd(2)));
+  expect(pasteDiagnostics(db)?.mtdAvailable).toBe(true);
+  save(prepare(rows(), mtd(3)));
+  expect(pasteDiagnostics(db)).toMatchObject({
+    mtdAvailable: false,
+    mtdMessage: "MTD tab looks like a different cycle",
+  });
+  const model = dashboardData(db, config, today);
+  expect(
+    model.agents.every(
+      (agent) => agent.counts.source === "daily" && agent.mtd === null,
+    ),
+  ).toBe(true);
+  save(prepare(rows()));
+  expect(pasteDiagnostics(db)?.mtdMessage).toBe(
+    "MTD for this cycle not pasted yet",
+  );
+  save(prepare(rows(), mtd(0)));
+  expect(pasteDiagnostics(db)).toMatchObject({
+    mtdAvailable: true,
+    mtdMessage: null,
+  });
+});
+
+it("shows the different-cycle message instead of the empty-tab message in freshness", () => {
+  const status = {
+    date: today,
+    mtdMissing: true,
+    mtdMessage: "MTD tab looks like a different cycle",
+    sources: [],
+    jobs: {},
+    running: null,
+  } as unknown as SyncStatus;
+  expect(freshness(status).text).toContain(
+    "MTD tab looks like a different cycle",
+  );
+  expect(freshness(status).text).not.toContain(
+    "MTD for this cycle not pasted yet",
+  );
 });
