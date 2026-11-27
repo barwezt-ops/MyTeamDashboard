@@ -63,11 +63,16 @@ export async function reviewScreen(page: Page, info: TestInfo, name: string) {
     const file = `${name}-${width}.png`;
     if (process.env.SAVE_SCREENSHOTS)
       mkdirSync("docs/design", { recursive: true });
+    // A window as tall as the page, so the sidebar and the phone navigation sit
+    // where a person sees them and not part way down a long capture.
+    await page.setViewportSize({
+      width,
+      height: await page.evaluate(() => document.documentElement.scrollHeight),
+    });
     await page.screenshot({
       path: process.env.SAVE_SCREENSHOTS
         ? "docs/design/" + file
         : info.outputPath(file),
-      fullPage: true,
       animations: "disabled",
     });
   }

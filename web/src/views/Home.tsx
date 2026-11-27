@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import type { HomeView } from "../../../server/src/v2/home";
@@ -442,9 +442,14 @@ function Lateness({ view }: { view: HomeView }) {
   );
 }
 
+/** Names on the shout-out card before it is expanded. */
+const namesShown = 4;
+
 function ShoutOut({ view }: { view: HomeView }) {
   const run = useCopy();
   const { caption, people, text } = view.shoutout;
+  const [all, setAll] = useState(false);
+  const hidden = people.length - namesShown;
   return (
     <section
       className="shout home-panel home-shout"
@@ -455,8 +460,8 @@ function ShoutOut({ view }: { view: HomeView }) {
         shout-out
       </h2>
       <p>{caption}</p>
-      <ul className="panel-scroll" tabIndex={people.length ? 0 : -1}>
-        {people.map((person) => (
+      <ul>
+        {(all ? people : people.slice(0, namesShown)).map((person) => (
           <li key={person.code}>
             <span aria-hidden="true">
               <Avatar {...person} />
@@ -465,6 +470,16 @@ function ShoutOut({ view }: { view: HomeView }) {
           </li>
         ))}
       </ul>
+      {hidden > 0 && (
+        <button
+          type="button"
+          className="shout-more"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+        >
+          {all ? "Show fewer" : `and ${hidden} more`}
+        </button>
+      )}
       {!!people.length && (
         <button
           type="button"

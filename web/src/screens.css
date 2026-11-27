@@ -171,9 +171,11 @@ td.bad {
   flex: 3 1 260px;
   height: 320px;
 }
+/* The card grows with its names, so nothing in it is ever cut off. */
 .home-shout {
   flex: 3 1 240px;
-  height: 320px;
+  height: auto;
+  min-height: 320px;
 }
 .panel-scroll {
   flex: 1 1 auto;
@@ -376,7 +378,7 @@ td.bad {
 .shout p {
   margin: 10px 0 12px;
   font:
-    400 21px/1.25 "Fraunces",
+    400 19px/1.25 "Fraunces",
     serif;
 }
 .shout ul {
@@ -398,7 +400,20 @@ td.bad {
   height: 22px;
   font-size: 9.5px;
 }
-.shout > button {
+.shout > .shout-more {
+  align-self: flex-start;
+  min-height: 28px;
+  margin: -6px 0 12px;
+  padding: 0;
+  background: none;
+  color: var(--shout-ink);
+  font-weight: 600;
+  text-decoration: underline;
+}
+.shout > button:last-child {
+  margin-top: auto;
+}
+.shout > button:not(.shout-more) {
   min-height: 34px;
   border-radius: 999px;
   background: var(--shout-ink);
@@ -416,6 +431,9 @@ td.bad {
     height: auto;
     max-height: 520px;
   }
+  .home-shout {
+    max-height: none;
+  }
   .home-first > * {
     flex: 1 1 100% !important;
   }
@@ -432,6 +450,25 @@ td.bad {
   white-space: nowrap;
   padding-top: 7px;
   padding-bottom: 7px;
+}
+/* Seven columns must fit the panel without scrolling sideways. */
+@media (min-width: 1280px) {
+  .home-exceptions :is(th, td) {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  .home-exceptions :is(th, td):first-child {
+    padding-left: 14px;
+  }
+  .home-exceptions :is(th, td):last-child {
+    padding-right: 14px;
+  }
+  /* Queue and status wrap before the table grows. */
+  .home-exceptions td:nth-child(2),
+  .home-exceptions td:nth-child(3),
+  .home-exceptions td:nth-child(3) .tag {
+    white-space: normal;
+  }
 }
 
 .subject-line {
