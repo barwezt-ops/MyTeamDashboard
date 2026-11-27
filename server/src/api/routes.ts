@@ -26,7 +26,13 @@ import {
   type SyncStatus,
   type TodayData,
 } from "./dto.js";
-import { plusDays, weekday, weekdays } from "../parse/normalize.js";
+import {
+  plusDays,
+  weekday,
+  weekdays,
+  coachingCycle,
+} from "../parse/normalize.js";
+import { mtdForCycle, pasteDiagnostics } from "../sync/attendancePaste.js";
 import { excluded } from "../parse/status.js";
 import { exportDiscrepancies } from "./export.js";
 import { trendRange } from "./trendRange.js";
@@ -472,28 +478,39 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
             warning.slice(mtdMismatchWarning.length).split(","),
           ),
       );
+      const cycle = coachingCycle(
+        date,
+        readSettings(db, config.coachingCycleStartDay).cycleStartDay,
+      );
+      const mtdSyncedOn = mtdForCycle(db, cycle);
+      const ownCodes = new Set(
+        agentsOf(db)
+          .filter((agent) => agent.ownerGroup === "mine")
+          .map((agent) => agent.code),
+      );
       const result: SyncStatus = {
-        mtdMismatch: agentsOf(db)
-          .filter(
-            (agent) =>
-              agent.ownerGroup === "mine" && mismatched.has(agent.code),
-          )
-          .map((agent) => ({
-            code: agent.code,
-            name: agent.fullName || agent.firstName,
-          })),
+        mtdMissing: !!sync.attendancePasteEnabled && !mtdSyncedOn,
+        pasteWarnings: (pasteDiagnostics(db)?.warnings ?? []).filter(
+          (warning) => warning.code === null || ownCodes.has(warning.code),
+        ),
+        mtdMismatch: mtdSyncedOn
+          ? agentsOf(db)
+              .filter(
+                (agent) =>
+                  agent.ownerGroup === "mine" && mismatched.has(agent.code),
+              )
+              .map((agent) => ({
+                code: agent.code,
+                name: agent.fullName || agent.firstName,
+              }))
+          : [],
         attendanceThrough: db
           .prepare(
             "SELECT MAX(d.date) FROM attendance_days d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
           )
           .pluck()
           .get() as string | null,
-        mtdSyncedOn: db
-          .prepare(
-            "SELECT MAX(d.sync_date) FROM attendance_mtd_snapshots d JOIN agents a ON a.code=d.code WHERE a.owner_group='mine'",
-          )
-          .pluck()
-          .get() as string | null,
+        mtdSyncedOn,
         jobs: Object.fromEntries(
           jobs.map((job) => [
             job,

@@ -4,9 +4,12 @@ _Last updated: 2026-11-27 for the V2 merge, deployment and first live sync._
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **Owner-authorized attendance follow-up B:** branch `fix/optional-mtd-paste-errors` starts from main, separate from PR #29. Empty MTD is valid; formula errors are sanitized and listed in Settings. The line/queue tab passed headers/row-count-only inspection and was enabled in ignored private config. Source IDs and row data were not published.
+- **Authorized sequence:** after green CI, merge #28, this B PR, then #29; deploy with `deploy/windows/update.cmd`, run All and verify live aggregates. The owner explicitly made this scoped exception to the no-self-merge rule. Test workers are serial, including CI via package scripts.
 - **V2 status:** merged and deployed on 2026-11-27. PRs #20–#27 were merged top down with merge commits at the owner's request (an explicit exception to “never merge your own PR”). `main` is `e5d54f7`; its tree matches the reviewed head `92f170f`, and CI passed on it.
 - **Branches:** the eight `v2-phase-*` branches are merged and still on GitHub; they can be deleted when the owner likes.
 - **Review follow-up:** the 15 fixes and decisions from the PR review (plan-v2 section 8) are part of the merged release.
+
 - **Handover:** on 2026-11-27 a new session took over from the previous one for the review follow-up. The tree was clean at `03d10cc`, matched origin, and had no stashes or unpushed work. (An earlier handover on 2026-11-26 recovered unpushed Phase 2 work; nothing was discarded.)
 - **Tests on the merged code:** 242 Vitest tests passed, one existing skip; 25 Playwright tests passed. Lint, typecheck and the isolated build pass.
 - **Installed database:** migrated on 2026-11-27 (six V2 tables added, schema version still 2, integrity check ok). Against the snapshot taken first, no earlier attendance, discrepancy, note, roster, MTD or settings row was missing or changed. `absentDays = 1` is saved. Copies in the data folder: `dashboard.before-absent-days.db`, `dashboard.pre-v2-deploy.db` and two `backups/*.pre-deploy-copy.json`.
@@ -17,6 +20,7 @@ _Last updated: 2026-11-27 for the V2 merge, deployment and first live sync._
 - **Next task:** the owner pastes attendance for 21 Nov onwards, sets the account, report layout, thresholds and staffing in Settings, checks the roster count (Q18), connects the line/queue tab and sends the QA link.
 
 ## 2. Features
+- **Optional MTD and cell diagnostics:** blank MTD headers/data do not block Attendance. Per-cycle MTD availability is saved with paste diagnostics; freshness and Settings say `MTD for this cycle not pasted yet`. MTD comparisons and the MTD shout-out gate are skipped when unavailable, while daily facts still count. Code/Date formula errors refuse only their row; other error cells become blank, with local code/date/column/error warnings. A tab fails above 20% affected relevant rows. Existing days survive refused rows and failed pastes.
 - **V2 review follow-up (2026-11-27):** whole-coaching pace; the perfect-attendance rule; break minutes everywhere; the MTD-against-daily warning (freshness line and Settings, by name); every Team View column in Team; a nameless end-of-day report; the attendance email table and subject; escalation headings, documentation order and an MPR layout in Settings; read-only status map with unmapped labels (`v2/statusMap.ts`, `GET /v2/status-map`); one date format; Attendance → Trends replacing the Trends screen (`views/AttendanceTrends.tsx`); Home exceptions and shout-out layout (`web/test/layout.spec.ts`).
 - **V2 Phase 8:** Reports (end of day in the owner's layout, cycle summary, MPR prep, roster changes, all copy and CSV), Settings (thresholds marked set or not set, cycle and attendance read hours, staffing baselines, report layout, theme, status map), Ctrl K “Copy EOD”, custom form controls and a quality-bar browser test (`v2/reports.ts`, `v2/template.ts`, `views/Reports.tsx`, `views/OwnerSettings.tsx`). `GET /v2/reports?cycle&date`.
 - **V2 Phase 7:** Quality (latest, cycle and previous average, recent scores, last evaluation, distribution, sorting, owner-set overdue mark, prep links) and Queues (today's board, 14-day coverage against owner baselines, 31-day leave list, line changes). `GET /v2/quality`, `GET /v2/queues`.
@@ -70,6 +74,8 @@ _Last updated: 2026-11-27 for the V2 merge, deployment and first live sync._
 - Free VM: systemd reads root-only `/etc/team-dashboard.env`, data lives in `/var/lib/team-dashboard`, and Tailscale Serve proxies HTTPS to `127.0.0.1:3000`. The README retains Railway as an optional path.
 
 ## 5. Decisions log (append-only)
+- 2026-11-27 follow-up B: the owner pastes new-cycle Attendance before MTD exists. Empty MTD is explicitly valid; never borrow old-cycle totals. Persist latest paste availability and cell diagnostics in an additive `attendance_paste_state.diagnostics` column, preserve source snapshots, and use daily counts without MTD until supplied. Standard formula-error tokens are safe diagnostics; free cell text is never logged. Row error rate counts rows, not cells, and includes unreadable-code rows alongside relevant team rows.
+- 2026-11-27 follow-up B: the owner authorized enabling the existing queue source after headers-only test-link, then merging #28/B/#29 on green CI and deploying. The queue headers matched the expected Code/Name/Account/Line and seven weekday columns; no patient/caller header was detected. Private configuration stays ignored.
 - 2026-11-26: V2 supersedes the v1 visual scope: owner's team only in UI and defaults; keep covered-team model regression coverage explicit. No new thresholds, source syncs or coaching storage in Phase 1. The queue template and greeting name remain only in ignored local config.
 - 2026-11-26: Bundle Fontsource fonts; use muted small labels and darker warning tag text for contrast while keeping the supplied decorative tokens. Native dialogs provide modal focus behavior.
 - 2026-11-26: Build smoke artifacts into `server/dist.test`. The installed checkout's `server/dist` is a release junction; initial test compilation touched its compiled server files, which were restored from HEAD without restarting or syncing the live app.
@@ -192,11 +198,16 @@ _Last updated: 2026-11-27 for the V2 merge, deployment and first live sync._
 
 ## 9. Changelog (append-only, newest first)
 
+### 2026-11-27 - Optional MTD and tolerant paste errors
+- Added empty-MTD reads, cycle-scoped availability, daily fallback without stale MTD reuse, aggregate sync warnings and a Settings cell-warning table. Added boundary, preservation, shout-out, API and browser tests; test scripts run serially by default.
+- Ran the configured queue test-link read-only, reported headers and row count, then enabled only the queue source in private config with a local ignored backup.
+
 ### 2026-11-27 - V2 merged, deployed and first live sync
 - Merged #27 to #20 in order, each green and mergeable on its current head. Confirmed `main` contains `92f170f`.
 - Took a full SQLite snapshot and ran `npm run backup` with the old code, then deployed with `update.cmd`.
 - Removed an empty deploy lock left by the 2026-11-26 install after checking no deploy process was running.
 - Ran the first full sync with `npm run sync -- --job=all`, the command form of Settings → Sync now → All.
+
 
 ### 2026-11-27 - V2 review follow-up (new session)
 - Took over from the previous session with a clean tree at `03d10cc`.

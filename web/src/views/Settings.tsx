@@ -3,11 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import {
   mtdMismatchWarning,
+  mtdNotPasted,
   type Job,
   type SyncRun,
   type SyncStatus,
 } from "../../../server/src/api/dto";
-import { mtdMismatch } from "../../../server/src/v2/templates";
+import { mtdMismatch, fullDate } from "../../../server/src/v2/templates";
 import { api, message } from "../api";
 import { AttendancePreview } from "./AttendancePreview";
 import { Backups } from "./Backups";
@@ -128,6 +129,45 @@ export function Settings({
             Compared on the last attendance sync. Nothing was changed.
           </small>
         </div>
+      )}
+      {data.mtdMissing && (
+        <p className="notice" role="status">
+          {mtdNotPasted}
+        </p>
+      )}
+      {!!data.pasteWarnings?.length && (
+        <Section title="Attendance cell warnings">
+          <DataTable label="Attendance cell warnings">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Date</th>
+                <th>Tab / column</th>
+                <th>Error</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.pasteWarnings.map((warning, i) => (
+                <tr key={i}>
+                  <td>{warning.code ?? "Unreadable code"}</td>
+                  <td>
+                    {warning.date
+                      ? fullDate(warning.date)
+                      : "Unreadable / no date"}
+                  </td>
+                  <td>
+                    {warning.tab} · {warning.column}
+                  </td>
+                  <td>{warning.error}</td>
+                  <td>
+                    {warning.rejected ? "Row refused" : "Cell left blank"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </DataTable>
+        </Section>
       )}
       <OwnerSettings
         configHours={

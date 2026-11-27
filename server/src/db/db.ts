@@ -68,6 +68,16 @@ export function openDb(directory: string): Db {
         db.exec(
           "ALTER TABLE attendance_paste_state ADD COLUMN team_code_count INTEGER",
         );
+      if (
+        !db
+          .prepare(
+            "SELECT 1 FROM pragma_table_info('attendance_paste_state') WHERE name='diagnostics'",
+          )
+          .get()
+      )
+        db.exec(
+          "ALTER TABLE attendance_paste_state ADD COLUMN diagnostics TEXT NOT NULL DEFAULT '{}'",
+        );
       if (version !== 2) db.pragma("user_version = 2");
     })();
     return db;
