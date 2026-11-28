@@ -11,6 +11,7 @@ import { checkSheetLink, sourceKeys } from "./fetch/checkLink.js";
 import { createSync } from "./sync/service.js";
 import { createInterface } from "node:readline/promises";
 import { googleLogin, googleLogout } from "./fetch/googleAuth.js";
+import { fetchGoogleTabRows } from "./fetch/googleSheets.js";
 import { pasteTabs, readAttendancePasteTabs } from "./fetch/attendancePaste.js";
 import { attendancePasteStatusMap } from "./parse/status.js";
 
@@ -78,12 +79,49 @@ try {
     if (!Number.isInteger(headerRows) || headerRows < 1)
       throw new Error("Pass --header-row as a row number from 1");
     const { sheetId, gid } = parseLink(link);
-    const { rows } = await fetchCsv(
-      exportUrl(sheetId, gid),
-      undefined,
-      undefined,
-      32 * 1024 * 1024,
-    );
+    const accessArg = process.argv
+      .find((arg) => arg.startsWith("--access="))
+      ?.slice("--access=".length);
+    if (
+      accessArg !== undefined &&
+      accessArg !== "public" &&
+      accessArg !== "google"
+    )
+      throw new Error("Pass --access=public or --access=google");
+    const sourceArg = process.argv
+      .find((arg) => /^--source=(qa|lineQueue)$/.test(arg))
+      ?.slice("--source=".length) as "qa" | "lineQueue";
+    const configuredAccess = (() => {
+      try {
+        const cfg = loadConfig(undefined, "live", true);
+        if (cfg.sources[sourceArg]?.access === "google") return "google";
+        if (
+          sourceArg === "qa" &&
+          cfg.sources.attendance.paste?.sheetId === sheetId
+        )
+          return "google";
+      } catch {
+        // Fallback to public if no local config exists.
+      }
+      return "public";
+    })();
+    const useGoogle = (accessArg ?? configuredAccess) === "google";
+    const rows = useGoogle
+      ? (await fetchGoogleTabRows(sheetId, gid, readDataDir())).map((row) =>
+          row.map((cell) =>
+            typeof cell === "boolean"
+              ? String(cell).toUpperCase()
+              : String(cell),
+          ),
+        )
+      : (
+          await fetchCsv(
+            exportUrl(sheetId, gid),
+            undefined,
+            undefined,
+            32 * 1024 * 1024,
+          )
+        ).rows;
     const report = inspectHeaders(rows, headerRows);
     console.log(JSON.stringify(report, null, 2));
     if (report.stop) process.exitCode = 1;
@@ -144,10 +182,10 @@ try {
     if (
       dryRun
         ? job !== "attendance"
-        : job !== "roster" && job !== "daily" && job !== "all"
+        : job !== "roster" && job !== "daily" && job !== "all" && job !== "qa"
     )
       throw new Error(
-        "Pass --job=roster, --job=daily, --job=all, or --job=attendance --dry-run",
+        "Pass --job=roster, --job=daily, --job=all, --job=qa, or --job=attendance --dry-run",
       );
     const env = readEnv();
     const config = loadConfig(undefined, env.SOURCE_MODE);
@@ -174,7 +212,12 @@ try {
         const report = await sync.previewAttendance();
         if (process.argv.includes("--paste")) delete report.flaggedFirstNames;
         console.log(JSON.stringify(report, null, 2));
-      } else if (job === "roster" || job === "daily" || job === "all") {
+      } else if (
+        job === "roster" ||
+        job === "daily" ||
+        job === "all" ||
+        job === "qa"
+      ) {
         if (!(await sync.start(job))) process.exitCode = 1;
       }
     } finally {

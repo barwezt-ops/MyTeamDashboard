@@ -88,6 +88,7 @@ export function startLiveJobs(
     config.sources.attendance.enabled
       ? config.sources.attendance.paste
       : undefined;
+  const qaEnabled = !!config.sources.qa?.enabled;
   let bootstrapAttempted = false;
 
   function canRetry(job: "daily" | "backup", time: Date) {
@@ -131,7 +132,7 @@ export function startLiveJobs(
           undefined)
     )
       return sync.start("daily");
-    if (paste) {
+    if (paste || qaEnabled) {
       const slot = Math.floor(timestamp / hour) * hour;
       const hourInCairo = Number(
         new Intl.DateTimeFormat("en-GB", {
@@ -140,25 +141,35 @@ export function startLiveJobs(
           timeZone: timezone,
         }).format(time),
       );
-      const last = lastRun(db, "attendance");
       // Hours chosen in Settings take the place of the config file's.
       const chosen = readSettings(db).attendanceHours;
-      const start = chosen?.start ?? paste.startHour;
-      const end = chosen?.end ?? paste.endHour;
+      const start = chosen?.start ?? paste?.startHour ?? 0;
+      const end = chosen?.end ?? paste?.endHour ?? 24;
       const withinHours =
         start < end
           ? hourInCairo >= start && hourInCairo < end
           : hourInCairo >= start || hourInCairo < end;
-      if (withinHours && (!last || Date.parse(last.startedAt) < slot))
-        return sync.start("attendance");
+      if (withinHours) {
+        if (paste) {
+          const last = lastRun(db, "attendance");
+          if (!last || Date.parse(last.startedAt) < slot)
+            return sync.start("attendance");
+        }
+        if (qaEnabled) {
+          const last = lastRun(db, "qa");
+          if (!last || Date.parse(last.startedAt) < slot)
+            return sync.start("qa");
+        }
+      }
     }
   }
 
   const backupOffsets = cronOffsets(backupPattern);
   const daily = cron.schedule(config.jobs.daily, () => void check(), options);
-  const attendance = paste
-    ? cron.schedule("0 * * * *", () => void check(), options)
-    : undefined;
+  const hourly =
+    paste || qaEnabled
+      ? cron.schedule("0 * * * *", () => void check(), options)
+      : undefined;
   const backup = cron.schedule(backupPattern, () => void check(), options);
   const weekly = cron.schedule(
     config.jobs.weekly,
@@ -170,7 +181,7 @@ export function startLiveJobs(
     check,
     stop() {
       clearInterval(timer);
-      for (const task of [daily, backup, weekly, attendance])
+      for (const task of [daily, backup, weekly, hourly])
         if (task) void task.destroy();
     },
   };

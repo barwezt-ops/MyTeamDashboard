@@ -58,6 +58,7 @@ afterEach(() => {
     "attendance_days",
     "line_history",
     "qa_evaluations",
+    "qa_state",
     "agents",
   ])
     db.prepare("DELETE FROM " + table).run();
@@ -659,7 +660,7 @@ describe("QA scaffolding", () => {
     }
   });
 
-  it("needs an approved mapping and replaces only the pairs it reads", async () => {
+  it("needs an approved mapping and replaces the full snapshot on success", async () => {
     seedV2Fixture(db);
     const config = loadConfig();
     const source = {
@@ -691,8 +692,17 @@ describe("QA scaffolding", () => {
         date: "2026-11-19",
         score: 93.5,
         form: "Sample support",
+        autofail: false,
+        account: "",
       },
-      { code: "99001", date: "2026-11-20", score: 95, form: "Sample support" },
+      {
+        code: "99001",
+        date: "2026-11-20",
+        score: 95,
+        form: "Sample support",
+        autofail: false,
+        account: "",
+      },
     ]);
     db.prepare(
       "INSERT INTO qa_evaluations(code,date,score,form) VALUES ('99001','2026-11-01',80,''),('99001','2026-11-19',10,'')",
@@ -705,7 +715,7 @@ describe("QA scaffolding", () => {
         )
         .pluck()
         .all(),
-    ).toEqual([80, 93.5, 95]);
+    ).toEqual([93.5, 95]);
     config.sources.qa.columns!.form = "Comment";
     expect(() =>
       parseQa(

@@ -78,6 +78,26 @@ export function openDb(directory: string): Db {
         db.exec(
           "ALTER TABLE attendance_paste_state ADD COLUMN diagnostics TEXT NOT NULL DEFAULT '{}'",
         );
+      if (
+        !db
+          .prepare(
+            "SELECT 1 FROM pragma_table_info('qa_evaluations') WHERE name='autofail'",
+          )
+          .get()
+      )
+        db.exec(
+          "ALTER TABLE qa_evaluations ADD COLUMN autofail INTEGER NOT NULL DEFAULT 0",
+        );
+      if (
+        !db
+          .prepare(
+            "SELECT 1 FROM pragma_table_info('qa_evaluations') WHERE name='account'",
+          )
+          .get()
+      )
+        db.exec(
+          "ALTER TABLE qa_evaluations ADD COLUMN account TEXT NOT NULL DEFAULT ''",
+        );
       if (version !== 2) db.pragma("user_version = 2");
     })();
     return db;

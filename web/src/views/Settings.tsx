@@ -73,9 +73,16 @@ export function Settings({
     return <ErrorNotice retry={status.reload}>{status.error}</ErrorNotice>;
   if (!status.data) return <Loading />;
   const data = status.data;
-  const jobs: Job[] = data.attendancePaste
-    ? ["roster", "daily", "attendance", "all"]
-    : ["roster", "daily", "all"];
+  const qaEnabled = data.sources.some(
+    (source) => source.job === "qa" && source.enabled,
+  );
+  const jobs: Job[] = [
+    "roster",
+    "daily",
+    ...(data.attendancePaste ? (["attendance"] as const) : []),
+    ...(qaEnabled ? (["qa"] as const) : []),
+    "all",
+  ];
   const time = (stamp: string | null) =>
     stamp
       ? new Intl.DateTimeFormat("en-GB", {
@@ -190,7 +197,7 @@ export function Settings({
                 size={15}
                 className={data.running === job ? "spin" : ""}
               />
-              {job[0].toUpperCase() + job.slice(1)}
+              {job === "qa" ? "QA" : job[0].toUpperCase() + job.slice(1)}
             </button>
           ))}
         </div>
