@@ -1,10 +1,12 @@
 # memory.md — Team Dashboard
-_Last updated: 2026-11-27 for effective daily counts, selective waivers, stale-MTD detection and the installer follow-up._
+_Last updated: 2026-11-28 for the approved QA source connection and takeover validation._
 
 
 > Public repo: no real names, codes, sheet IDs or env values in this file. Refer to config keys (e.g. `sources.master.sheetId`) and roles ("the owner", "the covered TL", "the STL").
 
 ## 1. Snapshot
+- **QA source connection (2026-11-28):** The owner approved the five-column `QA_raw` mapping on the existing Attendance paste spreadsheet. Private config enables the source with the existing read-only Google sign-in. Metadata, exact headers and a read-only cycle preview were verified; identifiers and roster values remain outside Git.
+- **QA validation:** Recovered the uncommitted implementation on `feature/qa-source` without discarding anything. Lint, typecheck, 272 unit tests (one existing skip), isolated `build:smoke`, and all 29 serial Playwright checks passed. The full diff and untracked test passed the private-data scan. Merge on green CI, deployment with the unmodified Windows updater and Sync All are explicitly owner-authorized for this workstream.
 - **Post-deploy attendance follow-up:** single branch `fix/effective-attendance-waivers` off main, one PR including the pending prior deployment record. Owner pre-approves merging on green CI and deploying with `update.cmd`; this is an explicit scoped exception to the review/no-self-merge rule. Test workers stay serial.
 - **Follow-up validation:** 264 unit tests passed, one existing skip, across all 27 test files; all 29 Playwright checks passed with one worker. Lint, typecheck and isolated build passed. A prior loaded run measured Trends at 316 ms against the unchanged 300 ms limit; the targeted recheck and final full suite passed unchanged.
 - **Root cause found:** all ten prior URGENT items were lateness thresholds driven by stale MTD, not NCNS/AWOL flags. Effective daily facts now drive every operational count, flags, shout-out and coaching prep; no MTD delta inference. Raw WFM MTD remains comparison data. No real codes or source facts are recorded in this public file.
@@ -26,9 +28,10 @@ _Last updated: 2026-11-27 for effective daily counts, selective waivers, stale-M
 - **First V2 sync (2026-11-27, 17:00 Cairo):** roster, schedule, attendance and rules succeeded; the line/queue tab and QA are off. Attendance holds 491 rows for 16 agents, 21 Oct to 20 Nov, with minutes on all 40 exceeded breaks. Nothing is pasted yet for the cycle from 21 Nov. The MTD warning names one agent. Current-cycle flags: 0 urgent, 0 soon, 7 later (patterns from earlier days).
 - **2026-11-26 attendance checkpoint:** The Windows dashboard is installed. The owner approved importing the prior coaching cycle from the restricted workbook. Attendance is enabled through the read-only Google source. One attendance sync succeeded and the restarted dashboard passed its health check.
 - **v1 status:** plan.md Phases 0–5 and workstreams B–F are merged to `main`, as are Windows local deployment and the attendance paste sync.
-- **Authorized completion:** merge this follow-up after green CI, deploy via `update.cmd`, run All and report live flags (with each URGENT item), corrections/waivers and the MTD message. The prior deployment metrics above are a dated checkpoint; the follow-up PR records its deployment outcome. QA remains disabled pending its link/mapping approval.
+- **Earlier authorized completion:** merge the attendance follow-up after green CI, deploy via `update.cmd`, run All and report live flags, corrections/waivers and the MTD message. These are dated attendance checkpoints; QA approval and validation are recorded in the 2026-11-28 snapshot above.
 
 ## 2. Features
+- **QA snapshot source:** Read only Code, Case Date, Score, Autofail and Account from the approved Google tab. Store scores as percentages, serial dates as calendar dates, and nonblank autofail labels as both a flag and evaluation type. Keep all duplicate audits. Replace the full history transactionally on success; preserve it on read failure, zero rows or a drop greater than half the prior successful row count. Skip unknown roster codes with a count warning and log unchanged snapshots as `no change`. QA runs hourly within the Attendance read hours and through Settings QA/All.
 - **Waivers and MTD cycle guard:** TL `waive` with `late`/`lateness` and/or `missing` selectively zeros those effective day values, retaining original WFM minutes in grid/Home/profile/prep and Corrections. Status corrections can coexist; sheet waivers also survive app status precedence until removed from the sheet. If MTD contains codes without current-cycle attendance or more than half its matched agents disagree with WFM daily lateness/incidents/missing, it is not accepted for that cycle, existing misclassified snapshots are removed, and Settings/freshness warn `MTD tab looks like a different cycle`. Empty MTD retains its distinct not-pasted message.
 - **Attendance corrections (2026-11-27):** exact Attendance `TL Comment` header exception. Consume longest whole labels case-insensitively, ignore labels mapping to the day's WFM status, then count distinct remaining labels: one corrects effective status everywhere, zero explains, two or more explain with `names more than one status, not corrected`. Counts retain the WFM status for explanations. WFM rows/provenance remain visible. Sheet changes/removal follow sync; app corrections win, survive sync, support Undo and show WFM updated on confirmation. Settings lists all corrected/explained days across cycles. Local correction tables are excluded from automatic exports and JSON backups.
 
@@ -163,10 +166,13 @@ _Last updated: 2026-11-27 for effective daily counts, selective waivers, stale-M
 | 2026-11-24 | Infer HTTPS for non-local hosts on live loopback listeners when the protocol header is absent | Tailscale Serve can omit `X-Forwarded-Proto`. Windows and the loopback-bound VM need secure session cookies, and direct localhost sign-in uses HTTP. | Require the header for every secure proxy sign-in |
 | 2026-11-25 | Parse unambiguous English month names in the shared date parser | The live master exports dates with month names. `dateOrder` applies to numeric slash dates. | Special-case the roster or link diagnostic |
 
+| 2026-11-28 | QA comes from the `QA_raw` tab of the Attendance paste sheet, filled by the owner's formula from both QA workbooks; the exact five-column mapping is owner-approved. Use the existing read-only Google sign-in and keep all identifiers in ignored local config. | The formula provides the owner's complete audit history without reading the original workbooks or other fields. | New login, API keys or reading the original QA workbooks |
+| 2026-11-28 | Replace QA as a full snapshot in one transaction, preserving duplicate audits; refuse failed reads, zero rows and a row-count drop greater than 50%. Unknown roster codes are skipped with a count warning; unchanged data is a successful `no change`. | Every read contains all cycles, and a failed or incomplete source must not erase prior evaluations. | Agent/date upserts or audit deduplication |
+
 ## 6. Known issues & tech debt
 - Windows updater IPC probe: the earlier 500 ms wait falsely timed out under load. This follow-up makes the proven 2500 ms default permanent and configurable; no manual installer edit is needed. See the Windows runbook.
 - Corrections and their notes deliberately do not travel in JSON backups/exports under the owner's local-only rule; they remain in local SQLite. The feature is now deployed and live-sync verified.
-- The line/queue source is enabled and verified (19 matched agents, three lines). QA is waiting for its link/mapping approval.
+- The line/queue source is enabled and verified (19 matched agents, three lines). QA link and mapping approval were supplied on 2026-11-28; the source connection is implemented and validated.
 
 - The owner approved importing the prior coaching cycle. Its MTD totals are saved under the Cairo sync date with the source cycle recorded.
 | Issue | Impact | Planned fix |
@@ -219,6 +225,10 @@ _Last updated: 2026-11-27 for effective daily counts, selective waivers, stale-M
 - **Process notes from reviews:** keep one phase per PR and stop at checkpoints; never push to the fork; memory.md/CLAUDE.md belong in the repo.
 
 ## 9. Changelog (append-only, newest first)
+
+### 2026-11-28 - QA source connection and interrupted-session recovery
+- Preserved the recovered branch, private config and untracked QA tests. Verified the approved source metadata, exact headers and anonymous cycle preview. Connected Google QA reads, guarded full-history snapshots, autofail/account storage, hourly scheduling and manual QA/All sync. The existing Quality and Home views consume percentage scores and retain empty states for missing QA.
+- Re-ran lint, typecheck, serial unit tests (272 passed, one existing skip), isolated build and all 29 serial browser checks. Private source identifiers and roster names/codes have zero matches in the diff and recovered test. No installer changes.
 
 ### 2026-11-27 - Effective attendance, waivers and stale MTD follow-up
 - Replaced MTD-driven operational counts with effective daily facts, retained WFM comparison values, added selective TL waivers and visibility, and guarded cycle snapshots against foreign codes and majority mismatches. Recomputed NCNS streaks from effective days. Added parser/read-model/lifecycle/browser regressions and configurable Windows launcher timeout. Includes the pending earlier deployment memory update in this PR. Validation: 264 unit tests passed plus one existing skip; 29 serial browser checks passed; lint, typecheck and isolated build passed.

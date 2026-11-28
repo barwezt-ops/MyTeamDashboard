@@ -1,12 +1,18 @@
 // The line/queue tab and the QA sheet. Both keep only whitelisted fields for
 // the owner's team, joined on agent code.
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Config } from "../config.js";
 import type { Db } from "../db/db.js";
 import type { ScheduleDay } from "../api/dto.js";
 import { fetchCsv, decodeCsv } from "../fetch/fetchCsv.js";
+import { fetchGoogleMappedTabRows } from "../fetch/googleSheets.js";
 import { exportUrl } from "../fetch/urls.js";
-import { patientHeader, privateHeader } from "../fetch/sourceColumns.js";
+import {
+  patientOrCallerHeader,
+  privateHeader,
+  refusedHeader,
+} from "../fetch/sourceColumns.js";
 import { columnAt } from "../parse/columns.js";
 import {
   codeOf,
@@ -18,17 +24,7 @@ import {
 } from "../parse/normalize.js";
 import { parseStatus } from "../parse/status.js";
 
-/** Headers that suggest patient or caller data. The source is not mapped. */
-export const patientOrCallerHeader = (value: string) => {
-  const header = value.replaceAll("_", " ");
-  return (
-    patientHeader(header) ||
-    /caller|call\W*(?:id\b|detail|record)|recording/i.test(header)
-  );
-};
-/** Headers that may never be mapped. */
-export const refusedHeader = (value: string) =>
-  patientOrCallerHeader(value) || privateHeader(value);
+export { patientOrCallerHeader, refusedHeader };
 
 /** Reports headers and a row count. It never returns cell values. */
 export function inspectHeaders(rows: string[][], headerRows = 1) {
@@ -240,65 +236,214 @@ export function plannedDay(
   return actual ? { ...actual, source: "dated" } : null;
 }
 
-export function parseQa(
-  rawRows: string[][],
+const qaCodes = (db: Db) =>
+  new Set(
+    db
+      .prepare("SELECT code FROM agents WHERE owner_group='mine'")
+      .pluck()
+      .all() as string[],
+  );
+
+type Cell = string | number | boolean;
+export type QaRecord = {
+  code: string;
+  date: string;
+  score: number;
+  form: string;
+  autofail: boolean;
+  account: string;
+};
+
+const dayMs = 86_400_000;
+const serialEpoch = Date.UTC(1899, 11, 30);
+
+function qaDate(value: Cell | undefined, dateOrder: Config["dateOrder"]) {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 1 || value > 2_958_465) return null;
+    return new Date(serialEpoch + Math.floor(value) * dayMs)
+      .toISOString()
+      .slice(0, 10);
+  }
+  const text = String(value ?? "").trim();
+  if (/^\d+(?:\.\d+)?$/.test(text)) {
+    const serial = Number(text);
+    if (Number.isFinite(serial) && serial >= 1 && serial <= 2_958_465)
+      return new Date(serialEpoch + Math.floor(serial) * dayMs)
+        .toISOString()
+        .slice(0, 10);
+  }
+  return parseDate(text, { dateOrder });
+}
+
+function qaScore(value: Cell | undefined, fraction: boolean): number | null {
+  const rawText =
+    typeof value === "string" ? value.trim() : String(value ?? "").trim();
+  if (!rawText) return null;
+  const hasPercent = rawText.endsWith("%");
+  const clean = hasPercent ? rawText.slice(0, -1).trim() : rawText;
+  if (!/^-?\d+(?:\.\d+)?$/.test(clean)) return null;
+  const num = Number(clean);
+  if (!Number.isFinite(num)) return null;
+  const score =
+    !hasPercent && fraction ? Number((num * 100).toPrecision(12)) : num;
+  return score;
+}
+
+export function parseQaReport(
+  rawRows: Cell[][],
   config: Config,
   codes: Set<string>,
 ) {
   const source = config.sources.qa;
   const rows = rawRows.slice((source?.headerRows ?? 1) - 1);
-  if (inspectHeaders(rows).stop)
+  if (
+    inspectHeaders(
+      rows.map((row) => row.map((cell) => String(cell ?? ""))),
+      1,
+    ).stop
+  )
     throw new Error(
       "Possible patient or caller data in QA headers. Stop and review the source.",
     );
   if (!source?.mappingApproved || !source.columns)
     throw new Error("QA mapping needs owner approval");
+  const header = rows[0] ?? [];
   const columns = new Map<string, number>();
-  for (const [field, header] of Object.entries(source.columns)) {
-    const hits = rows[0].flatMap((value, i) =>
-      labelOf(value) === labelOf(header) ? [i] : [],
+  for (const [field, name] of Object.entries(source.columns)) {
+    if (!name) continue;
+    const hits = header.flatMap((value, i) =>
+      labelOf(String(value ?? "")) === labelOf(name) ? [i] : [],
     );
-    if (hits.length !== 1 || refusedHeader(header))
+    if (
+      hits.length !== 1 ||
+      refusedHeader(name) ||
+      refusedHeader(String(header[hits[0]] ?? ""))
+    )
       throw new Error("Approved QA header is missing or refused");
     columns.set(field, hits[0]);
   }
-  const mapped = rows.slice(1).flatMap((row) => {
-    const code = codeOf(row[columns.get("code")!]);
-    if (!codes.has(code)) return [];
-    const date = parseDate(row[columns.get("date")!] ?? "", {
-      dateOrder: config.dateOrder,
-    });
-    const raw = row[columns.get("score")!]?.trim().replace(/%$/, "").trim();
-    if (!date || !/^\d+(?:\.\d+)?$/.test(raw ?? ""))
+  const dataRows = rows
+    .slice(1)
+    .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
+  if (!dataRows.length) throw new Error("QA tab has 0 data rows");
+  const fraction =
+    source.scoreFormat === "fraction" ||
+    (source.scoreFormat === undefined && source.access === "google");
+  let skippedUnknown = 0;
+  const records: QaRecord[] = [];
+  for (const row of dataRows) {
+    const code = codeOf(String(row[columns.get("code")!] ?? ""));
+    if (!code || !codes.has(code)) {
+      skippedUnknown++;
+      continue;
+    }
+    const date = qaDate(row[columns.get("date")!], config.dateOrder);
+    const score = qaScore(row[columns.get("score")!], fraction);
+    if (!date || score === null)
       throw new Error("Invalid date or percentage in approved QA fields");
-    const score = Number(raw);
-    if (score > 100) throw new Error("QA percentage must be between 0 and 100");
-    const form = columns.has("form")
-      ? (row[columns.get("form")!]?.trim() ?? "")
+    if (score < 0 || score > 100)
+      throw new Error("QA percentage must be between 0 and 100");
+    const autofailRaw = columns.has("autofail")
+      ? String(row[columns.get("autofail")!] ?? "").trim()
       : "";
+    const autofail = autofailRaw !== "";
+    const formRaw = columns.has("form")
+      ? String(row[columns.get("form")!] ?? "").trim()
+      : "";
+    const form = formRaw || autofailRaw;
     if (form.length > 100) throw new Error("QA form name is too long");
-    return [{ code, date, score, form }];
-  });
-  if (!mapped.length) throw new Error("NO_TEAM_ROWS");
-  return mapped;
+    const account = columns.has("account")
+      ? String(row[columns.get("account")!] ?? "").trim()
+      : "";
+    if (account.length > 100) throw new Error("QA account label is too long");
+    records.push({ code, date, score, form, autofail, account });
+  }
+  const warnings = skippedUnknown
+    ? [
+        `Skipped ${skippedUnknown} QA ${skippedUnknown === 1 ? "row" : "rows"} with unknown agent code`,
+      ]
+    : [];
+  return {
+    records,
+    rowsRead: dataRows.length,
+    skippedUnknown,
+    warnings,
+  };
 }
 
-/** Replaces only the agent and date pairs present in this read. */
-export async function syncQa(db: Db, config: Config, mode: "live" | "fixture") {
+export function parseQa(rawRows: Cell[][], config: Config, codes: Set<string>) {
+  return parseQaReport(rawRows, config, codes).records;
+}
+
+/** Replaces the full QA snapshot in one transaction with safety guards. */
+export async function syncQa(
+  db: Db,
+  config: Config,
+  mode: "live" | "fixture",
+  now = new Date(),
+  dataDir = ":memory:",
+  request = fetch,
+) {
   const source = config.sources.qa;
-  if (!source?.enabled || !source.mappingApproved)
+  if (!source?.enabled || !source.mappingApproved || !source.columns)
     return { rowsRead: 0, rowsKept: 0, warnings: [] };
-  const rows = await csvRows(mode, "qa", source);
-  const records = parseQa(rows, config, teamCodes(db));
-  db.transaction(() => {
-    const remove = db.prepare(
-      "DELETE FROM qa_evaluations WHERE code=? AND date=?",
-    );
-    for (const record of records) remove.run(record.code, record.date);
-    const insert = db.prepare(
-      "INSERT INTO qa_evaluations(code,date,score,form) VALUES (@code,@date,@score,@form)",
-    );
-    for (const record of records) insert.run(record);
+  const rows: Cell[][] =
+    mode === "fixture"
+      ? decodeCsv(readFileSync("fixtures/qa.sample.csv", "utf8"))
+      : source.access === "google"
+        ? await fetchGoogleMappedTabRows(
+            source.sheetId,
+            source.gid,
+            source.headerRows || 1,
+            Object.values(source.columns).filter(
+              (value): value is string => !!value,
+            ),
+            dataDir,
+            request,
+          )
+        : (await fetchCsv(exportUrl(source.sheetId, source.gid))).rows;
+  const report = parseQaReport(rows, config, qaCodes(db));
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify({
+        rowsRead: report.rowsRead,
+        skippedUnknown: report.skippedUnknown,
+        records: report.records,
+      }),
+    )
+    .digest("hex");
+  const changed = db.transaction(() => {
+    const state = db
+      .prepare("SELECT fingerprint, row_count FROM qa_state WHERE id=1")
+      .get() as { fingerprint: string; row_count: number } | undefined;
+    const prevCount =
+      state?.row_count ??
+      (db
+        .prepare(
+          "SELECT rows_read FROM sync_log WHERE job='qa' AND ok=1 ORDER BY id DESC LIMIT 1",
+        )
+        .pluck()
+        .get() as number | undefined) ??
+      0;
+    if (prevCount && report.rowsRead * 2 < prevCount)
+      throw new Error("QA tab looks incomplete");
+    const isChanged = state?.fingerprint !== fingerprint;
+    if (isChanged) {
+      db.prepare("DELETE FROM qa_evaluations").run();
+      const insert = db.prepare(
+        "INSERT INTO qa_evaluations(code,date,score,form,autofail,account) VALUES (@code,@date,@score,@form,@autofail,@account)",
+      );
+      for (const record of report.records)
+        insert.run({ ...record, autofail: Number(record.autofail) });
+      db.prepare(
+        "INSERT INTO qa_state (id,fingerprint,last_changed_at,row_count) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint,last_changed_at=excluded.last_changed_at,row_count=excluded.row_count",
+      ).run(fingerprint, now.toISOString(), report.rowsRead);
+    }
+    return isChanged;
   })();
-  return { rowsRead: rows.length, rowsKept: records.length, warnings: [] };
+  return {
+    rowsRead: report.rowsRead,
+    rowsKept: report.records.length,
+    warnings: [...report.warnings, ...(changed ? [] : ["no change"])],
+  };
 }

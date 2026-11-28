@@ -49,8 +49,19 @@ export const patientHeader = (value: string) =>
     value.replaceAll("_", " "),
   );
 
+export const patientOrCallerHeader = (value: string) => {
+  const header = value.replaceAll("_", " ");
+  return (
+    patientHeader(header) ||
+    /caller|call\W*(?:id\b|detail|record)|recording/i.test(header)
+  );
+};
+
 export const privateHeader = (value: string) =>
   sensitiveHeader(value) || patientHeader(value);
+
+export const refusedHeader = (value: string) =>
+  patientOrCallerHeader(value) || privateHeader(value);
 
 // Owner-approved exception is confined to the Attendance paste reader.
 export const pastePrivateHeader = (value: string) =>

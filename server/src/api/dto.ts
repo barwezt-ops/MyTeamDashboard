@@ -27,7 +27,7 @@ export type Status = (typeof statuses)[number];
 export type Code = string;
 export type Scope = "mine" | "covered" | "all";
 export type RuleId = "D1" | "D2" | "D3" | "D4" | "D5" | "D6" | "D7";
-export type Job = "roster" | "daily" | "all" | "attendance";
+export type Job = "roster" | "daily" | "all" | "attendance" | "qa";
 export interface Agent {
   code: Code;
   firstName: string;

@@ -620,12 +620,16 @@ export function createRoutes(db: Db, config: Config, sync: SyncService) {
     endpoint(
       {
         query: z.strictObject({
-          job: z.enum(["roster", "daily", "all", "attendance"]),
+          job: z.enum(["roster", "daily", "all", "attendance", "qa"]),
         }),
       },
       ({ query: { job } }, _req, res) => {
         if (job === "attendance" && !sync.attendancePasteEnabled) {
           res.status(409).json({ error: "Attendance paste sync is disabled" });
+          return;
+        }
+        if (job === "qa" && !sync.qaEnabled) {
+          res.status(409).json({ error: "QA sync is disabled" });
           return;
         }
         if (!sync.start(job)) {

@@ -250,6 +250,13 @@ export function createSync(
           (await attendance(date, range)) &&
           (await rules(date, range))
         );
+      if (job === "qa")
+        return (
+          !!config.sources.qa?.enabled &&
+          (await runner.runStep("qa", () =>
+            syncQa(db, config, mode, now(), dataDir),
+          ))
+        );
       const success = lastSuccess(db, "roster");
       if (
         job === "all" ||
@@ -279,7 +286,10 @@ export function createSync(
         syncQueues(db, config, mode, now()),
       );
     if (config.sources.qa?.enabled)
-      ok = (await runner.runStep("qa", () => syncQa(db, config, mode))) && ok;
+      ok =
+        (await runner.runStep("qa", () =>
+          syncQa(db, config, mode, now(), dataDir),
+        )) && ok;
     return ok;
   }
   let previewPending: ReturnType<typeof previewAttendance> | undefined;
@@ -334,6 +344,7 @@ export function createSync(
     },
     start,
     attendancePasteEnabled: usesPaste && config.sources.attendance.enabled,
+    qaEnabled: !!config.sources.qa?.enabled,
     attendanceStale: () =>
       usesPaste &&
       config.sources.attendance.enabled &&

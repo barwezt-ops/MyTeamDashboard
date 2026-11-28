@@ -157,16 +157,19 @@ export const configSchema = z
         .optional(),
       qa: source
         .extend({
-          access: z.literal("public").default("public"),
+          access: z.enum(["public", "google"]).default("public"),
           mode: z.literal("export"),
           enabled: z.boolean().default(false),
           mappingApproved: z.boolean().default(false),
+          scoreFormat: z.enum(["percent", "fraction"]).optional(),
           columns: z
             .strictObject({
               code: z.string().min(1),
               date: z.string().min(1),
               score: z.string().min(1),
               form: z.string().min(1).optional(),
+              autofail: z.string().min(1).optional(),
+              account: z.string().min(1).optional(),
             })
             .optional(),
         })
